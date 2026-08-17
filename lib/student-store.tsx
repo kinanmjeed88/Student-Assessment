@@ -3,9 +3,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type AttendanceStatus = "present" | "absent" | "excused" | "late" | "leave";
 export type BehaviorCategory = "positive" | "followup" | "negative";
+export type BehaviorViolationType = "absence" | "lessonDisruption" | "seriousMisconduct" | "other";
 export type NoteCategory = "academic" | "health" | "educational" | "attendance" | "other";
 
-export type Settings = { schoolName: string; teacherName: string; academicYear: string; stage: string };
+export type BehaviorSettings = {
+  dismissalThreshold: number;
+  warningThreshold: number;
+  penalties: Record<BehaviorViolationType, number>;
+};
+export type Settings = { schoolName: string; teacherName: string; academicYear: string; stage: string; behavior: BehaviorSettings };
 export type SchoolClass = { id: string; name: string; stage: string; academicYear: string; notes?: string };
 export type Section = { id: string; classId: string; name: string; notes?: string };
 export type Student = {
@@ -16,7 +22,7 @@ export type Student = {
 export type AttendanceRecord = { id: string; studentId: string; date: string; status: AttendanceStatus; reason?: string; notes?: string; updatedAt: string };
 export type GradeField = { id: string; subject: string; title: string; maxScore: number; term: string; date: string };
 export type Grade = { id: string; studentId: string; fieldId: string; score: number; notes?: string; createdAt: string };
-export type BehaviorRecord = { id: string; studentId: string; category: BehaviorCategory; title: string; details: string; actionTaken?: string; followUp?: string; date: string };
+export type BehaviorRecord = { id: string; studentId: string; category: BehaviorCategory; title: string; details: string; actionTaken?: string; followUp?: string; date: string; violationType?: BehaviorViolationType; penaltyPoints?: number };
 export type StudentNote = { id: string; studentId: string; category: NoteCategory; title: string; details: string; needsFollowUp: boolean; followUpDate?: string; date: string };
 
 export type AppData = {
@@ -25,13 +31,34 @@ export type AppData = {
 };
 
 const STORE_KEY = "student-attendance-manager/v1";
+export const DEFAULT_BEHAVIOR_SETTINGS: BehaviorSettings = {
+  dismissalThreshold: 50,
+  warningThreshold: 40,
+  penalties: { absence: 5, lessonDisruption: 10, seriousMisconduct: 20, other: 5 },
+};
 const DEFAULT_DATA: AppData = {
-  settings: { schoolName: "", teacherName: "", academicYear: "2026 / 2027", stage: "" },
+  settings: { schoolName: "", teacherName: "", academicYear: "2026 / 2027", stage: "", behavior: DEFAULT_BEHAVIOR_SETTINGS },
   classes: [], sections: [], students: [], attendance: [], gradeFields: [], grades: [], behaviors: [], notes: [],
 };
 
 function uid(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 function today() { return new Date().toISOString().slice(0, 10); }
+function normalizeData(raw: Partial<AppData>): AppData {
+  const behavior = raw.settings?.behavior;
+  return {
+    ...DEFAULT_DATA,
+    ...raw,
+    settings: {
+      ...DEFAULT_DATA.settings,
+      ...raw.settings,
+      behavior: {
+        ...DEFAULT_BEHAVIOR_SETTINGS,
+        ...behavior,
+        penalties: { ...DEFAULT_BEHAVIOR_SETTINGS.penalties, ...behavior?.penalties },
+      },
+    },
+  };
+}
 
 type Store = {
   data: AppData; hydrated: boolean;
@@ -62,7 +89,7 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORE_KEY)
-      .then((raw) => { if (raw) setData({ ...DEFAULT_DATA, ...JSON.parse(raw) }); })
+      .then((raw) => { if (raw) setData(normalizeData(JSON.parse(raw) as Partial<AppData>)); })
       .catch(() => undefined)
       .finally(() => setHydrated(true));
   }, []);
@@ -161,6 +188,7 @@ export function useStudentStore() {
 }
 
 export const attendanceLabels: Record<AttendanceStatus, string> = { present: "حاضر", absent: "غائب", excused: "بعذر", late: "متأخر", leave: "إجازة" };
-export const behaviorLabels: Record<BehaviorCategory, string> = { positive: "إيجابي", followup: "يحتاج متابعة", negative: "سلبي" };
+export const behaviorLabels: Record<BehaviorCategory, string> = { positive: "إيجابي", followup: "يحتاج متابعة", negative: "مخالفة" };
+export const behaviorViolationLabels: Record<BehaviorViolationType, string> = { absence: "غياب غير مبرر", lessonDisruption: "إخلال بسير الدرس", seriousMisconduct: "مخالفة جسيمة", other: "مخالفة أخرى" };
 export const noteLabels: Record<NoteCategory, string> = { academic: "أكاديمية", health: "صحية", educational: "تربوية", attendance: "حضور", other: "أخرى" };
 export const isoToday = today;
