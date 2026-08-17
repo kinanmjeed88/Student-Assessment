@@ -3,7 +3,7 @@ import { BACKUP_FORMAT, BACKUP_VERSION, getBackupSummary, parseStudentBackup, se
 
 const data = {
   settings: { schoolName: "مدرسة النور", teacherName: "أحمد", academicYear: "2026/2027", stage: "ابتدائي", behavior: { dismissalThreshold: 50, warningThreshold: 40, penalties: { absence: 5, lessonDisruption: 10, seriousMisconduct: 20, other: 5 } } },
-  classes: [{ id: "c1" }], sections: [{ id: "s1" }], students: [{ id: "st1" }, { id: "st2" }], attendance: [{ id: "a1" }], gradeFields: [], grades: [{ id: "g1" }], behaviors: [{ id: "b1" }], notes: [{ id: "n1" }],
+  classes: [{ id: "c1" }], sections: [{ id: "s1" }], students: [{ id: "st1" }, { id: "st2" }], attendance: [{ id: "a1" }], gradeFields: [], grades: [{ id: "g1" }], behaviors: [{ id: "b1" }], notes: [{ id: "n1" }], importHistory: [],
 } as never;
 
 describe("صيغة النسخة الاحتياطية", () => {

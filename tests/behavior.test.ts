@@ -5,7 +5,7 @@ import type { AppData } from "../lib/student-store";
 function dataWithPenalties(points: number[]): AppData {
   return {
     settings: { schoolName: "مدرسة الاختبار", teacherName: "معلم", academicYear: "2026 / 2027", stage: "", behavior: { dismissalThreshold: 50, warningThreshold: 40, penalties: { absence: 5, lessonDisruption: 10, seriousMisconduct: 20, other: 5 } } },
-    classes: [], sections: [], attendance: [], gradeFields: [], grades: [], notes: [],
+    classes: [], sections: [], attendance: [], gradeFields: [], grades: [], notes: [], importHistory: [],
     students: [{ id: "student-1", studentNumber: "1", firstName: "أحمد", fatherName: "محمد", lastName: "علي", fullName: "أحمد محمد علي", classId: "class-1", sectionId: "section-1", status: "نشط", createdAt: "2026-01-01" }],
     behaviors: points.map((penaltyPoints, index) => ({ id: `behavior-${index}`, studentId: "student-1", category: "negative", violationType: "absence", penaltyPoints, title: "غياب غير مبرر", details: "سجل اختبار", date: `2026-01-0${index + 1}` })),
   };

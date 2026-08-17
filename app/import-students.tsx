@@ -37,12 +37,12 @@ export default function ImportStudentsScreen() {
   const removeName = (index: number) => setPreview((current) => current ? { ...current, names: current.names.filter((_, itemIndex) => itemIndex !== index) } : current);
   const importAll = () => {
     if (!preview || !classId || !sectionId) return;
-    const imported = importStudents(preview.names, classId, sectionId);
-    if (!imported) {
+    const result = importStudents({ names: preview.names, classId, sectionId, sourceFilename: preview.filename, sourceFormat: preview.format });
+    if (!result.addedCount) {
       setError("لا توجد أسماء جديدة قابلة للاستيراد.");
       return;
     }
-    showSuccess(`تم استيراد ${imported} طالبًا إلى ${className} — الشعبة ${sectionName} بنجاح.`);
+    showSuccess(`تم استيراد ${result.addedCount} طالبًا إلى ${className} — الشعبة ${sectionName} بنجاح.`);
     router.replace("/(tabs)/students" as any);
   };
 
@@ -61,6 +61,7 @@ export default function ImportStudentsScreen() {
           <Text style={styles.label}>الشعبة</Text>
           <View style={styles.choices}>{sections.length ? sections.map((item) => <ChoicePill key={item.id} label={item.name} selected={sectionId === item.id} onPress={() => { setSectionId(item.id); setPreview(null); setError(null); }} />) : <Text style={styles.muted}>اختر الصف أولًا لعرض شُعبه.</Text>}</View>
           <PrimaryButton label={busy ? "يتم تحليل الملف..." : "اختيار ملف الطلاب"} icon={busy ? undefined : "file-upload"} onPress={chooseFile} disabled={!readyToChoose || busy} />
+          <View style={styles.historyAction}><SecondaryButton label="سجل عمليات الاستيراد" icon="history" onPress={() => router.push("/import-history" as any)} /></View>
           {!readyToChoose ? <Text style={styles.hint}>يجب اختيار الصف والشعبة قبل فتح الملف، لضمان تنظيم الطلاب بصورة صحيحة.</Text> : null}
           {busy ? <View style={styles.loading}><ActivityIndicator color={colors.blue} size="small" /><Text style={styles.loadingText}>يتم قراءة أسماء الطلاب محليًا...</Text></View> : null}
           {error ? <View style={styles.errorBox}><MaterialIcons name="error-outline" color={colors.danger} size={20} /><Text style={styles.errorText}>{error}</Text></View> : null}
@@ -89,5 +90,5 @@ const styles = StyleSheet.create({
   loading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 15 }, loadingText: { color: colors.muted, fontSize: 15, lineHeight: 22, textAlign: "right" }, errorBox: { flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: colors.dangerSurface, borderRadius: 14, borderWidth: 1, borderColor: "#E6A8AE", padding: 13, marginTop: 12 }, errorText: { flex: 1, color: colors.danger, fontSize: 14, lineHeight: 21, fontWeight: "700", textAlign: "right" },
   previewHeader: { backgroundColor: colors.white, borderColor: colors.border, borderWidth: 1, borderRadius: 18, padding: 15, marginTop: 20, marginBottom: 10 }, fileLine: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "flex-end", marginBottom: 12 }, filename: { color: colors.navy, fontWeight: "800", fontSize: 14, lineHeight: 21, textAlign: "right", flexShrink: 1 }, previewTitle: { color: colors.ink, fontSize: 18, lineHeight: 26, fontWeight: "800", textAlign: "right" }, previewSubtitle: { color: colors.muted, fontSize: 14, lineHeight: 21, textAlign: "right", marginTop: 3 }, summaryRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, marginTop: 14 }, summary: { minWidth: 104, borderRadius: 13, paddingHorizontal: 11, paddingVertical: 8, alignItems: "flex-end" }, summaryValue: { fontSize: 19, lineHeight: 25, fontWeight: "800", textAlign: "right" }, summaryLabel: { color: colors.ink, fontSize: 12, lineHeight: 17, fontWeight: "700", textAlign: "right" },
   nameRow: { minHeight: 58, borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.white, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }, remove: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.dangerSurface, alignItems: "center", justifyContent: "center" }, nameIndex: { color: colors.muted, fontSize: 14, fontWeight: "800", minWidth: 25, textAlign: "center" }, nameText: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 16, lineHeight: 23, fontWeight: "700", textAlign: "right" }, pressed: { opacity: 0.7 },
-  footer: { marginTop: 10, paddingBottom: 18 }, footerGap: { height: 10 }, bottomSpace: { height: 16 },
+  footer: { marginTop: 10, paddingBottom: 18 }, footerGap: { height: 10 }, bottomSpace: { height: 16 }, historyAction: { alignItems: "flex-end", marginTop: 10 },
 });

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { deduplicateStudentNames, studentNameParts } from "@/lib/student-import-format";
+import { revertStudentImport } from "@/lib/import-history";
 
 export type AttendanceStatus = "present" | "absent" | "excused" | "late" | "leave";
 export type BehaviorCategory = "positive" | "followup" | "negative";
@@ -25,10 +26,14 @@ export type GradeField = { id: string; subject: string; title: string; maxScore:
 export type Grade = { id: string; studentId: string; fieldId: string; score: number; notes?: string; createdAt: string };
 export type BehaviorRecord = { id: string; studentId: string; category: BehaviorCategory; title: string; details: string; actionTaken?: string; followUp?: string; date: string; violationType?: BehaviorViolationType; penaltyPoints?: number };
 export type StudentNote = { id: string; studentId: string; category: NoteCategory; title: string; details: string; needsFollowUp: boolean; followUpDate?: string; date: string };
+export type StudentImportFormat = "excel" | "word" | "text";
+export type StudentImportRecord = { id: string; createdAt: string; classId: string; sectionId: string; sourceFilename: string; sourceFormat: StudentImportFormat; studentIds: string[]; addedCount: number; revertedAt?: string };
+export type StudentImportInput = { names: string[]; classId: string; sectionId: string; sourceFilename: string; sourceFormat: StudentImportFormat };
+export type StudentImportResult = { addedCount: number; duplicateCount: number; operationId?: string };
 
 export type AppData = {
   settings: Settings; classes: SchoolClass[]; sections: Section[]; students: Student[]; attendance: AttendanceRecord[];
-  gradeFields: GradeField[]; grades: Grade[]; behaviors: BehaviorRecord[]; notes: StudentNote[];
+  gradeFields: GradeField[]; grades: Grade[]; behaviors: BehaviorRecord[]; notes: StudentNote[]; importHistory: StudentImportRecord[];
 };
 
 const STORE_KEY = "student-attendance-manager/v1";
@@ -39,7 +44,7 @@ export const DEFAULT_BEHAVIOR_SETTINGS: BehaviorSettings = {
 };
 const DEFAULT_DATA: AppData = {
   settings: { schoolName: "", teacherName: "", academicYear: "2026 / 2027", stage: "", behavior: DEFAULT_BEHAVIOR_SETTINGS },
-  classes: [], sections: [], students: [], attendance: [], gradeFields: [], grades: [], behaviors: [], notes: [],
+  classes: [], sections: [], students: [], attendance: [], gradeFields: [], grades: [], behaviors: [], notes: [], importHistory: [],
 };
 
 function uid(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -69,7 +74,8 @@ type Store = {
   deleteClass: (classId: string) => void;
   deleteSection: (sectionId: string) => void;
   addStudent: (input: Omit<Student, "id" | "fullName" | "createdAt">) => string;
-  importStudents: (names: string[], classId: string, sectionId: string) => number;
+  importStudents: (input: StudentImportInput) => StudentImportResult;
+  undoStudentImport: (importId: string) => number;
   updateStudent: (id: string, input: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
   saveAttendance: (entries: Omit<AttendanceRecord, "id" | "updatedAt">[]) => void;
@@ -159,8 +165,11 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
       commit((current) => ({ ...current, students: [...current.students, { ...input, id, fullName, createdAt: new Date().toISOString() }] }), "تم حفظ الطالب بنجاح.");
       return id;
     },
-    importStudents: (names, classId, sectionId) => {
-      const { accepted } = deduplicateStudentNames(names, data.students.map((student) => student.fullName));
+    importStudents: ({ names, classId, sectionId, sourceFilename, sourceFormat }) => {
+      const { accepted, duplicateNames } = deduplicateStudentNames(names, data.students.map((student) => student.fullName));
+      if (!accepted.length) return { addedCount: 0, duplicateCount: duplicateNames.length };
+      const operationId = uid("import");
+      const createdAt = new Date().toISOString();
       commit((current) => {
         const fresh = deduplicateStudentNames(accepted, current.students.map((student) => student.fullName)).accepted;
         const imported = fresh.map((fullName) => {
@@ -173,12 +182,20 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
             classId,
             sectionId,
             status: "نشط" as const,
-            createdAt: new Date().toISOString(),
+            createdAt,
           };
         });
-        return { ...current, students: [...current.students, ...imported] };
+        if (!imported.length) return current;
+        const historyEntry: StudentImportRecord = { id: operationId, createdAt, classId, sectionId, sourceFilename, sourceFormat, studentIds: imported.map((student) => student.id), addedCount: imported.length };
+        return { ...current, students: [...current.students, ...imported], importHistory: [historyEntry, ...current.importHistory] };
       });
-      return accepted.length;
+      return { addedCount: accepted.length, duplicateCount: duplicateNames.length, operationId };
+    },
+    undoStudentImport: (importId) => {
+      const outcome = revertStudentImport(data, importId);
+      if (!outcome.removedStudentIds.length) return 0;
+      commit(() => outcome.data, `تم التراجع عن الاستيراد وحذف ${outcome.removedStudentIds.length} طالبًا من هذه العملية.`);
+      return outcome.removedStudentIds.length;
     },
     updateStudent: (id, input) => commit((current) => ({
       ...current,
