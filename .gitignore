@@ -32,6 +32,11 @@ yarn-error.*
 
 # local env files
 .env*.local
+android/signing.properties
+android/app/student-record-release.keystore
+
+# Private Android release signing material
+*.keystore
 
 # typescript
 *.tsbuildinfo

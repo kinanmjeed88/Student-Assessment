@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build standalone release APK
+    name: Build signed standalone release APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -42,6 +42,20 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install --clean
 
+      - name: Restore Android signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          printf %s "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/student-record-release.keystore
+          chmod 600 android/app/student-record-release.keystore
+
+      - name: Configure Android release signing
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: node .github/scripts/configure-android-signing.mjs
+
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
         with:
@@ -59,7 +73,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: student-record-standalone-apk-${{ github.run_number }}
+          name: student-record-signed-apk-${{ github.run_number }}
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30

@@ -1,0 +1,9 @@
+{
+  "keystoreFile": "student-record-release.keystore",
+  "keyAlias": "student-record-release",
+  "secretNames": {
+    "keystoreBase64": "ANDROID_KEYSTORE_BASE64",
+    "keystorePassword": "ANDROID_KEYSTORE_PASSWORD",
+    "keyPassword": "ANDROID_KEY_PASSWORD"
+  }
+}
