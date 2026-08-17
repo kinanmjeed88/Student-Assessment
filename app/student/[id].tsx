@@ -16,7 +16,7 @@ const TAB_LABELS: Record<Tab, string> = { grades: "الدرجات", attendance: 
 export default function StudentDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStudentStore();
-  const { data, addGradeField, addGrade, deleteGrade, addBehavior, deleteBehavior, addNote, deleteNote } = store;
+  const { data, addGradeField, addGrade, deleteGrade, addBehavior, deleteBehavior, addNote, deleteNote, showSuccess } = store;
   const student = data.students.find((item) => item.id === id);
   const [tab, setTab] = useState<Tab>("grades");
   const [gradeOpen, setGradeOpen] = useState(false);
@@ -42,8 +42,8 @@ export default function StudentDetail() {
   const average = grades.length ? Math.round((grades.reduce((sum, grade) => { const field = data.gradeFields.find((item) => item.id === grade.fieldId); return sum + (field ? grade.score / field.maxScore : 0); }, 0) / grades.length) * 100) : 0;
   const behaviorSummary = calculateBehaviorSummary(data, student.id);
   const riskMeta = behaviorSummary.risk === "dismissed" ? { label: "بلغ حد الفصل", tone: "red" as const, icon: "gavel" as const, title: "إشعار فصل" } : behaviorSummary.risk === "warning" ? { label: "يقترب من الحد", tone: "orange" as const, icon: "warning" as const, title: "تنبيه سلوك" } : { label: "سجل سلوكي سليم", tone: "green" as const, icon: "verified" as const, title: "السلوك" };
-  const exportPdf = async () => { try { await sharePdf(buildStudentReport(data, student), `ملف_${student.fullName}`); } catch { Alert.alert("تعذر إنشاء PDF", "تحقق من صلاحية مشاركة الملفات وحاول مرة أخرى."); } };
-  const exportXlsx = async () => { try { await shareStudentWorkbook(data, student, `بيانات_${student.fullName}`); } catch { Alert.alert("تعذر إنشاء Excel", "تحقق من صلاحية مشاركة الملفات وحاول مرة أخرى."); } };
+  const exportPdf = async () => { try { await sharePdf(buildStudentReport(data, student), `ملف_${student.fullName}`); showSuccess("تم إنشاء ملف الطالب PDF بنجاح."); } catch { Alert.alert("تعذر إنشاء PDF", "تحقق من صلاحية مشاركة الملفات وحاول مرة أخرى."); } };
+  const exportXlsx = async () => { try { await shareStudentWorkbook(data, student, `بيانات_${student.fullName}`); showSuccess("تم إنشاء ملف الطالب Excel بنجاح."); } catch { Alert.alert("تعذر إنشاء Excel", "تحقق من صلاحية مشاركة الملفات وحاول مرة أخرى."); } };
   const saveGrade = () => {
     const issue = required(gradeForm.subject, "المادة") ?? required(gradeForm.title, "اسم التقييم") ?? validScore(gradeForm.score, gradeForm.maxScore);
     setGradeError(issue ?? ""); if (issue) return;

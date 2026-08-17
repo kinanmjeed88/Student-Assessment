@@ -61,7 +61,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
 }
 
 type Store = {
-  data: AppData; hydrated: boolean;
+  data: AppData; hydrated: boolean; successMessage: string | null; clearSuccess: () => void; showSuccess: (message: string) => void;
   updateSettings: (settings: Settings) => void;
   addClass: (input: Omit<SchoolClass, "id">) => string;
   addSection: (input: Omit<Section, "id">) => string;
@@ -87,6 +87,7 @@ const StudentStoreContext = createContext<Store | null>(null);
 export function StudentStoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(DEFAULT_DATA);
   const [hydrated, setHydrated] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORE_KEY)
@@ -95,31 +96,33 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
       .finally(() => setHydrated(true));
   }, []);
 
-  const commit = useCallback((recipe: (current: AppData) => AppData) => {
+  const commit = useCallback((recipe: (current: AppData) => AppData, success?: string) => {
     setData((current) => {
       const next = recipe(current);
       void AsyncStorage.setItem(STORE_KEY, JSON.stringify(next));
       return next;
     });
+    if (success) setSuccessMessage(success);
   }, []);
 
   const replaceAllData = useCallback(async (input: AppData) => {
     const next = normalizeAppData(input);
     await AsyncStorage.setItem(STORE_KEY, JSON.stringify(next));
     setData(next);
+    setSuccessMessage("تمت استعادة النسخة الاحتياطية بنجاح.");
   }, []);
 
   const value = useMemo<Store>(() => ({
-    data, hydrated,
-    updateSettings: (settings) => commit((current) => ({ ...current, settings })),
+    data, hydrated, successMessage, clearSuccess: () => setSuccessMessage(null), showSuccess: (message) => setSuccessMessage(message),
+    updateSettings: (settings) => commit((current) => ({ ...current, settings }), "تم حفظ الإعدادات بنجاح."),
     addClass: (input) => {
       const id = uid("class");
-      commit((current) => ({ ...current, classes: [...current.classes, { ...input, id }] }));
+      commit((current) => ({ ...current, classes: [...current.classes, { ...input, id }] }), "تمت إضافة الصف بنجاح.");
       return id;
     },
     addSection: (input) => {
       const id = uid("section");
-      commit((current) => ({ ...current, sections: [...current.sections, { ...input, id }] }));
+      commit((current) => ({ ...current, sections: [...current.sections, { ...input, id }] }), "تمت إضافة الشعبة بنجاح.");
       return id;
     },
     deleteClass: (classId) => commit((current) => {
@@ -151,13 +154,13 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
     addStudent: (input) => {
       const id = uid("student");
       const fullName = [input.firstName, input.fatherName, input.lastName].filter(Boolean).join(" ");
-      commit((current) => ({ ...current, students: [...current.students, { ...input, id, fullName, createdAt: new Date().toISOString() }] }));
+      commit((current) => ({ ...current, students: [...current.students, { ...input, id, fullName, createdAt: new Date().toISOString() }] }), "تم حفظ الطالب بنجاح.");
       return id;
     },
     updateStudent: (id, input) => commit((current) => ({
       ...current,
       students: current.students.map((student) => student.id === id ? { ...student, ...input, fullName: [input.firstName ?? student.firstName, input.fatherName ?? student.fatherName, input.lastName ?? student.lastName].filter(Boolean).join(" ") } : student),
-    })),
+    }), "تم تحديث بيانات الطالب بنجاح."),
     deleteStudent: (id) => commit((current) => ({
       ...current,
       students: current.students.filter((item) => item.id !== id),
@@ -170,21 +173,21 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
       const keys = new Set(entries.map((entry) => `${entry.studentId}/${entry.date}`));
       const retained = current.attendance.filter((item) => !keys.has(`${item.studentId}/${item.date}`));
       return { ...current, attendance: [...retained, ...entries.map((entry) => ({ ...entry, id: uid("att"), updatedAt: new Date().toISOString() }))] };
-    }),
+    }, "تم حفظ سجل الحضور بنجاح."),
     addGradeField: (input) => {
       const id = uid("field");
-      commit((current) => ({ ...current, gradeFields: [...current.gradeFields, { ...input, id }] }));
+      commit((current) => ({ ...current, gradeFields: [...current.gradeFields, { ...input, id }] }), "تمت إضافة حقل الدرجات بنجاح.");
       return id;
     },
-    addGrade: (input) => commit((current) => ({ ...current, grades: [...current.grades.filter((grade) => !(grade.studentId === input.studentId && grade.fieldId === input.fieldId)), { ...input, id: uid("grade"), createdAt: new Date().toISOString() }] })),
+    addGrade: (input) => commit((current) => ({ ...current, grades: [...current.grades.filter((grade) => !(grade.studentId === input.studentId && grade.fieldId === input.fieldId)), { ...input, id: uid("grade"), createdAt: new Date().toISOString() }] }), "تم حفظ الدرجة بنجاح."),
     deleteGrade: (id) => commit((current) => ({ ...current, grades: current.grades.filter((item) => item.id !== id) })),
-    addBehavior: (input) => commit((current) => ({ ...current, behaviors: [{ ...input, id: uid("behavior") }, ...current.behaviors] })),
+    addBehavior: (input) => commit((current) => ({ ...current, behaviors: [{ ...input, id: uid("behavior") }, ...current.behaviors] }), "تم حفظ سجل السلوك بنجاح."),
     deleteBehavior: (id) => commit((current) => ({ ...current, behaviors: current.behaviors.filter((item) => item.id !== id) })),
-    addNote: (input) => commit((current) => ({ ...current, notes: [{ ...input, id: uid("note") }, ...current.notes] })),
+    addNote: (input) => commit((current) => ({ ...current, notes: [{ ...input, id: uid("note") }, ...current.notes] }), "تم حفظ الملاحظة بنجاح."),
     deleteNote: (id) => commit((current) => ({ ...current, notes: current.notes.filter((item) => item.id !== id) })),
     replaceAllData,
-    resetAll: () => { void AsyncStorage.removeItem(STORE_KEY); setData(DEFAULT_DATA); },
-  }), [commit, data, hydrated, replaceAllData]);
+    resetAll: () => { void AsyncStorage.removeItem(STORE_KEY); setData(DEFAULT_DATA); setSuccessMessage("تم حذف جميع البيانات بنجاح."); },
+  }), [commit, data, hydrated, replaceAllData, successMessage]);
 
   return <StudentStoreContext.Provider value={value}>{children}</StudentStoreContext.Provider>;
 }

@@ -20,10 +20,9 @@ const numberOrZero = (value: string) => {
 };
 
 export default function SettingsScreen() {
-  const { data, updateSettings, replaceAllData, resetAll } = useStudentStore();
+  const { data, updateSettings, replaceAllData, resetAll, showSuccess } = useStudentStore();
   const [form, setForm] = useState<Settings>(data.settings);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
   const [backupBusy, setBackupBusy] = useState<"export" | "restore" | null>(null);
   const [backupNotice, setBackupNotice] = useState("");
 
@@ -38,8 +37,6 @@ export default function SettingsScreen() {
     setError(issue ?? "");
     if (issue) return;
     updateSettings({ ...form, behavior });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
   };
 
   const exportBackup = async () => {
@@ -49,6 +46,7 @@ export default function SettingsScreen() {
     try {
       const filename = await exportBackupToDevice(data);
       setBackupNotice(`تم تجهيز «${filename}». اختر مكانًا آمنًا لحفظه من نافذة المشاركة.`);
+      showSuccess("تم إنشاء النسخة الاحتياطية بنجاح.");
     } catch (backupError) {
       Alert.alert("تعذر إنشاء النسخة الاحتياطية", backupError instanceof Error ? backupError.message : "حدث خطأ غير متوقع أثناء حفظ الملف.");
     } finally {
@@ -78,6 +76,7 @@ export default function SettingsScreen() {
                 try {
                   await replaceAllData(backup.data);
                   setBackupNotice("اكتملت استعادة النسخة الاحتياطية بنجاح. أصبحت البيانات الحالية مطابقة للملف المستورد.");
+                  showSuccess("تمت استعادة النسخة الاحتياطية بنجاح.");
                 } catch (backupError) {
                   Alert.alert("تعذرت استعادة النسخة", backupError instanceof Error ? backupError.message : "حدث خطأ غير متوقع أثناء حفظ البيانات.");
                 } finally {
@@ -113,7 +112,6 @@ export default function SettingsScreen() {
     </View>
 
     {error ? <Text style={styles.formError}>{error}</Text> : null}
-    {saved ? <View style={styles.saved}><MaterialIcons name="check-circle" size={18} color={colors.success} /><Text style={styles.savedText}>تم حفظ الإعدادات وقواعد السلوك.</Text></View> : null}
     <PrimaryButton label="حفظ الإعدادات" icon="save" onPress={save} />
 
     <View style={styles.card}>
@@ -142,9 +140,8 @@ function CardHeading({ icon, title, danger = false }: { icon: keyof typeof Mater
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 15, paddingBottom: 42 }, card: { backgroundColor: colors.white, borderRadius: 18, borderWidth: 1, borderColor: colors.border, padding: 15 },
   cardHead: { flexDirection: "row", alignItems: "center", columnGap: 10, marginBottom: 15 }, icon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#E9F1FA", alignItems: "center", justifyContent: "center" }, dangerIcon: { backgroundColor: "#FCE8E8" }, cardTitle: { flex: 1, color: colors.ink, fontSize: 16, fontWeight: "800", textAlign: "right" },
-  info: { flexDirection: "row", alignItems: "flex-start", columnGap: 8, backgroundColor: "#EEF6FF", borderRadius: 12, padding: 11, marginBottom: 14 }, infoText: { flex: 1, color: colors.navy, textAlign: "right", fontSize: 12, lineHeight: 19 },
-  subheading: { color: colors.ink, textAlign: "right", fontSize: 14, fontWeight: "800", marginTop: 3, marginBottom: 9 }, help: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "right", marginTop: -9, marginBottom: 12 },
-  warning: { color: colors.muted, textAlign: "right", fontSize: 13, lineHeight: 20, marginBottom: 13 }, privacy: { color: colors.muted, fontSize: 12, lineHeight: 19, textAlign: "center", paddingHorizontal: 12 }, formError: { color: colors.danger, fontSize: 12, lineHeight: 18, textAlign: "right" },
-  buttonGap: { height: 10 }, backupHelp: { color: colors.muted, textAlign: "right", fontSize: 11, lineHeight: 17, marginTop: 11 }, backupSuccess: { flexDirection: "row", alignItems: "flex-start", columnGap: 7, backgroundColor: "#E6F6ED", borderRadius: 12, padding: 11, marginTop: 12 }, backupSuccessText: { flex: 1, color: colors.success, fontSize: 12, lineHeight: 18, fontWeight: "700", textAlign: "right" },
-  saved: { flexDirection: "row", alignItems: "center", justifyContent: "center", columnGap: 6, backgroundColor: "#E6F6ED", padding: 11, borderRadius: 12 }, savedText: { color: colors.success, fontWeight: "700", fontSize: 12 },
+  info: { flexDirection: "row", alignItems: "flex-start", columnGap: 8, backgroundColor: "#EEF6FF", borderRadius: 12, padding: 12, marginBottom: 14 }, infoText: { flex: 1, color: colors.navy, textAlign: "right", fontSize: 14, lineHeight: 22 },
+  subheading: { color: colors.ink, textAlign: "right", fontSize: 15, fontWeight: "800", marginTop: 3, marginBottom: 9 }, help: { color: colors.muted, fontSize: 13, lineHeight: 20, textAlign: "right", marginTop: -9, marginBottom: 13 },
+  warning: { color: colors.muted, textAlign: "right", fontSize: 14, lineHeight: 22, marginBottom: 13 }, privacy: { color: colors.muted, fontSize: 13, lineHeight: 21, textAlign: "center", paddingHorizontal: 12 }, formError: { color: colors.danger, fontSize: 14, lineHeight: 21, textAlign: "right" },
+  buttonGap: { height: 11 }, backupHelp: { color: colors.muted, textAlign: "right", fontSize: 13, lineHeight: 20, marginTop: 12 }, backupSuccess: { flexDirection: "row", alignItems: "flex-start", columnGap: 7, backgroundColor: "#E6F6ED", borderRadius: 12, padding: 12, marginTop: 12 }, backupSuccessText: { flex: 1, color: colors.success, fontSize: 14, lineHeight: 21, fontWeight: "700", textAlign: "right" },
 });
