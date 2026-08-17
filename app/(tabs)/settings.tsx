@@ -2,6 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, PrimaryButton, ScreenHeader, SecondaryButton, colors } from "@/components/app-ui";
 import { ScreenContainer } from "@/components/screen-container";
+import { exportBackupToDevice, pickBackupFromDevice } from "@/lib/backup";
 import { DEFAULT_BEHAVIOR_SETTINGS, useStudentStore, type BehaviorViolationType, type Settings } from "@/lib/student-store";
 import { required } from "@/lib/validation";
 import { useEffect, useState } from "react";
@@ -19,10 +20,12 @@ const numberOrZero = (value: string) => {
 };
 
 export default function SettingsScreen() {
-  const { data, updateSettings, resetAll } = useStudentStore();
+  const { data, updateSettings, replaceAllData, resetAll } = useStudentStore();
   const [form, setForm] = useState<Settings>(data.settings);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [backupBusy, setBackupBusy] = useState<"export" | "restore" | null>(null);
+  const [backupNotice, setBackupNotice] = useState("");
 
   useEffect(() => setForm(data.settings), [data.settings]);
   const setPenalty = (type: BehaviorViolationType, value: string) => setForm((current) => ({ ...current, behavior: { ...current.behavior, penalties: { ...current.behavior.penalties, [type]: numberOrZero(value) } } }));
@@ -37,6 +40,57 @@ export default function SettingsScreen() {
     updateSettings({ ...form, behavior });
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
+  };
+
+  const exportBackup = async () => {
+    if (backupBusy) return;
+    setBackupBusy("export");
+    setBackupNotice("");
+    try {
+      const filename = await exportBackupToDevice(data);
+      setBackupNotice(`تم تجهيز «${filename}». اختر مكانًا آمنًا لحفظه من نافذة المشاركة.`);
+    } catch (backupError) {
+      Alert.alert("تعذر إنشاء النسخة الاحتياطية", backupError instanceof Error ? backupError.message : "حدث خطأ غير متوقع أثناء حفظ الملف.");
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
+  const restoreBackup = async () => {
+    if (backupBusy) return;
+    setBackupNotice("");
+    try {
+      const picked = await pickBackupFromDevice();
+      if (picked.canceled) return;
+      const { summary, backup } = picked;
+      const createdAt = new Intl.DateTimeFormat("ar", { dateStyle: "medium", timeStyle: "short" }).format(new Date(summary.createdAt));
+      Alert.alert(
+        "تأكيد استعادة النسخة الاحتياطية",
+        `الملف: ${picked.filename}\nتاريخ النسخة: ${createdAt}\n\nسيتم استبدال جميع بيانات هذا الجهاز بـ ${summary.students} طالبًا و${summary.classes} صفًا و${summary.attendance} سجل حضور و${summary.behaviors} سجل سلوك. لا يمكن التراجع عن الاستعادة.`,
+        [
+          { text: "إلغاء", style: "cancel" },
+          {
+            text: "استعادة الآن",
+            style: "destructive",
+            onPress: () => {
+              void (async () => {
+                setBackupBusy("restore");
+                try {
+                  await replaceAllData(backup.data);
+                  setBackupNotice("اكتملت استعادة النسخة الاحتياطية بنجاح. أصبحت البيانات الحالية مطابقة للملف المستورد.");
+                } catch (backupError) {
+                  Alert.alert("تعذرت استعادة النسخة", backupError instanceof Error ? backupError.message : "حدث خطأ غير متوقع أثناء حفظ البيانات.");
+                } finally {
+                  setBackupBusy(null);
+                }
+              })();
+            },
+          },
+        ],
+      );
+    } catch (backupError) {
+      Alert.alert("ملف غير صالح", backupError instanceof Error ? backupError.message : "تعذر قراءة ملف النسخة الاحتياطية.");
+    }
   };
 
   return <ScreenContainer><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -63,6 +117,16 @@ export default function SettingsScreen() {
     <PrimaryButton label="حفظ الإعدادات" icon="save" onPress={save} />
 
     <View style={styles.card}>
+      <CardHeading icon="backup" title="النسخ الاحتياطي والاستعادة" />
+      <View style={styles.info}><MaterialIcons name="verified-user" color={colors.blue} size={20} /><Text style={styles.infoText}>يحتوي الملف على الإعدادات والصفوف والشُعب والطلاب والدرجات والحضور والسلوك والملاحظات. احتفظ به في مكان آمن؛ فهو قد يتضمن بيانات طلاب حساسة.</Text></View>
+      <PrimaryButton label={backupBusy === "export" ? "يتم تجهيز النسخة..." : "تصدير نسخة احتياطية إلى الهاتف"} icon="file-download" onPress={exportBackup} disabled={backupBusy !== null} />
+      <View style={styles.buttonGap} />
+      <SecondaryButton label={backupBusy === "restore" ? "يتم استعادة النسخة..." : "استعادة نسخة احتياطية من الهاتف"} icon="restore" onPress={restoreBackup} />
+      <Text style={styles.backupHelp}>اختر ملف JSON الذي تم تصديره من تطبيق سجل الطالب فقط. ستظهر مراجعة نهائية بعد قراءة الملف وقبل استبدال بيانات الجهاز.</Text>
+      {backupNotice ? <View style={styles.backupSuccess}><MaterialIcons name="check-circle" size={18} color={colors.success} /><Text style={styles.backupSuccessText}>{backupNotice}</Text></View> : null}
+    </View>
+
+    <View style={styles.card}>
       <CardHeading icon="delete-sweep" title="إدارة البيانات" danger />
       <Text style={styles.warning}>سيؤدي الحذف إلى إزالة جميع الصفوف والطلاب والسجلات من هذا الجهاز، ولا يمكن التراجع عنه.</Text>
       <SecondaryButton label="حذف جميع البيانات" icon="delete-forever" danger onPress={() => Alert.alert("حذف جميع البيانات", "هل أنت متأكد؟ لا يمكن استرجاع الصفوف والطلاب والسجلات بعد الحذف.", [{ text: "إلغاء", style: "cancel" }, { text: "حذف نهائي", style: "destructive", onPress: resetAll }])} />
@@ -81,5 +145,6 @@ const styles = StyleSheet.create({
   info: { flexDirection: "row", alignItems: "flex-start", columnGap: 8, backgroundColor: "#EEF6FF", borderRadius: 12, padding: 11, marginBottom: 14 }, infoText: { flex: 1, color: colors.navy, textAlign: "right", fontSize: 12, lineHeight: 19 },
   subheading: { color: colors.ink, textAlign: "right", fontSize: 14, fontWeight: "800", marginTop: 3, marginBottom: 9 }, help: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "right", marginTop: -9, marginBottom: 12 },
   warning: { color: colors.muted, textAlign: "right", fontSize: 13, lineHeight: 20, marginBottom: 13 }, privacy: { color: colors.muted, fontSize: 12, lineHeight: 19, textAlign: "center", paddingHorizontal: 12 }, formError: { color: colors.danger, fontSize: 12, lineHeight: 18, textAlign: "right" },
+  buttonGap: { height: 10 }, backupHelp: { color: colors.muted, textAlign: "right", fontSize: 11, lineHeight: 17, marginTop: 11 }, backupSuccess: { flexDirection: "row", alignItems: "flex-start", columnGap: 7, backgroundColor: "#E6F6ED", borderRadius: 12, padding: 11, marginTop: 12 }, backupSuccessText: { flex: 1, color: colors.success, fontSize: 12, lineHeight: 18, fontWeight: "700", textAlign: "right" },
   saved: { flexDirection: "row", alignItems: "center", justifyContent: "center", columnGap: 6, backgroundColor: "#E6F6ED", padding: 11, borderRadius: 12 }, savedText: { color: colors.success, fontWeight: "700", fontSize: 12 },
 });

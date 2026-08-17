@@ -43,7 +43,7 @@ const DEFAULT_DATA: AppData = {
 
 function uid(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 function today() { return new Date().toISOString().slice(0, 10); }
-function normalizeData(raw: Partial<AppData>): AppData {
+export function normalizeAppData(raw: Partial<AppData>): AppData {
   const behavior = raw.settings?.behavior;
   return {
     ...DEFAULT_DATA,
@@ -78,6 +78,7 @@ type Store = {
   deleteBehavior: (id: string) => void;
   addNote: (input: Omit<StudentNote, "id">) => void;
   deleteNote: (id: string) => void;
+  replaceAllData: (input: AppData) => Promise<void>;
   resetAll: () => void;
 };
 
@@ -89,7 +90,7 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORE_KEY)
-      .then((raw) => { if (raw) setData(normalizeData(JSON.parse(raw) as Partial<AppData>)); })
+      .then((raw) => { if (raw) setData(normalizeAppData(JSON.parse(raw) as Partial<AppData>)); })
       .catch(() => undefined)
       .finally(() => setHydrated(true));
   }, []);
@@ -100,6 +101,12 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
       void AsyncStorage.setItem(STORE_KEY, JSON.stringify(next));
       return next;
     });
+  }, []);
+
+  const replaceAllData = useCallback(async (input: AppData) => {
+    const next = normalizeAppData(input);
+    await AsyncStorage.setItem(STORE_KEY, JSON.stringify(next));
+    setData(next);
   }, []);
 
   const value = useMemo<Store>(() => ({
@@ -175,8 +182,9 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
     deleteBehavior: (id) => commit((current) => ({ ...current, behaviors: current.behaviors.filter((item) => item.id !== id) })),
     addNote: (input) => commit((current) => ({ ...current, notes: [{ ...input, id: uid("note") }, ...current.notes] })),
     deleteNote: (id) => commit((current) => ({ ...current, notes: current.notes.filter((item) => item.id !== id) })),
+    replaceAllData,
     resetAll: () => { void AsyncStorage.removeItem(STORE_KEY); setData(DEFAULT_DATA); },
-  }), [commit, data, hydrated]);
+  }), [commit, data, hydrated, replaceAllData]);
 
   return <StudentStoreContext.Provider value={value}>{children}</StudentStoreContext.Provider>;
 }
