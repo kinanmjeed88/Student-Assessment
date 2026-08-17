@@ -9,7 +9,7 @@ I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 
 export default function RootLayout() {
-  return <StudentStoreProvider><KeyboardAvoidingView style={styles.root} behavior={Platform.select({ ios: "padding", android: "height" })}><StatusBar style="dark" /><Stack screenOptions={{ headerShown: false, animation: "slide_from_left" }}><Stack.Screen name="(tabs)" /><Stack.Screen name="classes" /><Stack.Screen name="student/[id]" /></Stack><SaveFeedback /></KeyboardAvoidingView></StudentStoreProvider>;
+  return <StudentStoreProvider><KeyboardAvoidingView style={styles.root} behavior={Platform.select({ ios: "padding", android: "height" })}><StatusBar style="dark" /><Stack screenOptions={{ headerShown: false, animation: "slide_from_left" }}><Stack.Screen name="(tabs)" /><Stack.Screen name="classes" /><Stack.Screen name="import-students" /><Stack.Screen name="student/[id]" /></Stack><SaveFeedback /></KeyboardAvoidingView></StudentStoreProvider>;
 }
 
 function SaveFeedback() {

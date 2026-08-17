@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { ChoicePill, EmptyState, Field, PrimaryButton, ScreenHeader, Sheet, StatusBadge, colors } from "@/components/app-ui";
+import { ChoicePill, EmptyState, Field, PrimaryButton, ScreenHeader, SecondaryButton, Sheet, StatusBadge, colors } from "@/components/app-ui";
 import { calculateBehaviorSummary } from "@/lib/behavior";
 import { useStudentStore, type Student } from "@/lib/student-store";
 import { required, validPhone } from "@/lib/validation";
@@ -28,6 +28,7 @@ export default function StudentsScreen() {
   const groups = data.sections.filter((section) => (!classId || section.classId === classId) && (!sectionId || section.id === sectionId)).map((section) => ({ section, students: filtered.filter((student) => student.sectionId === section.id) }));
 
   return <ScreenContainer className="p-4"><ScreenHeader title="الطلاب" subtitle={`${data.students.length} طالبًا مسجلًا`} action={<PrimaryButton label="إضافة" icon="person-add" onPress={() => setFormOpen(true)} compact />} />
+    <View style={styles.choices}><SecondaryButton label="استيراد الطلاب من ملف" icon="file-upload" onPress={() => router.push("/import-students" as any)} /></View>
     <View style={styles.searchRow}><Pressable onPress={() => setFilterOpen(true)} style={styles.filter}><MaterialIcons name="tune" color={colors.navy} size={21} /></Pressable><View style={styles.search}><MaterialIcons name="search" color={colors.muted} size={20} /><TextInput value={query} onChangeText={setQuery} placeholder="ابحث بالاسم أو الرقم" placeholderTextColor="#96A4B8" textAlign="right" style={styles.searchInput} /></View></View>
     <View style={styles.modeRow}><ChoicePill label="قائمة الشُعب" selected={mode === "sections"} onPress={() => setMode("sections")} /><ChoicePill label="عرض جدولي" selected={mode === "table"} onPress={() => setMode("table")} /><Text style={styles.filterText}>{sectionLabel ? `${classLabel} — ${sectionLabel}` : classLabel || "كل الصفوف"}</Text></View>
     {mode === "table" ? filtered.length ? <StudentTable students={filtered} /> : <View style={styles.list}><EmptyState title="لا توجد نتائج" description="غيّر البحث أو أضف طالبًا جديدًا." icon="group-off" action={<PrimaryButton label="إضافة طالب" icon="person-add" onPress={() => setFormOpen(true)} />} /></View> : <FlatList data={groups} keyExtractor={(item) => item.section.id} contentContainerStyle={styles.list} renderItem={({ item }) => <SectionGroup name={`${data.classes.find((klass) => klass.id === item.section.classId)?.name ?? ""} — الشعبة ${item.section.name}`} students={item.students} />} ListEmptyComponent={<EmptyState title="لا توجد شُعب أو طلاب" description="ابدأ بإضافة الصف والشعبة ثم أسماء الطلاب." icon="group-add" action={<PrimaryButton label="إدارة الصفوف" icon="account-tree" onPress={() => router.push("/classes" as any)} />} />} />}

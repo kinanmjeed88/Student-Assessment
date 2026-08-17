@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { deduplicateStudentNames, studentNameParts } from "@/lib/student-import-format";
 
 export type AttendanceStatus = "present" | "absent" | "excused" | "late" | "leave";
 export type BehaviorCategory = "positive" | "followup" | "negative";
@@ -68,6 +69,7 @@ type Store = {
   deleteClass: (classId: string) => void;
   deleteSection: (sectionId: string) => void;
   addStudent: (input: Omit<Student, "id" | "fullName" | "createdAt">) => string;
+  importStudents: (names: string[], classId: string, sectionId: string) => number;
   updateStudent: (id: string, input: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
   saveAttendance: (entries: Omit<AttendanceRecord, "id" | "updatedAt">[]) => void;
@@ -156,6 +158,27 @@ export function StudentStoreProvider({ children }: { children: ReactNode }) {
       const fullName = [input.firstName, input.fatherName, input.lastName].filter(Boolean).join(" ");
       commit((current) => ({ ...current, students: [...current.students, { ...input, id, fullName, createdAt: new Date().toISOString() }] }), "تم حفظ الطالب بنجاح.");
       return id;
+    },
+    importStudents: (names, classId, sectionId) => {
+      const { accepted } = deduplicateStudentNames(names, data.students.map((student) => student.fullName));
+      commit((current) => {
+        const fresh = deduplicateStudentNames(accepted, current.students.map((student) => student.fullName)).accepted;
+        const imported = fresh.map((fullName) => {
+          const parts = studentNameParts(fullName);
+          return {
+            id: uid("student"),
+            studentNumber: "",
+            ...parts,
+            fullName,
+            classId,
+            sectionId,
+            status: "نشط" as const,
+            createdAt: new Date().toISOString(),
+          };
+        });
+        return { ...current, students: [...current.students, ...imported] };
+      });
+      return accepted.length;
     },
     updateStudent: (id, input) => commit((current) => ({
       ...current,
