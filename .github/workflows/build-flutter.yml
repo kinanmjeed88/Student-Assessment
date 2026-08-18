@@ -70,6 +70,20 @@ jobs:
       - name: Verify Flutter toolchain
         run: flutter --version
 
+      - name: Generate Android platform files when absent
+        run: |
+          if [ ! -f android/gradlew ]; then
+            tmp_dir="$(mktemp -d)"
+            cp android/app/build.gradle "$tmp_dir/build.gradle"
+            cp android/app/src/main/AndroidManifest.xml "$tmp_dir/AndroidManifest.xml"
+            rm -rf android
+            flutter create --platforms=android --org com.almoktaber --project-name almoktaber .
+            find android/app/src/main -name MainActivity.kt -exec sed -i 's/^package .*/package com.almoktaber/' {} +
+            cp "$tmp_dir/build.gradle" android/app/build.gradle
+            cp "$tmp_dir/AndroidManifest.xml" android/app/src/main/AndroidManifest.xml
+            rm -f test/widget_test.dart
+          fi
+
       - name: Verify root Flutter project
         run: |
           test -f pubspec.yaml
