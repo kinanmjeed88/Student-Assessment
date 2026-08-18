@@ -326,12 +326,12 @@ BehaviorCategory _behaviorCategory(String value) => switch (value) {
       _ => BehaviorCategory.negative,
     };
 
-BehaviorViolationType? _violationType(String value) => switch (value) {
+BehaviorViolationType _violationType(String value) => switch (value) {
       'absence' => BehaviorViolationType.absence,
       'lessonDisruption' => BehaviorViolationType.lessonDisruption,
       'seriousMisconduct' => BehaviorViolationType.seriousMisconduct,
       'other' => BehaviorViolationType.other,
-      _ => null,
+      _ => BehaviorViolationType.none,
     };
 
 NoteCategory _noteCategory(String value) => switch (value) {

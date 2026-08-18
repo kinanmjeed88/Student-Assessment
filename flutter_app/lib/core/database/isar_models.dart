@@ -6,7 +6,7 @@ enum StudentGender { male, female }
 enum StudentStatus { active, transferred, graduated, suspended }
 enum AttendanceStatus { present, absent, excused, late, leave }
 enum BehaviorCategory { positive, followup, negative }
-enum BehaviorViolationType { absence, lessonDisruption, seriousMisconduct, other }
+enum BehaviorViolationType { none, absence, lessonDisruption, seriousMisconduct, other }
 enum NoteCategory { academic, health, educational, attendance, other }
 enum StudentImportFormat { excel, text }
 
@@ -18,6 +18,7 @@ class PenaltyRules {
   double other = 5;
 
   double forType(BehaviorViolationType type) => switch (type) {
+        BehaviorViolationType.none => 0,
         BehaviorViolationType.absence => absence,
         BehaviorViolationType.lessonDisruption => lessonDisruption,
         BehaviorViolationType.seriousMisconduct => seriousMisconduct,
@@ -230,7 +231,7 @@ class BehaviorRecord {
   String followUp = '';
   DateTime date = DateTime.now();
   @enumerated
-  BehaviorViolationType? violationType;
+  BehaviorViolationType violationType = BehaviorViolationType.none;
   double penaltyPoints = 0;
 
   Map<String, dynamic> toJson() => {
@@ -242,7 +243,7 @@ class BehaviorRecord {
         'actionTaken': actionTaken,
         'followUp': followUp,
         'date': date.toIso8601String().substring(0, 10),
-        'violationType': violationType?.name,
+        'violationType': violationType == BehaviorViolationType.none ? null : violationType.name,
         'penaltyPoints': penaltyPoints,
       };
 }
