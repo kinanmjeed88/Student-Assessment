@@ -39,7 +39,7 @@ class _GradesPageState extends ConsumerState<GradesPage> {
       return (_classUuid == 'all' || student.classUuid == _classUuid) && (query.isEmpty || student.fullName.contains(query));
     }).toList(growable: false);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('الدرجات')),
       floatingActionButton: FloatingActionButton.extended(onPressed: () => _showFieldForm(), icon: const Icon(Icons.add_chart_outlined), label: const Text('حقل تقييم')),
       body: RefreshIndicator(

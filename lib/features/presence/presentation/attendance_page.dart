@@ -27,7 +27,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
         data: (snapshot) {
           final students = snapshot.students;
           return Scaffold(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             appBar: AppBar(
               title: const Text('الحضور اليومي'),
               actions: [

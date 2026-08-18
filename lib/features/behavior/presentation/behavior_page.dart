@@ -49,7 +49,7 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
       return matchesStudent && matchesQuery && matchesFilter;
     }).toList(growable: false);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('السلوك والمتابعة')),
       floatingActionButton: FloatingActionButton.extended(onPressed: () => _showForm(snapshot), icon: const Icon(Icons.add_task_outlined), label: const Text('تسجيل سلوك')),
       body: RefreshIndicator(

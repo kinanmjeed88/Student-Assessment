@@ -26,7 +26,9 @@ class DashboardPage extends ConsumerWidget {
       textDirection: TextDirection.rtl,
       child: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _DashboardError(onRetry: () => ref.read(appControllerProvider.notifier).refresh()),
+        error: (_, __) => _DashboardError(
+          onRetry: () => ref.read(appControllerProvider.notifier).refresh(),
+        ),
         data: (snapshot) => RefreshIndicator(
           onRefresh: () => ref.read(appControllerProvider.notifier).refresh(),
           child: SingleChildScrollView(
@@ -35,7 +37,9 @@ class DashboardPage extends ConsumerWidget {
             child: AppResponsiveContent(
               child: _DashboardContent(
                 snapshot: snapshot,
-                onOpen: (page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page)),
+                onOpen: (page) => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => page),
+                ),
               ),
             ),
           ),
@@ -54,39 +58,49 @@ class _DashboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalStudents = snapshot.students.length;
-    final presentToday = snapshot.todayAttendance.where((item) => item.status == AttendanceStatus.present || item.status == AttendanceStatus.late).length;
-    final attendanceProgress = totalStudents == 0 ? 0.0 : (presentToday / totalStudents).clamp(0.0, 1.0).toDouble();
-    final alerts = snapshot.students.where((student) => calculateBehaviorSummary(records: snapshot.behaviorsFor(student.uuid), settings: snapshot.settings).hasAlert).length;
-    final schoolName = snapshot.settings.schoolName.trim().isEmpty ? 'سجل الطالب ونظام إشعارات' : snapshot.settings.schoolName.trim();
-    final teacherName = snapshot.settings.teacherName.trim();
+    final absentToday = snapshot.todayAttendance
+        .where((item) => item.status == AttendanceStatus.absent)
+        .length;
+    final alerts = snapshot.students
+        .map(
+          (student) => _BehaviorNotification(
+            student: student,
+            summary: calculateBehaviorSummary(
+              records: snapshot.behaviorsFor(student.uuid),
+              settings: snapshot.settings,
+            ),
+          ),
+        )
+        .where((item) => item.summary.hasAlert)
+        .toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _WelcomeBanner(schoolName: schoolName, teacherName: teacherName),
+        _DashboardHeader(
+          alertCount: alerts.length,
+          onNotifications: () => _showBehaviorNotifications(context, alerts),
+        ),
         AppSpacing.section,
-        const AppSectionHeader(title: 'نظرة عامة', subtitle: 'مؤشرات سريعة تساعدك على متابعة المدرسة اليوم.'),
-        AppSpacing.compact,
-        _StatsGrid(totalStudents: totalStudents, alerts: alerts, presentToday: presentToday),
+        _StatsRow(
+          totalStudents: totalStudents,
+          alerts: alerts.length,
+          absentToday: absentToday,
+        ),
         AppSpacing.section,
-        const AppSectionHeader(title: 'إجراءات سريعة', subtitle: 'انتقل مباشرة إلى أكثر المهام استخداماً.'),
+        const AppSectionHeader(title: 'إجراءات سريعة'),
         AppSpacing.compact,
         _QuickActions(onOpen: onOpen),
-        AppSpacing.section,
-        const AppSectionHeader(title: 'المتابعة اليومية', subtitle: 'حالة الحضور والتنبيهات التي تحتاج إلى مراجعة.'),
-        AppSpacing.compact,
-        _FollowUpSection(
-          progress: attendanceProgress,
-          completed: presentToday,
-          total: totalStudents,
-          alerts: alerts,
-          onOpenBehavior: () => onOpen(const BehaviorPage()),
-        ),
         AppSpacing.section,
         AppSectionHeader(
           title: 'أحدث ملفات الطلاب',
           subtitle: totalStudents == 0 ? 'لا توجد سجلات بعد.' : 'آخر الطلاب المضافين إلى النظام.',
-          action: totalStudents == 0 ? null : TextButton(onPressed: () => onOpen(const StudentsPage()), child: const Text('عرض الكل')),
+          action: totalStudents == 0
+              ? null
+              : TextButton(
+                  onPressed: () => onOpen(const StudentsPage()),
+                  child: const Text('عرض الكل'),
+                ),
         ),
         AppSpacing.compact,
         if (snapshot.students.isEmpty)
@@ -97,103 +111,107 @@ class _DashboardContent extends StatelessWidget {
           )
         else
           ...snapshot.students.take(6).map(
-            (student) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _StudentListItem(
-                student: student,
-                onTap: () => onOpen(StudentDetailsPage(studentUuid: student.uuid)),
+                (student) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _StudentListItem(
+                    student: student,
+                    onTap: () => onOpen(
+                      StudentDetailsPage(studentUuid: student.uuid),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
       ],
     );
   }
 }
 
-class _WelcomeBanner extends StatelessWidget {
-  const _WelcomeBanner({required this.schoolName, required this.teacherName});
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({required this.alertCount, required this.onNotifications});
 
-  final String schoolName;
-  final String teacherName;
+  final int alertCount;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final greeting = teacherName.isEmpty ? 'لوحة متابعة موحدة لبيانات الطلاب والإشعارات.' : 'مرحباً $teacherName، إليك ملخص العمل اليومي.';
-    return Card(
-      color: scheme.primary,
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 420;
-            final identity = Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: scheme.onPrimary,
-                  foregroundColor: scheme.primary,
-                  child: const Icon(Icons.school_outlined, size: 28),
-                ),
-                const SizedBox(width: 14),
-                if (compact)
-                  const SizedBox.shrink()
-                else
-                  Text('لوحة الإدارة', style: textTheme.labelLarge?.copyWith(color: scheme.onPrimary, fontWeight: FontWeight.w800)),
-              ],
-            );
-            final copy = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(schoolName, style: textTheme.headlineSmall?.copyWith(color: scheme.onPrimary, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                Text(greeting, style: textTheme.bodyMedium?.copyWith(color: scheme.onPrimary)),
-              ],
-            );
-            return compact ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [identity, const SizedBox(height: 18), copy]) : Row(children: [Expanded(child: copy), const SizedBox(width: 20), identity]);
-          },
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'سجل الطالب',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.headlineSmall?.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
-      ),
+        Badge.count(
+          count: alertCount,
+          isLabelVisible: alertCount > 0,
+          child: IconButton(
+            tooltip: 'الإشعارات السلوكية',
+            onPressed: onNotifications,
+            icon: const Icon(Icons.notifications_none_outlined),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _StatsGrid extends StatelessWidget {
-  const _StatsGrid({required this.totalStudents, required this.alerts, required this.presentToday});
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({required this.totalStudents, required this.alerts, required this.absentToday});
 
   final int totalStudents;
   final int alerts;
-  final int presentToday;
+  final int absentToday;
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      const (label: 'إجمالي الطلاب', icon: Icons.groups_outlined, tone: AppStatusTone.neutral),
-      const (label: 'تنبيهات السلوك', icon: Icons.rule_folder_outlined, tone: AppStatusTone.warning),
-      const (label: 'حضور اليوم', icon: Icons.fact_check_outlined, tone: AppStatusTone.success),
-    ];
-    final values = ['$totalStudents', '$alerts', '$presentToday'];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth < 560 ? 2 : 3;
-        final width = (constraints.maxWidth - ((columns - 1) * 12)) / columns;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (var index = 0; index < items.length; index++)
+        final cardWidth = constraints.maxWidth < 540
+            ? 172.0
+            : (constraints.maxWidth - 24) / 3;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
               SizedBox(
-                width: index == 2 && columns == 2 ? constraints.maxWidth : width,
+                width: cardWidth,
                 child: AppMetricTile(
-                  label: items[index].label,
-                  value: values[index],
-                  icon: items[index].icon,
-                  tone: items[index].tone,
+                  label: 'إجمالي الطلاب',
+                  value: '$totalStudents',
+                  icon: Icons.groups_outlined,
+                  tone: AppStatusTone.neutral,
                 ),
               ),
-          ],
+              const SizedBox(width: 12),
+              SizedBox(
+                width: cardWidth,
+                child: AppMetricTile(
+                  label: 'تنبيهات السلوك',
+                  value: '$alerts',
+                  icon: Icons.rule_folder_outlined,
+                  tone: alerts > 0 ? AppStatusTone.warning : AppStatusTone.neutral,
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: cardWidth,
+                child: AppMetricTile(
+                  label: 'غياب اليوم',
+                  value: '$absentToday',
+                  icon: Icons.event_busy_outlined,
+                  tone: absentToday > 0 ? AppStatusTone.warning : AppStatusTone.success,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -239,8 +257,17 @@ class _QuickActions extends StatelessWidget {
                       foregroundColor: Theme.of(context).colorScheme.primary,
                       child: Icon(action.icon),
                     ),
-                    title: Text(action.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                    trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    title: Text(
+                      action.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    trailing: Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
@@ -259,77 +286,100 @@ class _Action {
   final Widget page;
 }
 
-class _FollowUpSection extends StatelessWidget {
-  const _FollowUpSection({required this.progress, required this.completed, required this.total, required this.alerts, required this.onOpenBehavior});
+class _BehaviorNotification {
+  const _BehaviorNotification({required this.student, required this.summary});
 
-  final double progress;
-  final int completed;
-  final int total;
-  final int alerts;
-  final VoidCallback onOpenBehavior;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 680;
-        final progressCard = _AttendanceProgress(progress: progress, completed: completed, total: total);
-        final alertCard = _BehaviorAlert(alerts: alerts, onOpen: onOpenBehavior);
-        if (compact) return Column(children: [progressCard, AppSpacing.item, alertCard]);
-        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: progressCard), const SizedBox(width: 12), Expanded(child: alertCard)]);
-      },
-    );
-  }
+  final Student student;
+  final BehaviorSummary summary;
 }
 
-class _AttendanceProgress extends StatelessWidget {
-  const _AttendanceProgress({required this.progress, required this.completed, required this.total});
-
-  final double progress;
-  final int completed;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return AppSurfaceCard(
-      color: scheme.surfaceContainerHighest,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [Expanded(child: Text('حضور اليوم', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))), Text('${(progress * 100).round()}%', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w900))]),
-          const SizedBox(height: 16),
-          ClipRRect(borderRadius: BorderRadius.circular(16), child: LinearProgressIndicator(value: total == 0 ? 0 : progress, minHeight: 10, backgroundColor: scheme.surface, color: scheme.primary)),
-          const SizedBox(height: 12),
-          Text(total == 0 ? 'أضف طلاباً لتبدأ متابعة حضور اليوم.' : 'تم تسجيل حضور $completed من أصل $total طالب.'),
-        ],
-      ),
-    );
-  }
-}
-
-class _BehaviorAlert extends StatelessWidget {
-  const _BehaviorAlert({required this.alerts, required this.onOpen});
-
-  final int alerts;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final hasAlerts = alerts > 0;
-    return Card(
-      color: hasAlerts ? scheme.errorContainer : scheme.surfaceContainerHighest,
-      child: ListTile(
-        onTap: onOpen,
-        contentPadding: const EdgeInsetsDirectional.fromSTEB(16, 10, 12, 10),
-        leading: Icon(hasAlerts ? Icons.warning_amber_outlined : Icons.verified_outlined, color: hasAlerts ? scheme.error : scheme.primary),
-        title: Text(hasAlerts ? '$alerts طالب يحتاج إلى متابعة' : 'لا توجد تنبيهات سلوكية', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-        subtitle: const Text('مراجعة سجل السلوك والتعامل مع الحالات.'),
-        trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-    );
-  }
+Future<void> _showBehaviorNotifications(
+  BuildContext context,
+  List<_BehaviorNotification> notifications,
+) async {
+  final scheme = Theme.of(context).colorScheme;
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    backgroundColor: scheme.surface,
+    builder: (sheetContext) {
+      return SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .78,
+          ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 20),
+            child: notifications.isEmpty
+                ? const AppEmptyState(
+                    icon: Icons.notifications_none_outlined,
+                    title: 'لا توجد تنبيهات سلوكية',
+                    message: 'ستظهر هنا أسماء الطلاب الذين يحتاجون إلى متابعة سلوكية.',
+                  )
+                : ListView(
+                    children: [
+                      Text(
+                        'الإشعارات السلوكية',
+                        style: Theme.of(sheetContext).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'طلاب يحتاجون إلى مراجعة سجلهم السلوكي.',
+                        style: Theme.of(sheetContext).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      for (final notification in notifications)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Card(
+                            color: scheme.surfaceContainerHighest,
+                            child: ListTile(
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => StudentDetailsPage(
+                                      studentUuid: notification.student.uuid,
+                                    ),
+                                  ),
+                                );
+                              },
+                              leading: CircleAvatar(
+                                backgroundColor: notification.summary.dismissed
+                                    ? scheme.errorContainer
+                                    : scheme.tertiaryContainer,
+                                foregroundColor: notification.summary.dismissed
+                                    ? scheme.onErrorContainer
+                                    : scheme.onTertiaryContainer,
+                                child: Text(
+                                  notification.student.firstName.isEmpty
+                                      ? '؟'
+                                      : notification.student.firstName.characters.first,
+                                ),
+                              ),
+                              title: Text(
+                                notification.student.fullName,
+                                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                              subtitle: Text(
+                                '${notification.summary.label} • الدرجة السلوكية ${notification.summary.totalPoints.toStringAsFixed(0)}',
+                              ),
+                              trailing: const Icon(Icons.arrow_back_ios_new, size: 16),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _StudentListItem extends StatelessWidget {
@@ -346,10 +396,27 @@ class _StudentListItem extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsetsDirectional.fromSTEB(16, 6, 12, 6),
-        leading: CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first)),
-        title: Text(student.fullName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-        subtitle: Text(student.studentNumber.isEmpty ? 'رقم الطالب غير محدد' : student.studentNumber),
-        trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: scheme.onSurfaceVariant),
+        leading: CircleAvatar(
+          backgroundColor: scheme.primaryContainer,
+          foregroundColor: scheme.onPrimaryContainer,
+          child: Text(
+            student.firstName.isEmpty ? '؟' : student.firstName.characters.first,
+          ),
+        ),
+        title: Text(
+          student.fullName,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        subtitle: Text(
+          student.studentNumber.isEmpty ? 'رقم الطالب غير محدد' : student.studentNumber,
+        ),
+        trailing: Icon(
+          Icons.arrow_back_ios_new,
+          size: 16,
+          color: scheme.onSurfaceVariant,
+        ),
       ),
     );
   }

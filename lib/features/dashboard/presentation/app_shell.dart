@@ -29,9 +29,20 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     const pages = [DashboardPage(), StudentsPage(), ClassesPage(), AttendancePage(), SettingsPage()];
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: scheme.surface,
       body: SafeArea(child: IndexedStack(index: _index, children: pages)),
-      bottomNavigationBar: SafeArea(top: false, child: NavigationBar(selectedIndex: _index, onDestinationSelected: (value) => setState(() => _index = value), destinations: _destinations)),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: NavigationBar(
+          backgroundColor: scheme.surface,
+          indicatorColor: scheme.secondaryContainer,
+          selectedIndex: _index,
+          onDestinationSelected: (value) => setState(() => _index = value),
+          destinations: _destinations,
+        ),
+      ),
     );
   }
 }
