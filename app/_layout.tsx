@@ -22,4 +22,4 @@ function SaveFeedback() {
   return successMessage ? <View pointerEvents="none" style={styles.feedback}><SuccessNotice message={successMessage} /></View> : null;
 }
 
-const styles = StyleSheet.create({ root: { flex: 1 }, rtlShell: { flex: 1, direction: "rtl" }, feedback: { position: "absolute", top: 56, left: 20, right: 20, zIndex: 1000, elevation: 20 } });
+const styles = StyleSheet.create({ root: { flex: 1 }, rtlShell: { flex: 1, writingDirection: "rtl" }, feedback: { position: "absolute", top: 56, left: 20, right: 20, zIndex: 1000, elevation: 20 } });

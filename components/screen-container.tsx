@@ -61,5 +61,5 @@ export function ScreenContainer({
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1, backgroundColor: "#F4F7FB", direction: "rtl" },
+  background: { flex: 1, backgroundColor: "#F4F7FB", writingDirection: "rtl" },
 });
