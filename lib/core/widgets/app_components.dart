@@ -291,6 +291,6 @@ Future<T?> showAppFormSheet<T>({required BuildContext context, required String t
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
-    builder: (context) => AppFormSheet(title: title, subtitle: subtitle, child: child, actions: actions),
+    builder: (context) => AppFormSheet(title: title, subtitle: subtitle, actions: actions, child: child),
   );
 }
