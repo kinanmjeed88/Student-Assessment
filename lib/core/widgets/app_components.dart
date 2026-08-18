@@ -228,3 +228,69 @@ class AppMetricTile extends StatelessWidget {
     );
   }
 }
+
+
+class AppFormSheet extends StatelessWidget {
+  const AppFormSheet({required this.title, required this.child, required this.actions, this.subtitle, super.key});
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final maxHeight = MediaQuery.sizeOf(context).height * .88;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + viewInsets.bottom),
+          child: AppResponsiveContent(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+                          if (subtitle != null) ...[const SizedBox(height: 5), Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium)],
+                        ],
+                      ),
+                    ),
+                    IconButton(tooltip: 'إغلاق', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Flexible(child: SingleChildScrollView(child: child)),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    for (var index = 0; index < actions.length; index++) ...[if (index > 0) const SizedBox(width: 10), actions[index]],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<T?> showAppFormSheet<T>({required BuildContext context, required String title, String? subtitle, required Widget child, required List<Widget> actions}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (context) => AppFormSheet(title: title, subtitle: subtitle, child: child, actions: actions),
+  );
+}

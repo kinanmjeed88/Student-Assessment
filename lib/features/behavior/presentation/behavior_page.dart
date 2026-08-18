@@ -85,37 +85,47 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
     var category = BehaviorCategory.negative;
     var type = BehaviorViolationType.other;
     final formKey = GlobalKey<FormState>();
-    await showDialog<void>(
+    await showAppFormSheet<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('تسجيل سلوك'),
-          content: SizedBox(
-            width: 520,
-            child: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(children: [
-                  DropdownButtonFormField<String>(initialValue: studentUuid, decoration: const InputDecoration(labelText: 'الطالب'), items: snapshot.students.map((s) => DropdownMenuItem(value: s.uuid, child: Text(s.fullName))).toList(), onChanged: (v) => setState(() => studentUuid = v ?? studentUuid)),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<BehaviorCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'التصنيف'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('سلوك سلبي')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('سلوك إيجابي')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة'))], onChanged: (v) => setState(() => category = v ?? category)),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<BehaviorViolationType>(initialValue: type, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الدرس')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('مخالفة جسيمة')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (v) => setState(() => type = v ?? type)),
-                  const SizedBox(height: 10),
-                  TextFormField(controller: title, decoration: const InputDecoration(labelText: 'العنوان'), validator: (v) => v == null || v.trim().isEmpty ? 'العنوان مطلوب' : null),
-                  const SizedBox(height: 10),
-                  TextFormField(controller: details, maxLines: 3, decoration: const InputDecoration(labelText: 'التفاصيل'), validator: (v) => v == null || v.trim().isEmpty ? 'التفاصيل مطلوبة' : null),
-                  const SizedBox(height: 10),
-                  TextFormField(controller: action, decoration: const InputDecoration(labelText: 'الإجراء المتخذ')),
-                  const SizedBox(height: 10),
-                  TextFormField(controller: followUp, decoration: const InputDecoration(labelText: 'خطة المتابعة')),
-                ]),
-              ),
-            ),
+      title: 'تسجيل سلوك',
+      subtitle: 'اختر الطالب ثم أدخل تفاصيل الواقعة والإجراء والمتابعة.',
+      child: StatefulBuilder(
+        builder: (context, setState) => Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<String>(initialValue: studentUuid, decoration: const InputDecoration(labelText: 'الطالب'), items: snapshot.students.map((s) => DropdownMenuItem(value: s.uuid, child: Text(s.fullName, overflow: TextOverflow.ellipsis))).toList(), onChanged: (v) => setState(() => studentUuid = v ?? studentUuid)),
+              AppSpacing.item,
+              DropdownButtonFormField<BehaviorCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'التصنيف'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('سلوك سلبي')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('سلوك إيجابي')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة'))], onChanged: (v) => setState(() => category = v ?? category)),
+              AppSpacing.item,
+              if (category == BehaviorCategory.negative) ...[
+                DropdownButtonFormField<BehaviorViolationType>(initialValue: type, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الدرس')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('مخالفة جسيمة')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (v) => setState(() => type = v ?? type)),
+                AppSpacing.item,
+              ],
+              TextFormField(controller: title, decoration: const InputDecoration(labelText: 'العنوان'), validator: (v) => v == null || v.trim().isEmpty ? 'العنوان مطلوب' : null),
+              AppSpacing.item,
+              TextFormField(controller: details, maxLines: 4, decoration: const InputDecoration(labelText: 'التفاصيل'), validator: (v) => v == null || v.trim().isEmpty ? 'التفاصيل مطلوبة' : null),
+              AppSpacing.item,
+              TextFormField(controller: action, maxLines: 2, decoration: const InputDecoration(labelText: 'الإجراء المتخذ')),
+              AppSpacing.item,
+              TextFormField(controller: followUp, maxLines: 2, decoration: const InputDecoration(labelText: 'خطة المتابعة')),
+            ],
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')), ElevatedButton(onPressed: () async { if (!(formKey.currentState?.validate() ?? false)) return; await ref.read(appControllerProvider.notifier).addBehavior(studentUuid: studentUuid, category: category, title: title.text, details: details.text, violationType: type, actionTaken: action.text, followUp: followUp.text); if (dialogContext.mounted) Navigator.pop(dialogContext); }, child: const Text('حفظ'))],
         ),
       ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(
+          onPressed: () async {
+            if (!(formKey.currentState?.validate() ?? false)) return;
+            Navigator.pop(context);
+            await ref.read(appControllerProvider.notifier).addBehavior(studentUuid: studentUuid, category: category, title: title.text.trim(), details: details.text.trim(), violationType: category == BehaviorCategory.negative ? type : BehaviorViolationType.none, actionTaken: action.text.trim(), followUp: followUp.text.trim());
+          },
+          icon: const Icon(Icons.save_outlined),
+          label: const Text('حفظ السجل'),
+        ),
+      ],
     );
     title.dispose(); details.dispose(); action.dispose(); followUp.dispose();
   }

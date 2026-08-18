@@ -70,53 +70,37 @@ class _GradesPageState extends ConsumerState<GradesPage> {
     final maxScore = TextEditingController(text: '100');
     final term = TextEditingController(text: 'الفصل الأول');
     final key = GlobalKey<FormState>();
-    await showDialog<void>(
+    await showAppFormSheet<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('إضافة حقل تقييم'),
-        content: Form(
-          key: key,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _required(subject, 'المادة'),
-              const SizedBox(height: 10),
-              _required(title, 'اسم التقييم'),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: maxScore,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'الدرجة العظمى'),
-                validator: (value) => double.tryParse(value ?? '') == null ? 'أدخل رقماً صحيحاً' : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: term,
-                decoration: const InputDecoration(labelText: 'الفصل'),
-              ),
-            ],
-          ),
+      title: 'إضافة حقل تقييم',
+      subtitle: 'عرّف المادة والتقييم والدرجة العظمى قبل إدخال درجات الطلاب.',
+      child: Form(
+        key: key,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _required(subject, 'المادة'),
+            AppSpacing.item,
+            _required(title, 'اسم التقييم'),
+            AppSpacing.item,
+            TextFormField(controller: maxScore, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'الدرجة العظمى'), validator: (value) => double.tryParse(value ?? '') == null ? 'أدخل رقماً صحيحاً' : null),
+            AppSpacing.item,
+            TextFormField(controller: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي')),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (!(key.currentState?.validate() ?? false)) return;
-              await ref.read(appControllerProvider.notifier).createGradeField(
-                    subject: subject.text,
-                    title: title.text,
-                    maxScore: double.parse(maxScore.text),
-                    term: term.text,
-                  );
-              if (dialogContext.mounted) Navigator.pop(dialogContext);
-            },
-            child: const Text('إنشاء'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(
+          onPressed: () async {
+            if (!(key.currentState?.validate() ?? false)) return;
+            await ref.read(appControllerProvider.notifier).createGradeField(subject: subject.text.trim(), title: title.text.trim(), maxScore: double.parse(maxScore.text), term: term.text.trim());
+            if (context.mounted) Navigator.pop(context);
+          },
+          icon: const Icon(Icons.add_task_outlined),
+          label: const Text('إنشاء الحقل'),
+        ),
+      ],
     );
     subject.dispose(); title.dispose(); maxScore.dispose(); term.dispose();
   }
@@ -125,7 +109,37 @@ class _GradesPageState extends ConsumerState<GradesPage> {
     final existing = snapshot.grades.where((item) => item.studentUuid == student.uuid && item.fieldUuid == field.uuid).firstOrNull;
     final score = TextEditingController(text: existing?.score.toString());
     final notes = TextEditingController(text: existing?.notes);
-    await showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(title: Text('درجة ${student.fullName}'), content: Column(mainAxisSize: MainAxisSize.min, children: [Text('الحد الأقصى: ${field.maxScore}'), const SizedBox(height: 12), TextField(controller: score, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'الدرجة')), const SizedBox(height: 12), TextField(controller: notes, maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظات'))]), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')), ElevatedButton(onPressed: () async { final value = double.tryParse(score.text); if (value == null || value < 0 || value > field.maxScore) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('أدخل قيمة بين 0 و${field.maxScore}'))); return; } await ref.read(appControllerProvider.notifier).saveGrade(studentUuid: student.uuid, fieldUuid: field.uuid, score: value, notes: notes.text); if (dialogContext.mounted) Navigator.pop(dialogContext); }, child: const Text('حفظ'))]));
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'إدخال درجة الطالب',
+      subtitle: '${student.fullName} — ${field.subject} / ${field.title}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppStatusPill(label: 'الدرجة العظمى: ${field.maxScore}', icon: Icons.assessment_outlined, tone: AppStatusTone.neutral),
+          AppSpacing.compact,
+          TextField(controller: score, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'درجة الطالب')),
+          AppSpacing.item,
+          TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'ملاحظات اختيارية')),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(
+          onPressed: () async {
+            final value = double.tryParse(score.text.trim());
+            if (value == null || value < 0 || value > field.maxScore) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('أدخل قيمة بين 0 و${field.maxScore}')));
+              return;
+            }
+            await ref.read(appControllerProvider.notifier).saveGrade(studentUuid: student.uuid, fieldUuid: field.uuid, score: value, notes: notes.text.trim());
+            if (context.mounted) Navigator.pop(context);
+          },
+          icon: const Icon(Icons.save_outlined),
+          label: const Text('حفظ الدرجة'),
+        ),
+      ],
+    );
     score.dispose(); notes.dispose();
   }
 
