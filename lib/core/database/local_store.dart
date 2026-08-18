@@ -17,6 +17,21 @@ abstract interface class LocalStore {
     String notes,
   });
 
+  Future<void> updateClass({
+    required String classUuid,
+    required String name,
+    String stage,
+    String notes,
+  });
+
+  Future<void> updateSection({
+    required String sectionUuid,
+    required String name,
+    String notes,
+  });
+
+  Future<void> deleteSection(String sectionUuid);
+
   Future<Student> createStudent({
     required String firstName,
     required String lastName,

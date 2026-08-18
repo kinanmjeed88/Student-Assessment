@@ -48,6 +48,14 @@ class AppController extends AsyncNotifier<AppSnapshot> {
   Future<void> addSection({required String classUuid, required String name, String notes = ''}) =>
       _mutate(() => _repository.createSection(classUuid: classUuid, name: name, notes: notes));
 
+  Future<void> updateClass({required String classUuid, required String name, String stage = '', String notes = ''}) =>
+      _mutate(() => _repository.updateClass(classUuid: classUuid, name: name, stage: stage, notes: notes));
+
+  Future<void> updateSection({required String sectionUuid, required String name, String notes = ''}) =>
+      _mutate(() => _repository.updateSection(sectionUuid: sectionUuid, name: name, notes: notes));
+
+  Future<void> deleteSection(String sectionUuid) => _mutate(() => _repository.deleteSection(sectionUuid));
+
   Future<void> addStudent({
     required String firstName,
     required String lastName,

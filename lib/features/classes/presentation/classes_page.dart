@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../dashboard/presentation/app_shell.dart';
@@ -18,19 +19,19 @@ class ClassesPage extends ConsumerWidget {
         error: (_, __) => const SizedBox.shrink(),
         data: (snapshot) => Scaffold(
           appBar: AppBar(
-            title: const Text('الفصول والشعب'),
+            title: const Text('الصفوف والشعب'),
             actions: [
               IconButton(
-                tooltip: 'إضافة فصل',
-                onPressed: () => _showAddClassDialog(context, ref),
+                tooltip: 'إضافة صف',
+                onPressed: () => _showClassForm(context, ref),
                 icon: const Icon(Icons.add_circle_outline),
               ),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _showAddClassDialog(context, ref),
+            onPressed: () => _showClassForm(context, ref),
             icon: const Icon(Icons.add_outlined),
-            label: const Text('إضافة فصل'),
+            label: const Text('إضافة صف'),
           ),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
@@ -39,37 +40,41 @@ class ClassesPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AppPageHeader(
-                      title: 'هيكل المدرسة',
-                      subtitle: 'أنشئ الفصول أولاً، ثم أضف لكل فصل شعبه من زر «إضافة شعبة».',
+                    Text(
+                      'الصفوف والشعب',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
                     ),
+                    const SizedBox(height: 16),
                     if (snapshot.classes.isEmpty)
                       AppEmptyState(
                         icon: Icons.class_outlined,
-                        title: 'لا توجد فصول بعد',
-                        message: 'أنشئ أول فصل حتى تتمكن من إضافة الشعب والطلاب وربطهم بها.',
+                        title: 'لا توجد صفوف بعد',
+                        message: 'أنشئ أول صف حتى تتمكن من إضافة الشعب والطلاب وربطهم بها.',
                         action: FilledButton.icon(
-                          onPressed: () => _showAddClassDialog(context, ref),
+                          onPressed: () => _showClassForm(context, ref),
                           icon: const Icon(Icons.add_outlined),
-                          label: const Text('إضافة فصل'),
+                          label: const Text('إضافة صف'),
                         ),
                       )
                     else
                       ...snapshot.classes.map((schoolClass) {
                         final studentCount = snapshot.students.where((student) => student.classUuid == schoolClass.uuid).length;
-                        final sections = snapshot.sections.where((section) => section.classUuid == schoolClass.uuid).toList(growable: false);
+                        final sectionCount = snapshot.sections.where((section) => section.classUuid == schoolClass.uuid).length;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _ClassCard(
                             name: schoolClass.name,
                             stage: schoolClass.stage,
                             studentCount: studentCount,
-                            sections: sections.map((section) => section.name).toList(growable: false),
+                            sectionCount: sectionCount,
                             onTap: () => _showClassDetails(context, ref, schoolClass.uuid, schoolClass.name),
-                            onAddSection: () => _showAddSectionDialog(context, ref, schoolClass.uuid, schoolClass.name),
+                            onAddSection: () => _showSectionForm(context, ref, schoolClass.uuid, schoolClass.name),
+                            onEdit: () => _showClassForm(context, ref, schoolClass: schoolClass),
                             onDelete: () async {
-                              final confirmed = await _confirmDelete(context, schoolClass.name);
-                              if (confirmed && context.mounted) await ref.read(appControllerProvider.notifier).deleteClass(schoolClass.uuid);
+                              final confirmed = await _confirmDeleteClass(context, schoolClass.name);
+                              if (confirmed && context.mounted) {
+                                await ref.read(appControllerProvider.notifier).deleteClass(schoolClass.uuid);
+                              }
                             },
                           ),
                         );
@@ -84,64 +89,119 @@ class ClassesPage extends ConsumerWidget {
     );
   }
 
-  static Future<void> _showAddClassDialog(BuildContext context, WidgetRef ref) async {
-    final name = TextEditingController();
+  static Future<void> _showClassForm(BuildContext context, WidgetRef ref, {SchoolClass? schoolClass}) async {
+    final name = TextEditingController(text: schoolClass?.name ?? '');
+    final stage = TextEditingController(text: schoolClass?.stage ?? '');
+    final notes = TextEditingController(text: schoolClass?.notes ?? '');
     final formKey = GlobalKey<FormState>();
-    await showDialog<void>(
+    final editing = schoolClass != null;
+
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) => _FormDialog(
-        title: 'إضافة فصل',
-        formKey: formKey,
-        fields: [
-          TextFormField(
-            controller: name,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'اسم الفصل', hintText: 'مثال: الصف الثالث أ'),
-            validator: (value) => value == null || value.trim().isEmpty ? 'أدخل اسم الفصل' : null,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => AppFormSheet(
+        title: editing ? 'تعديل الصف' : 'إضافة صف',
+        subtitle: editing ? 'تحديث بيانات الصف وحفظها في السجل المحلي.' : 'أدخل بيانات الصف الأساسية للبدء بإضافة الشعب.',
+        child: Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: name,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'اسم الصف', hintText: 'مثال: الصف الثالث'),
+                validator: (value) => value == null || value.trim().isEmpty ? 'أدخل اسم الصف' : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: stage,
+                decoration: const InputDecoration(labelText: 'المرحلة الدراسية', hintText: 'مثال: الابتدائية'),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: notes,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'ملاحظات اختيارية'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('إلغاء')),
+          FilledButton.icon(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              final controller = ref.read(appControllerProvider.notifier);
+              if (editing) {
+                await controller.updateClass(classUuid: schoolClass!.uuid, name: name.text, stage: stage.text, notes: notes.text);
+              } else {
+                await controller.addClass(name: name.text, stage: stage.text, notes: notes.text);
+              }
+              if (sheetContext.mounted) Navigator.pop(sheetContext);
+            },
+            icon: Icon(editing ? Icons.save_outlined : Icons.add_outlined),
+            label: Text(editing ? 'حفظ التعديل' : 'حفظ الصف'),
           ),
         ],
-        cancelLabel: 'إلغاء',
-        saveLabel: 'حفظ الفصل',
-        onSave: () async {
-          if (!(formKey.currentState?.validate() ?? false)) return;
-          await ref.read(appControllerProvider.notifier).addClass(name: name.text.trim());
-          if (dialogContext.mounted) Navigator.pop(dialogContext);
-        },
       ),
     );
     name.dispose();
+    stage.dispose();
+    notes.dispose();
   }
 
-  static Future<void> _showAddSectionDialog(BuildContext context, WidgetRef ref, String classUuid, String className) async {
-    final name = TextEditingController();
-    final notes = TextEditingController();
+  static Future<void> _showSectionForm(BuildContext context, WidgetRef ref, String classUuid, String className, {Section? section}) async {
+    final name = TextEditingController(text: section?.name ?? '');
+    final notes = TextEditingController(text: section?.notes ?? '');
     final formKey = GlobalKey<FormState>();
-    await showDialog<void>(
+    final editing = section != null;
+
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) => _FormDialog(
-        title: 'إضافة شعبة',
-        subtitle: 'إضافة شعبة جديدة إلى $className',
-        formKey: formKey,
-        fields: [
-          TextFormField(
-            controller: name,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'اسم الشعبة', hintText: 'مثال: أ، ب، أو شعبة 1'),
-            validator: (value) => value == null || value.trim().isEmpty ? 'أدخل اسم الشعبة' : null,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => AppFormSheet(
+        title: editing ? 'تعديل الشعبة' : 'إضافة شعبة',
+        subtitle: editing ? 'تحديث بيانات الشعبة التابعة إلى $className.' : 'إضافة شعبة جديدة إلى $className.',
+        child: Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: name,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'اسم الشعبة', hintText: 'مثال: أ أو شعبة 1'),
+                validator: (value) => value == null || value.trim().isEmpty ? 'أدخل اسم الشعبة' : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: notes,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'ملاحظات اختيارية'),
+              ),
+            ],
           ),
-          TextFormField(
-            controller: notes,
-            maxLines: 2,
-            decoration: const InputDecoration(labelText: 'ملاحظات اختيارية'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('إلغاء')),
+          FilledButton.icon(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              final controller = ref.read(appControllerProvider.notifier);
+              if (editing) {
+                await controller.updateSection(sectionUuid: section.uuid, name: name.text, notes: notes.text);
+              } else {
+                await controller.addSection(classUuid: classUuid, name: name.text, notes: notes.text);
+              }
+              if (sheetContext.mounted) Navigator.pop(sheetContext);
+            },
+            icon: Icon(editing ? Icons.save_outlined : Icons.add_outlined),
+            label: Text(editing ? 'حفظ التعديل' : 'حفظ الشعبة'),
           ),
         ],
-        cancelLabel: 'إلغاء',
-        saveLabel: 'حفظ الشعبة',
-        onSave: () async {
-          if (!(formKey.currentState?.validate() ?? false)) return;
-          await ref.read(appControllerProvider.notifier).addSection(classUuid: classUuid, name: name.text.trim(), notes: notes.text.trim());
-          if (dialogContext.mounted) Navigator.pop(dialogContext);
-        },
       ),
     );
     name.dispose();
@@ -158,7 +218,7 @@ class ClassesPage extends ConsumerWidget {
           final state = ref.watch(appControllerProvider);
           return state.when(
             loading: () => const SafeArea(child: Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))),
-            error: (_, __) => const SafeArea(child: Padding(padding: EdgeInsets.all(32), child: Text('تعذر تحميل تفاصيل الفصل.'))),
+            error: (_, __) => const SafeArea(child: Padding(padding: EdgeInsets.all(32), child: Text('تعذر تحميل تفاصيل الصف.'))),
             data: (snapshot) {
               final sections = snapshot.sections.where((section) => section.classUuid == classUuid).toList(growable: false);
               final studentCount = snapshot.students.where((student) => student.classUuid == classUuid).length;
@@ -171,27 +231,54 @@ class ClassesPage extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          AppSectionHeader(title: className, subtitle: 'إدارة الشعب والطلاب المرتبطين بهذا الفصل.'),
+                          AppSectionHeader(title: className, subtitle: 'إدارة الشعب والطلاب المرتبطين بهذا الصف.'),
                           const SizedBox(height: 16),
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final columns = constraints.maxWidth < 480 ? 1 : 2;
-                              final width = (constraints.maxWidth - (columns == 2 ? 12 : 0)) / columns;
-                              return Wrap(spacing: 12, runSpacing: 12, children: [SizedBox(width: width, child: AppMetricTile(label: 'الطلاب', value: '$studentCount', icon: Icons.groups_outlined, tone: AppStatusTone.neutral)), SizedBox(width: width, child: AppMetricTile(label: 'الشعب', value: '${sections.length}', icon: Icons.view_list_outlined, tone: AppStatusTone.success))]);
-                            },
+                          Row(
+                            children: [
+                              Expanded(child: AppMetricTile(label: 'الطلاب', value: '$studentCount', icon: Icons.groups_outlined, tone: AppStatusTone.neutral)),
+                              const SizedBox(width: 10),
+                              Expanded(child: AppMetricTile(label: 'الشعب', value: '${sections.length}', icon: Icons.view_list_outlined, tone: AppStatusTone.success)),
+                            ],
                           ),
                           const SizedBox(height: 20),
                           Row(
                             children: [
                               Expanded(child: Text('الشعب المرتبطة', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
-                              FilledButton.tonalIcon(onPressed: () => _showAddSectionDialog(sheetContext, ref, classUuid, className), icon: const Icon(Icons.add), label: const Text('إضافة شعبة')),
+                              FilledButton.tonalIcon(onPressed: () => _showSectionForm(sheetContext, ref, classUuid, className), icon: const Icon(Icons.add), label: const Text('إضافة شعبة')),
                             ],
                           ),
                           const SizedBox(height: 10),
                           if (sections.isEmpty)
-                            const AppEmptyState(icon: Icons.view_list_outlined, title: 'لا توجد شعب بعد', message: 'استخدم زر «إضافة شعبة» لإنشاء أول شعبة لهذا الفصل.')
+                            const AppEmptyState(icon: Icons.view_list_outlined, title: 'لا توجد شعب بعد', message: 'استخدم زر «إضافة شعبة» لإنشاء أول شعبة لهذا الصف.')
                           else
-                            ...sections.map((section) => Card(margin: const EdgeInsets.only(bottom: 8), child: ListTile(leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.secondaryContainer, foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer, child: const Icon(Icons.view_list_outlined)), title: Text(section.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)), subtitle: section.notes.trim().isEmpty ? null : Text(section.notes), trailing: const Icon(Icons.check_circle_outline)))),
+                            ...sections.map(
+                              (section) => Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                                    child: const Icon(Icons.view_list_outlined),
+                                  ),
+                                  title: Text(section.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                                  subtitle: section.notes.trim().isEmpty ? null : Text(section.notes),
+                                  trailing: PopupMenuButton<String>(
+                                    tooltip: 'إجراءات الشعبة',
+                                    onSelected: (value) async {
+                                      if (value == 'edit') {
+                                        await _showSectionForm(sheetContext, ref, classUuid, className, section: section);
+                                      } else if (value == 'delete') {
+                                        await _confirmDeleteSection(sheetContext, ref, section);
+                                      }
+                                    },
+                                    itemBuilder: (_) => const [
+                                      PopupMenuItem(value: 'edit', child: Text('تعديل الشعبة')),
+                                      PopupMenuItem(value: 'delete', child: Text('حذف الشعبة')),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -205,58 +292,49 @@ class ClassesPage extends ConsumerWidget {
     );
   }
 
-  static Future<bool> _confirmDelete(BuildContext context, String name) async {
+  static Future<bool> _confirmDeleteClass(BuildContext context, String name) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('حذف الفصل؟'),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف الصف؟'),
         content: Text('سيؤدي حذف $name إلى حذف طلابه وجميع سجلاتهم بشكل متسلسل.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف نهائي')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('حذف نهائي')),
         ],
       ),
     );
     return result ?? false;
   }
-}
 
-class _FormDialog extends StatelessWidget {
-  const _FormDialog({required this.title, required this.formKey, required this.fields, required this.cancelLabel, required this.saveLabel, required this.onSave, this.subtitle});
-
-  final String title;
-  final String? subtitle;
-  final GlobalKey<FormState> formKey;
-  final List<Widget> fields;
-  final String cancelLabel;
-  final String saveLabel;
-  final VoidCallback onSave;
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: Text(title),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [if (subtitle != null) ...[Text(subtitle!), const SizedBox(height: 16)], for (var index = 0; index < fields.length; index++) ...[fields[index], if (index < fields.length - 1) const SizedBox(height: 14)]]),
-            ),
-          ),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(cancelLabel)), FilledButton(onPressed: onSave, child: Text(saveLabel))],
-      );
+  static Future<void> _confirmDeleteSection(BuildContext context, WidgetRef ref, Section section) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف الشعبة؟'),
+        content: Text('سيتم حذف ${section.name} وإلغاء ربط الطلاب بها، دون حذف ملفات الطلاب أو سجلاتهم.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('حذف الشعبة')),
+        ],
+      ),
+    );
+    if (result == true && context.mounted) {
+      await ref.read(appControllerProvider.notifier).deleteSection(section.uuid);
+    }
+  }
 }
 
 class _ClassCard extends StatelessWidget {
-  const _ClassCard({required this.name, required this.stage, required this.studentCount, required this.sections, required this.onTap, required this.onAddSection, required this.onDelete});
+  const _ClassCard({required this.name, required this.stage, required this.studentCount, required this.sectionCount, required this.onTap, required this.onAddSection, required this.onEdit, required this.onDelete});
 
   final String name;
   final String stage;
   final int studentCount;
-  final List<String> sections;
+  final int sectionCount;
   final VoidCallback onTap;
   final VoidCallback onAddSection;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
@@ -267,31 +345,42 @@ class _ClassCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(radius: 28, backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: const Icon(Icons.class_outlined)),
-              const SizedBox(width: 14),
+              CircleAvatar(radius: 24, backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: const Icon(Icons.class_outlined)),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                    if (stage.trim().isNotEmpty) ...[const SizedBox(height: 4), Text(stage)],
-                    const SizedBox(height: 10),
-                    Wrap(spacing: 8, runSpacing: 8, children: [AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined), AppStatusPill(label: '${sections.length} شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success)]),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(onPressed: onAddSection, icon: const Icon(Icons.add), label: const Text('إضافة شعبة')),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                          if (stage.trim().isNotEmpty) Text(stage, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined),
+                    const SizedBox(width: 8),
+                    AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success),
+                    const SizedBox(width: 8),
+                    IconButton(onPressed: onAddSection, tooltip: 'إضافة شعبة', icon: const Icon(Icons.add_circle_outline)),
                   ],
                 ),
               ),
               PopupMenuButton<String>(
-                tooltip: 'إجراءات الفصل',
+                tooltip: 'إجراءات الصف',
                 onSelected: (value) {
+                  if (value == 'edit') onEdit();
                   if (value == 'delete') onDelete();
                 },
-                itemBuilder: (_) => const [PopupMenuItem(value: 'delete', child: Text('حذف الفصل'))],
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('تعديل الصف')),
+                  PopupMenuItem(value: 'delete', child: Text('حذف الصف')),
+                ],
               ),
             ],
           ),

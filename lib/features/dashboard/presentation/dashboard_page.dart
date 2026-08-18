@@ -172,48 +172,35 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = constraints.maxWidth < 540
-            ? 172.0
-            : (constraints.maxWidth - 24) / 3;
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              SizedBox(
-                width: cardWidth,
-                child: AppMetricTile(
-                  label: 'إجمالي الطلاب',
-                  value: '$totalStudents',
-                  icon: Icons.groups_outlined,
-                  tone: AppStatusTone.neutral,
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: cardWidth,
-                child: AppMetricTile(
-                  label: 'تنبيهات السلوك',
-                  value: '$alerts',
-                  icon: Icons.rule_folder_outlined,
-                  tone: alerts > 0 ? AppStatusTone.warning : AppStatusTone.neutral,
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: cardWidth,
-                child: AppMetricTile(
-                  label: 'غياب اليوم',
-                  value: '$absentToday',
-                  icon: Icons.event_busy_outlined,
-                  tone: absentToday > 0 ? AppStatusTone.warning : AppStatusTone.success,
-                ),
-              ),
-            ],
+    return Row(
+      children: [
+        Expanded(
+          child: AppMetricTile(
+            label: 'إجمالي الطلاب',
+            value: '$totalStudents',
+            icon: Icons.groups_outlined,
+            tone: AppStatusTone.neutral,
           ),
-        );
-      },
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: AppMetricTile(
+            label: 'تنبيهات السلوك',
+            value: '$alerts',
+            icon: Icons.rule_folder_outlined,
+            tone: alerts > 0 ? AppStatusTone.warning : AppStatusTone.neutral,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: AppMetricTile(
+            label: 'غياب اليوم',
+            value: '$absentToday',
+            icon: Icons.event_busy_outlined,
+            tone: absentToday > 0 ? AppStatusTone.warning : AppStatusTone.success,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -225,7 +212,7 @@ class _QuickActions extends StatelessWidget {
 
   static const actions = [
     _Action(title: 'إدارة الطلاب', icon: Icons.groups_outlined, page: StudentsPage()),
-    _Action(title: 'الفصول والشعب', icon: Icons.class_outlined, page: ClassesPage()),
+    _Action(title: 'الصفوف والشعب', icon: Icons.class_outlined, page: ClassesPage()),
     _Action(title: 'تسجيل حضور اليوم', icon: Icons.fact_check_outlined, page: AttendancePage()),
     _Action(title: 'الدرجات والتقييمات', icon: Icons.analytics_outlined, page: GradesPage()),
     _Action(title: 'السلوك والمتابعة', icon: Icons.rule_folder_outlined, page: BehaviorPage()),

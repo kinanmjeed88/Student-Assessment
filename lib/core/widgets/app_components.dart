@@ -214,15 +214,15 @@ class AppMetricTile extends StatelessWidget {
       AppStatusTone.neutral => (scheme.secondaryContainer, scheme.onSecondaryContainer),
     };
     return AppSurfaceCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(backgroundColor: background, foregroundColor: foreground, child: Icon(icon)),
-          const SizedBox(height: 14),
-          Text(value, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 4),
-          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+          CircleAvatar(radius: 18, backgroundColor: background, foregroundColor: foreground, child: Icon(icon, size: 19)),
+          const SizedBox(height: 8),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 2),
+          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
         ],
       ),
     );

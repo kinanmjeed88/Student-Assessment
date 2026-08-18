@@ -103,6 +103,61 @@ class LocalRepository implements LocalStore {
   }
 
   @override
+  Future<void> updateClass({
+    required String classUuid,
+    required String name,
+    String stage = '',
+    String notes = '',
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) throw const FormatException('يجب إدخال اسم الصف.');
+    final db = await _db;
+    await db.writeTxn(() async {
+      final schoolClass = await db.schoolClasses.where().uuidEqualTo(classUuid).findFirst();
+      if (schoolClass == null) throw const FormatException('الصف المطلوب غير موجود.');
+      schoolClass
+        ..name = trimmed
+        ..stage = stage.trim()
+        ..notes = notes.trim();
+      await db.schoolClasses.put(schoolClass);
+    });
+  }
+
+  @override
+  Future<void> updateSection({
+    required String sectionUuid,
+    required String name,
+    String notes = '',
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) throw const FormatException('يجب إدخال اسم الشعبة.');
+    final db = await _db;
+    await db.writeTxn(() async {
+      final section = await db.sections.where().uuidEqualTo(sectionUuid).findFirst();
+      if (section == null) throw const FormatException('الشعبة المطلوبة غير موجودة.');
+      section
+        ..name = trimmed
+        ..notes = notes.trim();
+      await db.sections.put(section);
+    });
+  }
+
+  @override
+  Future<void> deleteSection(String sectionUuid) async {
+    final db = await _db;
+    await db.writeTxn(() async {
+      final section = await db.sections.where().uuidEqualTo(sectionUuid).findFirst();
+      if (section == null) return;
+      final students = await db.students.where().findAll();
+      for (final student in students.where((item) => item.sectionUuid == sectionUuid)) {
+        student.sectionUuid = '';
+        await db.students.put(student);
+      }
+      await db.sections.delete(section.id);
+    });
+  }
+
+  @override
   Future<Student> createStudent({
     required String firstName,
     required String lastName,
