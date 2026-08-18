@@ -189,7 +189,7 @@ class ClassesPage extends ConsumerWidget {
                           ),
                           const SizedBox(height: 10),
                           if (sections.isEmpty)
-                            AppEmptyState(icon: Icons.view_list_outlined, title: 'لا توجد شعب بعد', message: 'استخدم زر «إضافة شعبة» لإنشاء أول شعبة لهذا الفصل.')
+                            const AppEmptyState(icon: Icons.view_list_outlined, title: 'لا توجد شعب بعد', message: 'استخدم زر «إضافة شعبة» لإنشاء أول شعبة لهذا الفصل.')
                           else
                             ...sections.map((section) => Card(margin: const EdgeInsets.only(bottom: 8), child: ListTile(leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.secondaryContainer, foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer, child: const Icon(Icons.view_list_outlined)), title: Text(section.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)), subtitle: section.notes.trim().isEmpty ? null : Text(section.notes), trailing: const Icon(Icons.check_circle_outline)))),
                         ],

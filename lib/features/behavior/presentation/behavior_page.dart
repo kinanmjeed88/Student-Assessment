@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_snapshot.dart';
+import '../../../core/widgets/app_components.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
 import '../../dashboard/presentation/app_shell.dart';
