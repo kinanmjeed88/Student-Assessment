@@ -68,9 +68,9 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: const NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFDCE8FF),
-        labelTextStyle: const WidgetStatePropertyAll(
-          const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        indicatorColor: Color(0xFFDCE8FF),
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
