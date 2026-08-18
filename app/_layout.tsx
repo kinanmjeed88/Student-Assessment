@@ -10,6 +10,16 @@ I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    document.documentElement.dir = "rtl";
+    document.body.dir = "rtl";
+    return () => {
+      document.documentElement.dir = "ltr";
+      document.body.dir = "ltr";
+    };
+  }, []);
+
   return (
     <StudentStoreProvider>
       <KeyboardAvoidingView style={styles.root} behavior={Platform.select({ ios: "padding", android: "height" })}>
@@ -46,6 +56,6 @@ function SaveFeedback() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  rtlShell: { flex: 1, direction: "rtl" },
+  rtlShell: { flex: 1 },
   feedback: { position: "absolute", top: 56, left: 20, right: 20, zIndex: 1000, elevation: 20 },
 });
