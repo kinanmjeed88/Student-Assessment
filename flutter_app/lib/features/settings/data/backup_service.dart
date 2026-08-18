@@ -12,6 +12,6 @@ class BackupService {
       allowedExtensions: const ['json'],
       bytes: Uint8List.fromList(utf8.encode(json)),
     );
-    return path;
+    return path?.toString();
   }
 }

@@ -70,7 +70,7 @@ class AppSettings {
       };
 }
 
-@collection
+@Collection(accessor: 'schoolClasses')
 class SchoolClass {
   Id id = Isar.autoIncrement;
   @Index(unique: true, replace: true)
