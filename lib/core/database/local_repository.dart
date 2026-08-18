@@ -31,6 +31,12 @@ class LocalRepository implements LocalStore {
     final sections = await db.sections.where().findAll();
     final students = await db.students.where().findAll();
     final gradeFields = await db.gradeFields.where().findAll();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayAttendance = await db.attendanceRecords
+        .filter()
+        .dateEqualTo(today)
+        .findAll();
 
     classes.sort((a, b) => a.name.compareTo(b.name));
     sections.sort((a, b) => a.name.compareTo(b.name));
@@ -43,6 +49,7 @@ class LocalRepository implements LocalStore {
       sections: sections,
       students: students,
       gradeFields: gradeFields,
+      todayAttendance: todayAttendance,
     );
   }
 

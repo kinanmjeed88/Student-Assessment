@@ -7,6 +7,7 @@ class AppSnapshot {
     required this.sections,
     required this.students,
     required this.gradeFields,
+    required this.todayAttendance,
   });
 
   final AppSettings settings;
@@ -14,4 +15,5 @@ class AppSnapshot {
   final List<Section> sections;
   final List<Student> students;
   final List<GradeField> gradeFields;
+  final List<AttendanceRecord> todayAttendance;
 }
