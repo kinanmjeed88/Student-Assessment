@@ -116,7 +116,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
         ),
         const SizedBox(height: 14),
         Card(
-          color: summary.dismissed ? scheme.errorContainer : summary.warning ? scheme.tertiaryContainer : scheme.surfaceVariant,
+          color: summary.dismissed ? scheme.errorContainer : summary.warning ? scheme.tertiaryContainer : scheme.surfaceContainerHighest,
           child: ListTile(
             leading: Icon(summary.dismissed || summary.warning ? Icons.warning_amber_outlined : Icons.verified_outlined, color: summary.dismissed ? scheme.error : scheme.primary),
             title: Text(summary.dismissed ? 'إشعار فصل' : summary.warning ? 'تنبيه سلوك' : 'السجل السلوكي سليم', style: const TextStyle(fontWeight: FontWeight.w900)),
@@ -196,7 +196,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
                     _input(subject, 'المادة'),
                     _input(title, 'اسم التقييم'),
                     Row(children: [Expanded(child: _input(maxScore, 'الدرجة العظمى', numeric: true)), const SizedBox(width: 10), Expanded(child: _input(score, 'درجة الطالب', numeric: true))]),
-                    DropdownButtonFormField<String>(value: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي'), items: const [DropdownMenuItem(value: 'الفصل الأول', child: Text('الفصل الأول')), DropdownMenuItem(value: 'الفصل الثاني', child: Text('الفصل الثاني'))], onChanged: (value) => setDialogState(() => term = value ?? term)),
+                    DropdownButtonFormField<String>(initialValue: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي'), items: const [DropdownMenuItem(value: 'الفصل الأول', child: Text('الفصل الأول')), DropdownMenuItem(value: 'الفصل الثاني', child: Text('الفصل الثاني'))], onChanged: (value) => setDialogState(() => term = value ?? term)),
                     _input(notes, 'ملاحظات', maxLines: 3, required: false),
                   ],
                 ),
@@ -251,8 +251,8 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<BehaviorCategory>(value: category, decoration: const InputDecoration(labelText: 'تصنيف السلوك'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('مخالفة سلبية')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('إيجابي'))], onChanged: (value) => setDialogState(() => category = value ?? category)),
-                    if (category == BehaviorCategory.negative) DropdownButtonFormField<BehaviorViolationType>(value: violation, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الحصة')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('سلوك جسيم')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (value) => setDialogState(() => violation = value ?? violation)),
+                    DropdownButtonFormField<BehaviorCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف السلوك'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('مخالفة سلبية')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('إيجابي'))], onChanged: (value) => setDialogState(() => category = value ?? category)),
+                    if (category == BehaviorCategory.negative) DropdownButtonFormField<BehaviorViolationType>(initialValue: violation, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الحصة')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('سلوك جسيم')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (value) => setDialogState(() => violation = value ?? violation)),
                     _input(title, 'عنوان السجل'),
                     _input(details, 'تفاصيل السلوك', maxLines: 3),
                     _input(action, 'الإجراء المتخذ', required: false),
@@ -298,7 +298,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<NoteCategory>(value: category, decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'), items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))], onChanged: (value) => setDialogState(() => category = value ?? category)),
+                DropdownButtonFormField<NoteCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'), items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))], onChanged: (value) => setDialogState(() => category = value ?? category)),
                 _input(title, 'عنوان الملاحظة'),
                 _input(details, 'التفاصيل', maxLines: 4),
                 CheckboxListTile(value: needsFollowUp, onChanged: (value) => setDialogState(() => needsFollowUp = value ?? false), title: const Text('تحتاج إلى متابعة'), contentPadding: EdgeInsets.zero),

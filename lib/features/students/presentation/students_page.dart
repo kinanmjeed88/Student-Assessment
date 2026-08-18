@@ -246,7 +246,7 @@ class _FilterRow extends StatelessWidget {
   final ValueChanged<String?> onChanged;
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String>(value: value, decoration: InputDecoration(labelText: label), items: items, onChanged: onChanged);
+  Widget build(BuildContext context) => DropdownButtonFormField<String>(initialValue: value, decoration: InputDecoration(labelText: label), items: items, onChanged: onChanged);
 }
 
 class _StudentCard extends StatelessWidget {
@@ -281,7 +281,7 @@ class _MiniBadge extends StatelessWidget {
   final String label;
   final Color color;
   @override
-  Widget build(BuildContext context) => DecoratedBox(decoration: BoxDecoration(color: color.withOpacity(.12), borderRadius: BorderRadius.circular(8)), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700))));
+  Widget build(BuildContext context) => DecoratedBox(decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(8)), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700))));
 }
 
 class _EmptyStudents extends StatelessWidget {

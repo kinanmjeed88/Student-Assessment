@@ -49,9 +49,9 @@ class _GradesPageState extends ConsumerState<GradesPage> {
             if (snapshot.gradeFields.isEmpty)
               const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('لم تُنشأ حقول درجات بعد. أضف اختباراً أو تسميعاً أو تقييماً للبدء.')))
             else ...[
-              DropdownButtonFormField<String>(value: selectedField?.uuid, decoration: const InputDecoration(labelText: 'حقل التقييم'), items: snapshot.gradeFields.map((item) => DropdownMenuItem(value: item.uuid, child: Text('${item.subject} — ${item.title} (${item.maxScore})'))).toList(), onChanged: (value) => setState(() => _fieldUuid = value)),
+              DropdownButtonFormField<String>(initialValue: selectedField?.uuid, decoration: const InputDecoration(labelText: 'حقل التقييم'), items: snapshot.gradeFields.map((item) => DropdownMenuItem(value: item.uuid, child: Text('${item.subject} — ${item.title} (${item.maxScore})'))).toList(), onChanged: (value) => setState(() => _fieldUuid = value)),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(value: _classUuid, decoration: const InputDecoration(labelText: 'تصفية الصف'), items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))], onChanged: (value) => setState(() => _classUuid = value ?? 'all')),
+              DropdownButtonFormField<String>(initialValue: _classUuid, decoration: const InputDecoration(labelText: 'تصفية الصف'), items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))], onChanged: (value) => setState(() => _classUuid = value ?? 'all')),
               const SizedBox(height: 12),
               TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'ابحث عن طالب')),
               const SizedBox(height: 16),

@@ -42,9 +42,9 @@ class _ImportStudentsPageState extends ConsumerState<ImportStudentsPage> {
           const SizedBox(height: 16),
           if (snapshot.classes.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('أضف صفاً أولاً حتى تحدد وجهة الطلاب.'))),
           if (snapshot.classes.isNotEmpty) ...[
-            DropdownButtonFormField<String>(value: classUuid, decoration: const InputDecoration(labelText: 'الصف المستهدف'), items: snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(), onChanged: (value) => setState(() { _classUuid = value; _sectionUuid = null; })),
+            DropdownButtonFormField<String>(initialValue: classUuid, decoration: const InputDecoration(labelText: 'الصف المستهدف'), items: snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(), onChanged: (value) => setState(() { _classUuid = value; _sectionUuid = null; })),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(value: sectionUuid.isEmpty ? null : sectionUuid, decoration: const InputDecoration(labelText: 'الشعبة المستهدفة (اختياري)'), items: sections.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(), onChanged: (value) => setState(() => _sectionUuid = value)),
+            DropdownButtonFormField<String>(initialValue: sectionUuid.isEmpty ? null : sectionUuid, decoration: const InputDecoration(labelText: 'الشعبة المستهدفة (اختياري)'), items: sections.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(), onChanged: (value) => setState(() => _sectionUuid = value)),
           ],
           if (_file != null) ...[
             const SizedBox(height: 24),

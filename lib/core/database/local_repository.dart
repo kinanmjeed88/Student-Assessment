@@ -516,15 +516,33 @@ class LocalRepository implements LocalStore {
     await db.writeTxn(() async {
       await db.clear();
       await db.appSettings.put(_settingsFromJson(decoded['settings']));
-      for (final item in _maps(decoded['classes'])) await db.schoolClasses.put(_classFromJson(item));
-      for (final item in _maps(decoded['sections'])) await db.sections.put(_sectionFromJson(item));
-      for (final item in _maps(decoded['students'])) await db.students.put(_studentFromJson(item));
-      for (final item in _maps(decoded['attendance'])) await db.attendanceRecords.put(_attendanceFromJson(item));
-      for (final item in _maps(decoded['gradeFields'])) await db.gradeFields.put(_gradeFieldFromJson(item));
-      for (final item in _maps(decoded['grades'])) await db.grades.put(_gradeFromJson(item));
-      for (final item in _maps(decoded['behaviors'])) await db.behaviorRecords.put(_behaviorFromJson(item));
-      for (final item in _maps(decoded['notes'])) await db.studentNotes.put(_noteFromJson(item));
-      for (final item in _maps(decoded['imports'])) await db.studentImportRecords.put(_importFromJson(item));
+      for (final item in _maps(decoded['classes'])) {
+        await db.schoolClasses.put(_classFromJson(item));
+      }
+      for (final item in _maps(decoded['sections'])) {
+        await db.sections.put(_sectionFromJson(item));
+      }
+      for (final item in _maps(decoded['students'])) {
+        await db.students.put(_studentFromJson(item));
+      }
+      for (final item in _maps(decoded['attendance'])) {
+        await db.attendanceRecords.put(_attendanceFromJson(item));
+      }
+      for (final item in _maps(decoded['gradeFields'])) {
+        await db.gradeFields.put(_gradeFieldFromJson(item));
+      }
+      for (final item in _maps(decoded['grades'])) {
+        await db.grades.put(_gradeFromJson(item));
+      }
+      for (final item in _maps(decoded['behaviors'])) {
+        await db.behaviorRecords.put(_behaviorFromJson(item));
+      }
+      for (final item in _maps(decoded['notes'])) {
+        await db.studentNotes.put(_noteFromJson(item));
+      }
+      for (final item in _maps(decoded['imports'])) {
+        await db.studentImportRecords.put(_importFromJson(item));
+      }
     });
   }
 }

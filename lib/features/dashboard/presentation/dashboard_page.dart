@@ -57,24 +57,24 @@ class _DashboardContent extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _WelcomeHeader(schoolName: schoolName, teacherName: snapshot.settings.teacherName),
       const SizedBox(height: 24),
-      _Title('نظرة عامة'),
+      const _Title('نظرة عامة'),
       const SizedBox(height: 12),
       _StatsSection(totalStudents: totalStudents, alerts: alerts, presentToday: presentToday),
       const SizedBox(height: 24),
-      _Title('إجراءات سريعة'),
+      const _Title('إجراءات سريعة'),
       const SizedBox(height: 12),
       _QuickActions(onOpen: onOpen),
       const SizedBox(height: 24),
-      _Title('المتابعة'),
+      const _Title('المتابعة'),
       const SizedBox(height: 12),
       _ProgressCard(progress: attendanceProgress, completed: presentToday, total: totalStudents),
       const SizedBox(height: 12),
       _AlertCard(alerts: alerts, onOpen: () => onOpen(const BehaviorPage())),
       const SizedBox(height: 24),
-      Row(children: [Expanded(child: _Title('أحدث الطلاب')), Text('$totalStudents سجل', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurface))]),
+      Row(children: [const Expanded(child: _Title('أحدث الطلاب')), Text('$totalStudents سجل', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurface))]),
       const SizedBox(height: 12),
       if (snapshot.students.isEmpty)
-        _EmptyState(message: 'لم تتم إضافة طلاب بعد.')
+        const _EmptyState(message: 'لم تتم إضافة طلاب بعد.')
       else
         ...snapshot.students.take(6).map((student) => Padding(padding: const EdgeInsets.only(bottom: 10), child: _StudentTile(student: student, onTap: () => onOpen(StudentDetailsPage(studentUuid: student.uuid))))),
     ]);
@@ -126,7 +126,7 @@ class _StatCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       elevation: 2,
-      shadowColor: scheme.onSurface.withOpacity(.14),
+      shadowColor: scheme.onSurface.withValues(alpha: .14),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 178),
         child: Padding(
@@ -170,16 +170,16 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = [
-      _Action('إدارة الطلاب', Icons.groups_rounded, const StudentsPage()),
-      _Action('إدارة الفصول والشعب', Icons.class_rounded, const ClassesPage()),
-      _Action('تسجيل حضور اليوم', Icons.fact_check_rounded, const AttendancePage()),
-      _Action('الدرجات والتقييمات', Icons.grade_outlined, const GradesPage()),
-      _Action('السلوك والمتابعة', Icons.psychology_outlined, const BehaviorPage()),
-      _Action('التقارير والتصدير', Icons.assessment_outlined, const ReportsPage()),
-      _Action('استيراد الطلاب', Icons.upload_file_outlined, const ImportStudentsPage()),
-      _Action('سجل الاستيراد', Icons.history_outlined, const ImportHistoryPage()),
+      const _Action('إدارة الطلاب', Icons.groups_rounded, const StudentsPage()),
+      const _Action('إدارة الفصول والشعب', Icons.class_rounded, const ClassesPage()),
+      const _Action('تسجيل حضور اليوم', Icons.fact_check_rounded, const AttendancePage()),
+      const _Action('الدرجات والتقييمات', Icons.grade_outlined, const GradesPage()),
+      const _Action('السلوك والمتابعة', Icons.psychology_outlined, const BehaviorPage()),
+      const _Action('التقارير والتصدير', Icons.assessment_outlined, const ReportsPage()),
+      const _Action('استيراد الطلاب', Icons.upload_file_outlined, const ImportStudentsPage()),
+      const _Action('سجل الاستيراد', Icons.history_outlined, const ImportHistoryPage()),
     ];
-    return Column(children: [for (var index = 0; index < actions.length; index++) ...[Card(margin: EdgeInsets.zero, elevation: 0, color: Theme.of(context).colorScheme.surfaceVariant, child: ListTile(onTap: () => onOpen(actions[index].page), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.surface, foregroundColor: Theme.of(context).colorScheme.primary, child: Icon(actions[index].icon)), title: Text(actions[index].title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)), trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurface))), if (index != actions.length - 1) const SizedBox(height: 10)]]);
+    return Column(children: [for (var index = 0; index < actions.length; index++) ...[Card(margin: EdgeInsets.zero, elevation: 0, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: ListTile(onTap: () => onOpen(actions[index].page), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.surface, foregroundColor: Theme.of(context).colorScheme.primary, child: Icon(actions[index].icon)), title: Text(actions[index].title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)), trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurface))), if (index != actions.length - 1) const SizedBox(height: 10)]]);
   }
 }
 
@@ -198,7 +198,7 @@ class _ProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(margin: EdgeInsets.zero, elevation: 0, color: scheme.surfaceVariant, child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Expanded(child: Text('حضور اليوم', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))), Text('${(progress * 100).round()}%', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w900))]), const SizedBox(height: 14), ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: total == 0 ? 0 : progress, minHeight: 10, backgroundColor: scheme.surface, color: scheme.primary)), const SizedBox(height: 12), Text(total == 0 ? 'أضف طلاباً لتبدأ متابعة حضور اليوم.' : 'تم تسجيل حضور $completed من أصل $total طالب.')])));
+    return Card(margin: EdgeInsets.zero, elevation: 0, color: scheme.surfaceContainerHighest, child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Expanded(child: Text('حضور اليوم', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))), Text('${(progress * 100).round()}%', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w900))]), const SizedBox(height: 14), ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: total == 0 ? 0 : progress, minHeight: 10, backgroundColor: scheme.surface, color: scheme.primary)), const SizedBox(height: 12), Text(total == 0 ? 'أضف طلاباً لتبدأ متابعة حضور اليوم.' : 'تم تسجيل حضور $completed من أصل $total طالب.')])));
   }
 }
 
@@ -207,7 +207,7 @@ class _AlertCard extends StatelessWidget {
   final int alerts;
   final VoidCallback onOpen;
   @override
-  Widget build(BuildContext context) { final scheme = Theme.of(context).colorScheme; return Card(margin: EdgeInsets.zero, color: alerts == 0 ? scheme.surfaceVariant : scheme.errorContainer, child: ListTile(onTap: onOpen, leading: Icon(alerts == 0 ? Icons.check_circle_outline : Icons.warning_amber_outlined, color: alerts == 0 ? scheme.primary : scheme.error), title: Text(alerts == 0 ? 'لا توجد تنبيهات سلوكية' : '$alerts طالب يحتاج إلى متابعة', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: const Text('افتح سجل السلوك لمراجعة التفاصيل'), trailing: const Icon(Icons.arrow_back_ios_new, size: 16))); }
+  Widget build(BuildContext context) { final scheme = Theme.of(context).colorScheme; return Card(margin: EdgeInsets.zero, color: alerts == 0 ? scheme.surfaceContainerHighest : scheme.errorContainer, child: ListTile(onTap: onOpen, leading: Icon(alerts == 0 ? Icons.check_circle_outline : Icons.warning_amber_outlined, color: alerts == 0 ? scheme.primary : scheme.error), title: Text(alerts == 0 ? 'لا توجد تنبيهات سلوكية' : '$alerts طالب يحتاج إلى متابعة', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: const Text('افتح سجل السلوك لمراجعة التفاصيل'), trailing: const Icon(Icons.arrow_back_ios_new, size: 16))); }
 }
 
 class _StudentTile extends StatelessWidget {
@@ -215,7 +215,7 @@ class _StudentTile extends StatelessWidget {
   final Student student;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) { final scheme = Theme.of(context).colorScheme; return Card(margin: EdgeInsets.zero, elevation: 0, color: scheme.surfaceVariant, child: ListTile(onTap: onTap, leading: CircleAvatar(backgroundColor: scheme.surface, foregroundColor: scheme.primary, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first)), title: Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(student.studentNumber.isEmpty ? 'رقم غير محدد' : student.studentNumber), trailing: const Icon(Icons.arrow_back_ios_new, size: 16))); }
+  Widget build(BuildContext context) { final scheme = Theme.of(context).colorScheme; return Card(margin: EdgeInsets.zero, elevation: 0, color: scheme.surfaceContainerHighest, child: ListTile(onTap: onTap, leading: CircleAvatar(backgroundColor: scheme.surface, foregroundColor: scheme.primary, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first)), title: Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(student.studentNumber.isEmpty ? 'رقم غير محدد' : student.studentNumber), trailing: const Icon(Icons.arrow_back_ios_new, size: 16))); }
 }
 
 class _EmptyState extends StatelessWidget {
