@@ -8,7 +8,6 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../behavior/behavior_summary.dart';
 import '../database/app_snapshot.dart';
-import '../database/isar_models.dart';
 import '../utils/iterable_extensions.dart';
 
 class ReportService {
