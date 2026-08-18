@@ -1,11 +1,11 @@
 # External implementation references
 
-1. Isar package documentation: https://pub.dev/packages/isar
-   - The official package README documents Isar 3.1.0 quickstart, `@collection`, `@embedded`, `part '*.g.dart'`, `Isar.open([...Schema])`, transactions, and watchers.
-   - The implementation uses the documented generated-schema workflow and keeps `isar_generator`/`build_runner` as development dependencies.
+1. Isar community package documentation: https://pub.dev/packages/isar_community
+   - The maintained community fork preserves the Isar v3 API (`@collection`, `@embedded`, `part '*.g.dart'`, `Isar.open([...Schema])`, transactions, and watchers) while adding Android namespace support.
+   - The implementation uses the generated-schema workflow and keeps `isar_community_generator`/`build_runner` as development dependencies.
 
-2. Isar generator: https://pub.dev/packages/isar_generator
-   - Code generator for Isar collection schemas.
+2. Isar community generator: https://pub.dev/packages/isar_community_generator
+   - Code generator for Isar community collection schemas.
 
 3. flutter_local_notifications 17.2.4: https://pub.dev/packages/flutter_local_notifications/versions/17.2.4
    - The version documentation covers Android initialization, notification channels, Android 13+ notification permission, scheduled notifications, pending requests, and release-build configuration.
@@ -38,3 +38,12 @@
 
 - Pub package metadata: https://pub.dev/api/packages/timezone
 - `flutter_local_notifications` 17.2.4 requires `timezone ^0.9.0`; the project therefore pins `timezone: ^0.9.4` instead of the incompatible 0.11.x line.
+
+
+## Isar Android namespace compatibility
+
+- The original `isar_flutter_libs` 3.1.0+1 fails with AGP 8+ because its Android library module has no namespace; the failure is documented in https://github.com/isar/isar/issues/1354 and https://github.com/isar/isar/issues/1729.
+- Maintained community fork: https://pub.dev/packages/isar_community
+- Community Flutter binary package: https://pub.dev/packages/isar_community_flutter_libs
+- `isar_community` 3.3.1 changelog states that Android Namespaces support was added and also addresses Android 16KB page-size compatibility: https://pub.dev/packages/isar_community/versions/3.3.1/changelog
+- This is a clean dependency-level compatibility fix, preferable to mutating the pub cache or injecting a Gradle namespace workaround.

@@ -17,7 +17,7 @@ if ! grep -RInq 'ListView.builder' lib; then
   echo 'ListView.builder is missing.'
   fail=1
 fi
-if ! grep -q '^  isar:' pubspec.yaml || ! grep -q '^  isar_flutter_libs:' pubspec.yaml; then
+if ! grep -q '^  isar_community:' pubspec.yaml || ! grep -q '^  isar_community_flutter_libs:' pubspec.yaml; then
   echo 'Isar dependencies are missing.'
   fail=1
 fi
