@@ -103,6 +103,23 @@ class ClassesPage extends ConsumerWidget {
       builder: (sheetContext) => AppFormSheet(
         title: editing ? 'تعديل الصف' : 'إضافة صف',
         subtitle: editing ? 'تحديث بيانات الصف وحفظها في السجل المحلي.' : 'أدخل بيانات الصف الأساسية للبدء بإضافة الشعب.',
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('إلغاء')),
+          FilledButton.icon(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              final controller = ref.read(appControllerProvider.notifier);
+              if (editing) {
+                await controller.updateClass(classUuid: schoolClass.uuid, name: name.text, stage: stage.text, notes: notes.text);
+              } else {
+                await controller.addClass(name: name.text, stage: stage.text, notes: notes.text);
+              }
+              if (sheetContext.mounted) Navigator.pop(sheetContext);
+            },
+            icon: Icon(editing ? Icons.save_outlined : Icons.add_outlined),
+            label: Text(editing ? 'حفظ التعديل' : 'حفظ الصف'),
+          ),
+        ],
         child: Form(
           key: formKey,
           child: Column(
@@ -128,23 +145,6 @@ class ClassesPage extends ConsumerWidget {
             ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('إلغاء')),
-          FilledButton.icon(
-            onPressed: () async {
-              if (!(formKey.currentState?.validate() ?? false)) return;
-              final controller = ref.read(appControllerProvider.notifier);
-              if (editing) {
-                await controller.updateClass(classUuid: schoolClass!.uuid, name: name.text, stage: stage.text, notes: notes.text);
-              } else {
-                await controller.addClass(name: name.text, stage: stage.text, notes: notes.text);
-              }
-              if (sheetContext.mounted) Navigator.pop(sheetContext);
-            },
-            icon: Icon(editing ? Icons.save_outlined : Icons.add_outlined),
-            label: Text(editing ? 'حفظ التعديل' : 'حفظ الصف'),
-          ),
-        ],
       ),
     );
     name.dispose();
@@ -165,6 +165,23 @@ class ClassesPage extends ConsumerWidget {
       builder: (sheetContext) => AppFormSheet(
         title: editing ? 'تعديل الشعبة' : 'إضافة شعبة',
         subtitle: editing ? 'تحديث بيانات الشعبة التابعة إلى $className.' : 'إضافة شعبة جديدة إلى $className.',
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('إلغاء')),
+          FilledButton.icon(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              final controller = ref.read(appControllerProvider.notifier);
+              if (editing) {
+                await controller.updateSection(sectionUuid: section.uuid, name: name.text, notes: notes.text);
+              } else {
+                await controller.addSection(classUuid: classUuid, name: name.text, notes: notes.text);
+              }
+              if (sheetContext.mounted) Navigator.pop(sheetContext);
+            },
+            icon: Icon(editing ? Icons.save_outlined : Icons.add_outlined),
+            label: Text(editing ? 'حفظ التعديل' : 'حفظ الشعبة'),
+          ),
+        ],
         child: Form(
           key: formKey,
           child: Column(
@@ -185,23 +202,6 @@ class ClassesPage extends ConsumerWidget {
             ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('إلغاء')),
-          FilledButton.icon(
-            onPressed: () async {
-              if (!(formKey.currentState?.validate() ?? false)) return;
-              final controller = ref.read(appControllerProvider.notifier);
-              if (editing) {
-                await controller.updateSection(sectionUuid: section.uuid, name: name.text, notes: notes.text);
-              } else {
-                await controller.addSection(classUuid: classUuid, name: name.text, notes: notes.text);
-              }
-              if (sheetContext.mounted) Navigator.pop(sheetContext);
-            },
-            icon: Icon(editing ? Icons.save_outlined : Icons.add_outlined),
-            label: Text(editing ? 'حفظ التعديل' : 'حفظ الشعبة'),
-          ),
-        ],
       ),
     );
     name.dispose();
