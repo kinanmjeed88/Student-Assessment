@@ -310,8 +310,6 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
   InputDecoration _decoration(String label) => InputDecoration(labelText: label);
   TextFormField _input(TextEditingController controller, String label, {bool numeric = false, bool required = true, int maxLines = 1}) => TextFormField(controller: controller, maxLines: maxLines, keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text, decoration: _decoration(label), validator: required ? (value) => value == null || value.trim().isEmpty ? 'هذا الحقل مطلوب' : null : null);
 
-  String _statusLabel(StudentStatus status) => switch (status) { StudentStatus.active => 'نشط', StudentStatus.transferred => 'منقول', StudentStatus.graduated => 'متخرج', StudentStatus.suspended => 'موقوف' };
-  IconData _statusIcon(StudentStatus status) => switch (status) { StudentStatus.active => Icons.check_circle_outline, StudentStatus.transferred => Icons.swap_horiz, StudentStatus.graduated => Icons.school_outlined, StudentStatus.suspended => Icons.pause_circle_outline };
 }
 
 class _ProfileHeader extends StatelessWidget {

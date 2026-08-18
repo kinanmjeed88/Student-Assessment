@@ -5,7 +5,6 @@ import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../behavior/presentation/behavior_page.dart';
 import '../../classes/presentation/classes_page.dart';
