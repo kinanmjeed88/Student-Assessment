@@ -134,7 +134,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                 TextField(controller: number, decoration: const InputDecoration(labelText: 'رقم الطالب (اختياري)')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: classUuid,
+                  initialValue: classUuid,
                   decoration: const InputDecoration(labelText: 'الفصل'),
                   items: classes.map((item) => DropdownMenuItem<String>(value: item.uuid as String, child: Text(item.name as String))).toList(),
                   onChanged: (value) => setDialogState(() => classUuid = value ?? classUuid),

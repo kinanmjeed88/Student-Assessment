@@ -55,8 +55,8 @@ class StudentDetailsPage extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text('المتابعة', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 10),
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Expanded(child: _FeatureButton(icon: Icons.fact_check_outlined, label: 'الحضور')),
                     SizedBox(width: 10),
                     Expanded(child: _FeatureButton(icon: Icons.assessment_outlined, label: 'الدرجات')),

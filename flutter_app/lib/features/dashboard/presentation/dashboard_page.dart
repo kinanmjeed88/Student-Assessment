@@ -37,7 +37,7 @@ class DashboardPage extends ConsumerWidget {
                   _StatCard(label: 'إجمالي الطلاب', value: '${snapshot.students.length}', icon: Icons.groups, color: AppTheme.primary),
                   _StatCard(label: 'الفصول', value: '${snapshot.classes.length}', icon: Icons.class_, color: const Color(0xFF0F766E)),
                   _StatCard(label: 'حقول الدرجات', value: '${snapshot.gradeFields.length}', icon: Icons.assessment, color: const Color(0xFF7C3AED)),
-                  _StatCard(label: 'الحالة', value: 'محلي', icon: Icons.cloud_off, color: AppTheme.positive),
+                  const _StatCard(label: 'الحالة', value: 'محلي', icon: Icons.cloud_off, color: AppTheme.positive),
                 ],
               ),
               const SizedBox(height: 24),

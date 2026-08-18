@@ -18,6 +18,7 @@ class LocalRepository implements LocalStore {
 
   Future<Isar> get _db => _databaseService.open();
 
+  @override
   Future<AppSnapshot> loadSnapshot() async {
     final db = await _db;
     final settings = await db.appSettings.get(1) ?? AppSettings();
@@ -45,6 +46,7 @@ class LocalRepository implements LocalStore {
     );
   }
 
+  @override
   Future<SchoolClass> createClass({
     required String name,
     String stage = '',
@@ -77,6 +79,7 @@ class LocalRepository implements LocalStore {
     return section;
   }
 
+  @override
   Future<Student> createStudent({
     required String firstName,
     required String lastName,
@@ -108,6 +111,7 @@ class LocalRepository implements LocalStore {
     return student;
   }
 
+  @override
   Future<void> setAttendance({
     required String studentUuid,
     required DateTime date,
@@ -179,6 +183,7 @@ class LocalRepository implements LocalStore {
     });
   }
 
+  @override
   Future<void> updateSettings({
     required String schoolName,
     required String teacherName,
@@ -196,6 +201,7 @@ class LocalRepository implements LocalStore {
     await db.writeTxn(() => db.appSettings.put(settings));
   }
 
+  @override
   Future<void> deleteClassCascade(String classUuid) async {
     final db = await _db;
     await db.writeTxn(() async {
@@ -247,6 +253,7 @@ class LocalRepository implements LocalStore {
     });
   }
 
+  @override
   Future<void> deleteStudentCascade(String studentUuid) async {
     final db = await _db;
     await db.writeTxn(() async {
@@ -272,6 +279,7 @@ class LocalRepository implements LocalStore {
     });
   }
 
+  @override
   Future<String> exportBackupJson() async {
     final db = await _db;
     final payload = <String, dynamic>{
