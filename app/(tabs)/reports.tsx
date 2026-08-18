@@ -1,5 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
 import { EmptyState, PrimaryButton, ScreenHeader, SecondaryButton, colors } from "@/components/app-ui";
 import { ScreenContainer } from "@/components/screen-container";
 import { buildSchoolReport, sharePdf, shareWorkbook } from "@/lib/reporting";
@@ -8,13 +9,14 @@ import { toArabicDigits } from "@/lib/arabic-numbers-extension";
 
 export default function ReportsScreen() {
   const { data, showSuccess } = useStudentStore();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const exportPdf = async () => {
     try {
       await sharePdf(buildSchoolReport(data), "تقرير المدرسة");
       showSuccess("تم إنشاء تقرير PDF بنجاح.");
     } catch {
-      Alert.alert("تعذر إنشاء التقرير", "تحقق من صلاحية مشاركة الملفات وحاول مرة أخرى.");
+      setErrorMessage("تعذر إنشاء التقرير. تحقق من صلاحية مشاركة الملفات وحاول مرة أخرى.");
     }
   };
 
@@ -23,12 +25,12 @@ export default function ReportsScreen() {
       await shareWorkbook(data, "بيانات_المدرسة");
       showSuccess("تم إنشاء ملف Excel بنجاح.");
     } catch {
-      Alert.alert("تعذر إنشاء ملف Excel", "حاول مرة أخرى بعد إضافة بعض البيانات.");
+      setErrorMessage("تعذر إنشاء ملف Excel. حاول مرة أخرى بعد إضافة بعض البيانات.");
     }
   };
 
   return (
-    <ScreenContainer edges={["top", "left", "right"]} className="p-4">
+    <ScreenContainer edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScreenHeader title="التقارير والتصدير" subtitle="ملفات منظمة قابلة للطباعة والمشاركة" />
 
@@ -64,7 +66,25 @@ export default function ReportsScreen() {
           </Text>
         </View>
       </ScrollView>
+      <ReportErrorModal message={errorMessage} onClose={() => setErrorMessage(null)} />
     </ScreenContainer>
+  );
+}
+
+function ReportErrorModal({ message, onClose }: { message: string | null; onClose: () => void }) {
+  return (
+    <Modal transparent visible={Boolean(message)} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.errorModal}>
+          <View style={styles.errorIcon}><MaterialIcons name="error-outline" size={28} color={colors.danger} /></View>
+          <Text style={styles.errorTitle}>تعذر تنفيذ العملية</Text>
+          <Text style={styles.errorMessage}>{message}</Text>
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.errorButton, pressed && styles.errorButtonPressed]}>
+            <Text style={styles.errorButtonText}>حسنًا</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -98,4 +118,12 @@ const styles = StyleSheet.create({
   rowSub: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 3, textAlign: "right" },
   note: { borderRadius: 16, backgroundColor: "#E9F1FA", padding: 16, flexDirection: "row-reverse", alignItems: "flex-start", gap: 10 },
   noteText: { flex: 1, color: colors.navy, textAlign: "right", fontSize: 14, lineHeight: 22 },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(12, 32, 55, 0.44)", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+  errorModal: { width: "100%", maxWidth: 420, backgroundColor: colors.white, borderRadius: 22, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: colors.border },
+  errorIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.dangerSurface, alignItems: "center", justifyContent: "center" },
+  errorTitle: { color: colors.ink, fontSize: 19, lineHeight: 27, fontWeight: "800", textAlign: "center" },
+  errorMessage: { color: colors.muted, fontSize: 15, lineHeight: 23, textAlign: "center" },
+  errorButton: { minHeight: 46, minWidth: 130, borderRadius: 13, backgroundColor: colors.blue, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, marginTop: 6 },
+  errorButtonPressed: { opacity: 0.78 },
+  errorButtonText: { color: colors.white, fontSize: 16, lineHeight: 22, fontWeight: "800" },
 });

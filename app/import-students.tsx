@@ -46,7 +46,7 @@ export default function ImportStudentsScreen() {
     router.replace("/(tabs)/students" as any);
   };
 
-  return <ScreenContainer className="px-4" edges={["top", "bottom", "left", "right"]}>
+  return <ScreenContainer edges={["top", "bottom", "left", "right"]}>
     <FlatList
       data={preview?.names ?? []}
       keyExtractor={(name, index) => `${name}-${index}`}

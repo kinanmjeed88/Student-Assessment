@@ -21,7 +21,7 @@ export default function ImportHistoryScreen() {
     ]);
   };
 
-  return <ScreenContainer className="px-4" edges={["top", "bottom", "left", "right"]}>
+  return <ScreenContainer edges={["top", "bottom", "left", "right"]}>
     <FlatList
       data={data.importHistory}
       keyExtractor={(item) => item.id}

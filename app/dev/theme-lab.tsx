@@ -55,7 +55,7 @@ export default function ThemeLabScreen() {
   }, []);
 
   return (
-    <ScreenContainer className="p-5">
+    <ScreenContainer>
       <ScrollView className="flex-1">
         <View className="gap-4 pb-8">
           <View className="flex-row gap-2">

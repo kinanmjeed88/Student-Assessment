@@ -32,14 +32,15 @@ export default function StudentsScreen() {
     if (params.add === "1") setFormOpen(true);
   }, [params.add]);
 
+  const normalizedQuery = query.trim().toLowerCase();
   const students = useMemo(() => {
     const scoped = data.students.filter((student) =>
       (!classId || student.classId === classId) &&
       (!sectionId || student.sectionId === sectionId) &&
-      (!query || `${student.fullName} ${student.studentNumber}`.includes(query.trim())),
+      (!normalizedQuery || `${student.fullName} ${student.studentNumber}`.toLowerCase().includes(normalizedQuery)),
     );
     return sortStudentsArabic(filterStudentsByAttention(data, scoped, attentionFilter));
-  }, [attentionFilter, classId, data, query, sectionId]);
+  }, [attentionFilter, classId, data, normalizedQuery, sectionId]);
 
   const classLabel = data.classes.find((item) => item.id === classId)?.name;
   const sectionLabel = data.sections.find((item) => item.id === sectionId)?.name;
@@ -49,11 +50,12 @@ export default function StudentsScreen() {
   ].filter(Boolean).join(" · ");
 
   const save = () => {
+    const sectionsForClass = data.sections.filter((section) => section.classId === form.classId);
     const next = {
       firstName: required(form.firstName, "الاسم الأول"),
       lastName: required(form.lastName, "اسم العائلة"),
       classId: required(form.classId, "الصف"),
-      sectionId: required(form.sectionId, "الشعبة"),
+      sectionId: sectionsForClass.length ? required(form.sectionId, "الشعبة") : undefined,
       guardianPhone: validPhone(form.guardianPhone),
     };
     const active = Object.fromEntries(Object.entries(next).filter(([, value]) => value)) as Record<string, string>;
@@ -66,7 +68,7 @@ export default function StudentsScreen() {
   };
 
   return (
-    <ScreenContainer edges={["top", "left", "right"]} className="p-4">
+    <ScreenContainer edges={["top", "left", "right"]}>
       <ScreenHeader title="الطلاب" subtitle={`${toArabicDigits(data.students.length)} طالبًا مسجلًا`} />
 
       <View style={styles.addStudentAction}>
@@ -95,6 +97,10 @@ export default function StudentsScreen() {
         <FlatList
           data={students}
           keyExtractor={(item) => item.id}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
           style={styles.studentList}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -132,7 +138,7 @@ export default function StudentsScreen() {
         </ScrollView>
       </Sheet>
 
-      <StudentForm visible={formOpen} onClose={() => { setFormOpen(false); setErrors({}); }} data={data} form={form} setForm={setForm} errors={errors} onSave={save} />
+      <StudentForm visible={formOpen} onClose={() => { setFormOpen(false); setForm(emptyForm); setErrors({}); }} data={data} form={form} setForm={setForm} errors={errors} onSave={save} />
     </ScreenContainer>
   );
 }
@@ -174,12 +180,12 @@ function StudentForm({ visible, onClose, data, form, setForm, errors, onSave }: 
         <Text style={styles.choiceLabel}>الصف</Text>
         <View style={styles.choices}>{data.classes.map((item) => <ChoicePill key={item.id} label={item.name} selected={form.classId === item.id} onPress={() => set("classId", item.id)} />)}</View>
         {errors.classId ? <Text style={styles.formError}>{errors.classId}</Text> : null}
-        <Text style={styles.choiceLabel}>الشعبة</Text>
-        <View style={styles.choices}>{sections.map((item) => <ChoicePill key={item.id} label={item.name} selected={form.sectionId === item.id} onPress={() => set("sectionId", item.id)} />)}</View>
+        <Text style={styles.choiceLabel}>الشعبة {sections.length ? "" : "(اختيارية)"}</Text>
+        <View style={styles.choices}>{sections.length ? sections.map((item) => <ChoicePill key={item.id} label={item.name} selected={form.sectionId === item.id} onPress={() => set("sectionId", item.id)} />) : <Text style={styles.optionalHint}>لا توجد شعب لهذا الصف؛ يمكنك حفظ الطالب دون شعبة.</Text>}</View>
         {errors.sectionId ? <Text style={styles.formError}>{errors.sectionId}</Text> : null}
         <Field label="اسم ولي الأمر" value={form.guardianName} onChangeText={(value) => set("guardianName", value)} placeholder="اختياري" />
         <Field label="هاتف ولي الأمر" value={form.guardianPhone} onChangeText={(value) => set("guardianPhone", value)} keyboardType="phone-pad" error={errors.guardianPhone} placeholder="اختياري" />
-        <PrimaryButton label="حفظ الطالب" icon="save" onPress={onSave} disabled={!data.classes.length || !data.sections.length} />
+        <PrimaryButton label="حفظ الطالب" icon="save" onPress={onSave} disabled={!data.classes.length} />
       </ScrollView>
     </Sheet>
   );
@@ -212,4 +218,5 @@ const styles = StyleSheet.create({
   filterActions: { flexDirection: "row", gap: 10, marginTop: 16 },
   formContent: { paddingBottom: 22 },
   formError: { color: colors.danger, fontSize: 14, lineHeight: 20, marginTop: -9, marginBottom: 13, textAlign: "right" },
+  optionalHint: { flex: 1, color: colors.muted, fontSize: 14, lineHeight: 21, textAlign: "right" },
 });

@@ -1,12 +1,12 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { I18nManager, KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SuccessNotice } from "@/components/app-ui";
 import { StudentStoreProvider, useStudentStore } from "@/lib/student-store";
 import { appTheme } from "@/lib/theme";
 
-// الإعداد العام المكافئ لـ locale: const Locale("ar", "AE") في Flutter.
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 
@@ -27,30 +27,48 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <StudentStoreProvider>
-      <KeyboardAvoidingView style={styles.root} behavior={Platform.select({ ios: "padding", android: "height" })}>
-        <View style={styles.rtlShell}>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false, animation: "slide_from_left" }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="classes" />
-            <Stack.Screen name="import-students" />
-            <Stack.Screen name="student/[id]" />
-          </Stack>
-          <SaveFeedback />
-        </View>
-      </KeyboardAvoidingView>
-    </StudentStoreProvider>
+    <SafeAreaProvider>
+      <StudentStoreProvider>
+        <KeyboardAvoidingView style={styles.root} behavior={Platform.select({ ios: "padding", android: "height" })}>
+          <View style={styles.rtlShell}>
+            <StatusBar style="dark" />
+            <Stack screenOptions={{ headerShown: false, animation: "slide_from_left" }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="classes" />
+              <Stack.Screen name="import-students" />
+              <Stack.Screen name="student/[id]" />
+            </Stack>
+            <SaveFeedback />
+          </View>
+        </KeyboardAvoidingView>
+      </StudentStoreProvider>
+    </SafeAreaProvider>
   );
 }
 
 function SaveFeedback() {
   const { successMessage, clearSuccess } = useStudentStore();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
     if (!successMessage) return;
-    const timer = setTimeout(clearSuccess, 3200);
-    return () => clearTimeout(timer);
+
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
+      clearSuccess();
+    }, 3200);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
   }, [clearSuccess, successMessage]);
 
   return successMessage ? (
