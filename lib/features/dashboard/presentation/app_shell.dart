@@ -28,33 +28,16 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = const [
-      DashboardPage(),
-      StudentsPage(),
-      ClassesPage(),
-      AttendancePage(),
-      SettingsPage(),
-    ];
-
+    const pages = [DashboardPage(), StudentsPage(), ClassesPage(), AttendancePage(), SettingsPage()];
     return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(index: _index, children: pages),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (value) => setState(() => _index = value),
-          destinations: _destinations,
-        ),
-      ),
+      body: SafeArea(child: IndexedStack(index: _index, children: pages)),
+      bottomNavigationBar: SafeArea(top: false, child: NavigationBar(selectedIndex: _index, onDestinationSelected: (value) => setState(() => _index = value), destinations: _destinations)),
     );
   }
 }
 
 class AsyncStateView extends StatelessWidget {
   const AsyncStateView({required this.state, required this.child, super.key});
-
   final AsyncValue<dynamic> state;
   final Widget child;
 
@@ -62,24 +45,10 @@ class AsyncStateView extends StatelessWidget {
   Widget build(BuildContext context) {
     return state.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 12),
-              const Text('تعذر تحميل البيانات المحلية.'),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => context.findAncestorStateOfType<_AppShellState>()?.ref.refresh(appControllerProvider),
-                child: const Text('إعادة المحاولة'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      error: (error, stackTrace) {
+        final scheme = Theme.of(context).colorScheme;
+        return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [Icon(Icons.error_outline, size: 48, color: scheme.error), const SizedBox(height: 12), Text('تعذر تحميل البيانات المحلية.\n$error'), const SizedBox(height: 12), ElevatedButton(onPressed: () => context.findAncestorStateOfType<_AppShellState>()?.ref.refresh(appControllerProvider), child: const Text('إعادة المحاولة'))])));
+      },
       data: (_) => child,
     );
   }

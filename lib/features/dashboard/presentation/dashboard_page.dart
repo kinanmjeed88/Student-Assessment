@@ -1,725 +1,196 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers.dart';
+import '../../../core/behavior/behavior_summary.dart';
+import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
+import '../../../core/providers.dart';
 import '../../classes/presentation/classes_page.dart';
+import '../../grades/presentation/grades_page.dart';
+import '../../import/presentation/import_history_page.dart';
+import '../../import/presentation/import_students_page.dart';
 import '../../presence/presentation/attendance_page.dart';
+import '../../reports/presentation/reports_page.dart';
 import '../../students/presentation/student_details_page.dart';
 import '../../students/presentation/students_page.dart';
+import '../../behavior/presentation/behavior_page.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     final state = ref.watch(appControllerProvider);
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: state.when(
-        loading: () => Center(
-          child: CircularProgressIndicator(color: colorScheme.primary),
-        ),
-        error: (_, __) => _DashboardError(
-          colorScheme: colorScheme,
-          onRetry: () => ref.read(appControllerProvider.notifier).refresh(),
-        ),
+        loading: () => Center(child: CircularProgressIndicator(color: scheme.primary)),
+        error: (_, __) => _ErrorState(onRetry: () => ref.read(appControllerProvider.notifier).refresh()),
         data: (snapshot) => RefreshIndicator(
-          color: colorScheme.primary,
+          color: scheme.primary,
           onRefresh: () => ref.read(appControllerProvider.notifier).refresh(),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
-            child: _DashboardContent(
-              snapshot: snapshot,
-              colorScheme: colorScheme,
-              onOpenStudents: () => _openPage(context, const StudentsPage()),
-              onOpenClasses: () => _openPage(context, const ClassesPage()),
-              onOpenAttendance: () =>
-                  _openPage(context, const AttendancePage()),
-            ),
+            child: _DashboardContent(snapshot: snapshot, onOpen: (page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page))),
           ),
         ),
       ),
-    );
-  }
-
-  void _openPage(BuildContext context, Widget page) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => page),
     );
   }
 }
 
 class _DashboardContent extends StatelessWidget {
-  const _DashboardContent({
-    required this.snapshot,
-    required this.colorScheme,
-    required this.onOpenStudents,
-    required this.onOpenClasses,
-    required this.onOpenAttendance,
-  });
-
+  const _DashboardContent({required this.snapshot, required this.onOpen});
   final AppSnapshot snapshot;
-  final ColorScheme colorScheme;
-  final VoidCallback onOpenStudents;
-  final VoidCallback onOpenClasses;
-  final VoidCallback onOpenAttendance;
+  final ValueChanged<Widget> onOpen;
 
   @override
   Widget build(BuildContext context) {
-    final schoolName = snapshot.settings.schoolName.trim().isEmpty
-        ? 'حليف القرآن'
-        : snapshot.settings.schoolName.trim();
-    final presentToday = snapshot.todayAttendance
-        .where(
-          (record) =>
-              record.status == AttendanceStatus.present ||
-              record.status == AttendanceStatus.late,
-        )
-        .length;
+    final scheme = Theme.of(context).colorScheme;
     final totalStudents = snapshot.students.length;
-    final attendanceProgress = totalStudents == 0
-        ? 0.0
-        : (presentToday / totalStudents).clamp(0.0, 1.0).toDouble();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _WelcomeHeader(
-          schoolName: schoolName,
-          teacherName: snapshot.settings.teacherName,
-          colorScheme: colorScheme,
-        ),
-        const SizedBox(height: 24),
-        _SectionTitle(title: 'نظرة عامة', colorScheme: colorScheme),
-        const SizedBox(height: 12),
-        _StatsSection(
-          totalStudents: totalStudents,
-          classesCount: snapshot.classes.length,
-          presentToday: presentToday,
-          colorScheme: colorScheme,
-        ),
-        const SizedBox(height: 24),
-        _SectionTitle(title: 'إجراءات سريعة', colorScheme: colorScheme),
-        const SizedBox(height: 12),
-        _QuickActions(
-          colorScheme: colorScheme,
-          onOpenStudents: onOpenStudents,
-          onOpenClasses: onOpenClasses,
-          onOpenAttendance: onOpenAttendance,
-        ),
-        const SizedBox(height: 24),
-        _SectionTitle(title: 'المتابعة', colorScheme: colorScheme),
-        const SizedBox(height: 12),
-        _ProgressCard(
-          progress: attendanceProgress,
-          completed: presentToday,
-          total: totalStudents,
-          colorScheme: colorScheme,
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: _SectionTitle(
-                title: 'أحدث الطلاب',
-                colorScheme: colorScheme,
-              ),
-            ),
-            Text(
-              '$totalStudents سجل',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (snapshot.students.isEmpty)
-          _EmptyState(
-            colorScheme: colorScheme,
-            icon: Icons.person_add_alt_1_rounded,
-            message: 'لم تتم إضافة طلاب بعد.',
-          )
-        else
-          ...snapshot.students.take(6).map(
-                (student) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _StudentTile(
-                    student: student,
-                    colorScheme: colorScheme,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            StudentDetailsPage(studentUuid: student.uuid),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-      ],
-    );
+    final presentToday = snapshot.todayAttendance.where((item) => item.status == AttendanceStatus.present || item.status == AttendanceStatus.late).length;
+    final attendanceProgress = totalStudents == 0 ? 0.0 : (presentToday / totalStudents).clamp(0.0, 1.0).toDouble();
+    final alerts = snapshot.students.where((student) => calculateBehaviorSummary(records: snapshot.behaviorsFor(student.uuid), settings: snapshot.settings).hasAlert).length;
+    final schoolName = snapshot.settings.schoolName.trim().isEmpty ? 'حليف القرآن' : snapshot.settings.schoolName.trim();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _WelcomeHeader(schoolName: schoolName, teacherName: snapshot.settings.teacherName),
+      const SizedBox(height: 24),
+      _Title('نظرة عامة'),
+      const SizedBox(height: 12),
+      _StatsSection(totalStudents: totalStudents, alerts: alerts, presentToday: presentToday),
+      const SizedBox(height: 24),
+      _Title('إجراءات سريعة'),
+      const SizedBox(height: 12),
+      _QuickActions(onOpen: onOpen),
+      const SizedBox(height: 24),
+      _Title('المتابعة'),
+      const SizedBox(height: 12),
+      _ProgressCard(progress: attendanceProgress, completed: presentToday, total: totalStudents),
+      const SizedBox(height: 12),
+      _AlertCard(alerts: alerts, onOpen: () => onOpen(const BehaviorPage())),
+      const SizedBox(height: 24),
+      Row(children: [Expanded(child: _Title('أحدث الطلاب')), Text('$totalStudents سجل', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurface))]),
+      const SizedBox(height: 12),
+      if (snapshot.students.isEmpty)
+        _EmptyState(message: 'لم تتم إضافة طلاب بعد.')
+      else
+        ...snapshot.students.take(6).map((student) => Padding(padding: const EdgeInsets.only(bottom: 10), child: _StudentTile(student: student, onTap: () => onOpen(StudentDetailsPage(studentUuid: student.uuid))))),
+    ]);
   }
 }
 
 class _WelcomeHeader extends StatelessWidget {
-  const _WelcomeHeader({
-    required this.schoolName,
-    required this.teacherName,
-    required this.colorScheme,
-  });
-
+  const _WelcomeHeader({required this.schoolName, required this.teacherName});
   final String schoolName;
   final String teacherName;
-  final ColorScheme colorScheme;
-
   @override
   Widget build(BuildContext context) {
-    final greeting = teacherName.trim().isEmpty
-        ? 'نظرة سريعة على سجل الطلاب اليوم'
-        : 'مرحباً أستاذ $teacherName، إليك ملخص اليوم';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  schoolName,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: colorScheme.surface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  greeting,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.surface,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.auto_awesome_rounded,
-              color: colorScheme.primary,
-              size: 28,
-            ),
-          ),
-        ],
-      ),
-    );
+    final scheme = Theme.of(context).colorScheme;
+    final greeting = teacherName.trim().isEmpty ? 'نظرة سريعة على سجل الطلاب اليوم' : 'مرحباً أستاذ $teacherName، إليك ملخص اليوم';
+    return Container(width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(24)), child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(schoolName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: scheme.onPrimary, fontWeight: FontWeight.w900)), const SizedBox(height: 6), Text(greeting, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onPrimary))])), const SizedBox(width: 12), CircleAvatar(radius: 27, backgroundColor: scheme.onPrimary, foregroundColor: scheme.primary, child: const Icon(Icons.auto_awesome_rounded, size: 28))]));
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.title,
-    required this.colorScheme,
-  });
-
-  final String title;
-  final ColorScheme colorScheme;
-
+class _Title extends StatelessWidget {
+  const _Title(this.text);
+  final String text;
   @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w800,
-          ),
-    );
-  }
+  Widget build(BuildContext context) => Text(text, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800));
 }
 
 class _StatsSection extends StatelessWidget {
-  const _StatsSection({
-    required this.totalStudents,
-    required this.classesCount,
-    required this.presentToday,
-    required this.colorScheme,
-  });
-
+  const _StatsSection({required this.totalStudents, required this.alerts, required this.presentToday});
   final int totalStudents;
-  final int classesCount;
+  final int alerts;
   final int presentToday;
-  final ColorScheme colorScheme;
-
   @override
   Widget build(BuildContext context) {
-    final cards = [
-      _StatCard(
-        value: '$totalStudents',
-        label: 'إجمالي الطلاب',
-        icon: Icons.groups_rounded,
-        colorScheme: colorScheme,
-      ),
-      _StatCard(
-        value: '$classesCount',
-        label: 'الفصول',
-        icon: Icons.class_rounded,
-        colorScheme: colorScheme,
-      ),
-      _StatCard(
-        value: '$presentToday',
-        label: 'حضور اليوم',
-        icon: Icons.fact_check_rounded,
-        colorScheme: colorScheme,
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 380) {
-          return Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 10),
-                  Expanded(child: cards[1]),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SizedBox(width: double.infinity, child: cards[2]),
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: cards[0]),
-            const SizedBox(width: 10),
-            Expanded(child: cards[1]),
-            const SizedBox(width: 10),
-            Expanded(child: cards[2]),
-          ],
-        );
-      },
-    );
+    final cards = [_StatCard(value: '$totalStudents', label: 'إجمالي الطلاب', icon: Icons.groups_rounded), _StatCard(value: '$alerts', label: 'تنبيهات السلوك', icon: Icons.warning_amber_rounded), _StatCard(value: '$presentToday', label: 'حضور اليوم', icon: Icons.fact_check_rounded)];
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 380) return Column(children: [Row(children: [Expanded(child: cards[0]), const SizedBox(width: 10), Expanded(child: cards[1])]), const SizedBox(height: 10), SizedBox(width: double.infinity, child: cards[2])]);
+      return Row(children: [Expanded(child: cards[0]), const SizedBox(width: 10), Expanded(child: cards[1]), const SizedBox(width: 10), Expanded(child: cards[2])]);
+    });
   }
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.colorScheme,
-  });
-
+  const _StatCard({required this.value, required this.label, required this.icon});
   final String value;
   final String label;
   final IconData icon;
-  final ColorScheme colorScheme;
-
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 2,
-      shadowColor: colorScheme.onSurface.withOpacity(0.14),
-      color: colorScheme.surface,
-      surfaceTintColor: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 178),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: colorScheme.primary, size: 23),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                softWrap: true,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final scheme = Theme.of(context).colorScheme;
+    return Card(margin: EdgeInsets.zero, elevation: 2, shadowColor: scheme.onSurface.withOpacity(.14), child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 178), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16), child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: [CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.primary, child: Icon(icon)), const SizedBox(height: 12), Text(value, style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w700))])));
   }
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions({
-    required this.colorScheme,
-    required this.onOpenStudents,
-    required this.onOpenClasses,
-    required this.onOpenAttendance,
-  });
-
-  final ColorScheme colorScheme;
-  final VoidCallback onOpenStudents;
-  final VoidCallback onOpenClasses;
-  final VoidCallback onOpenAttendance;
-
+  const _QuickActions({required this.onOpen});
+  final ValueChanged<Widget> onOpen;
   @override
   Widget build(BuildContext context) {
     final actions = [
-      _QuickActionData(
-        title: 'إدارة الطلاب',
-        icon: Icons.groups_rounded,
-        onTap: onOpenStudents,
-      ),
-      _QuickActionData(
-        title: 'إدارة الفصول',
-        icon: Icons.class_rounded,
-        onTap: onOpenClasses,
-      ),
-      _QuickActionData(
-        title: 'تسجيل حضور اليوم',
-        icon: Icons.fact_check_rounded,
-        onTap: onOpenAttendance,
-      ),
+      _Action('إدارة الطلاب', Icons.groups_rounded, const StudentsPage()),
+      _Action('إدارة الفصول والشعب', Icons.class_rounded, const ClassesPage()),
+      _Action('تسجيل حضور اليوم', Icons.fact_check_rounded, const AttendancePage()),
+      _Action('الدرجات والتقييمات', Icons.grade_outlined, const GradesPage()),
+      _Action('السلوك والمتابعة', Icons.psychology_outlined, const BehaviorPage()),
+      _Action('التقارير والتصدير', Icons.assessment_outlined, const ReportsPage()),
+      _Action('استيراد الطلاب', Icons.upload_file_outlined, const ImportStudentsPage()),
+      _Action('سجل الاستيراد', Icons.history_outlined, const ImportHistoryPage()),
     ];
-
-    return Column(
-      children: [
-        for (var index = 0; index < actions.length; index++) ...[
-          _QuickActionTile(
-            data: actions[index],
-            colorScheme: colorScheme,
-          ),
-          if (index != actions.length - 1) const SizedBox(height: 10),
-        ],
-      ],
-    );
+    return Column(children: [for (var index = 0; index < actions.length; index++) ...[Card(margin: EdgeInsets.zero, elevation: 0, color: Theme.of(context).colorScheme.surfaceVariant, child: ListTile(onTap: () => onOpen(actions[index].page), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.surface, foregroundColor: Theme.of(context).colorScheme.primary, child: Icon(actions[index].icon)), title: Text(actions[index].title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)), trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurface))), if (index != actions.length - 1) const SizedBox(height: 10)]]);
   }
 }
 
-class _QuickActionTile extends StatelessWidget {
-  const _QuickActionTile({
-    required this.data,
-    required this.colorScheme,
-  });
-
-  final _QuickActionData data;
-  final ColorScheme colorScheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: colorScheme.surfaceVariant,
-      surfaceTintColor: colorScheme.surfaceVariant,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        onTap: data.onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        minLeadingWidth: 0,
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(data.icon, color: colorScheme.primary, size: 22),
-        ),
-        title: Text(
-          data.title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        trailing: Icon(
-          Icons.arrow_back_ios_new,
-          color: colorScheme.onSurface,
-          size: 16,
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickActionData {
-  const _QuickActionData({
-    required this.title,
-    required this.icon,
-    required this.onTap,
-  });
-
+class _Action {
+  const _Action(this.title, this.icon, this.page);
   final String title;
   final IconData icon;
-  final VoidCallback onTap;
+  final Widget page;
 }
 
 class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({
-    required this.progress,
-    required this.completed,
-    required this.total,
-    required this.colorScheme,
-  });
-
+  const _ProgressCard({required this.progress, required this.completed, required this.total});
   final double progress;
   final int completed;
   final int total;
-  final ColorScheme colorScheme;
-
   @override
   Widget build(BuildContext context) {
-    final percentage = (progress * 100).round();
-    final summary = total == 0
-        ? 'أضف طلاباً لتبدأ متابعة حضور اليوم.'
-        : 'تم تسجيل حضور $completed من أصل $total طالب.';
-
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: colorScheme.surfaceVariant,
-      surfaceTintColor: colorScheme.surfaceVariant,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'حضور اليوم',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ),
-                Text(
-                  '$percentage%',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: LinearProgressIndicator(
-                value: total == 0 ? 0 : progress,
-                minHeight: 10,
-                backgroundColor: colorScheme.surface,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              summary,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
+    final scheme = Theme.of(context).colorScheme;
+    return Card(margin: EdgeInsets.zero, elevation: 0, color: scheme.surfaceVariant, child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Expanded(child: Text('حضور اليوم', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))), Text('${(progress * 100).round()}%', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w900))]), const SizedBox(height: 14), ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: total == 0 ? 0 : progress, minHeight: 10, backgroundColor: scheme.surface, color: scheme.primary)), const SizedBox(height: 12), Text(total == 0 ? 'أضف طلاباً لتبدأ متابعة حضور اليوم.' : 'تم تسجيل حضور $completed من أصل $total طالب.')])));
   }
+}
+
+class _AlertCard extends StatelessWidget {
+  const _AlertCard({required this.alerts, required this.onOpen});
+  final int alerts;
+  final VoidCallback onOpen;
+  @override
+  Widget build(BuildContext context) { final scheme = Theme.of(context).colorScheme; return Card(margin: EdgeInsets.zero, color: alerts == 0 ? scheme.surfaceVariant : scheme.errorContainer, child: ListTile(onTap: onOpen, leading: Icon(alerts == 0 ? Icons.check_circle_outline : Icons.warning_amber_outlined, color: alerts == 0 ? scheme.primary : scheme.error), title: Text(alerts == 0 ? 'لا توجد تنبيهات سلوكية' : '$alerts طالب يحتاج إلى متابعة', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: const Text('افتح سجل السلوك لمراجعة التفاصيل'), trailing: const Icon(Icons.arrow_back_ios_new, size: 16))); }
 }
 
 class _StudentTile extends StatelessWidget {
-  const _StudentTile({
-    required this.student,
-    required this.colorScheme,
-    required this.onTap,
-  });
-
+  const _StudentTile({required this.student, required this.onTap});
   final Student student;
-  final ColorScheme colorScheme;
   final VoidCallback onTap;
-
   @override
-  Widget build(BuildContext context) {
-    final initial = student.firstName.trim().isEmpty
-        ? '؟'
-        : student.firstName.characters.first;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: colorScheme.surfaceVariant,
-      surfaceTintColor: colorScheme.surfaceVariant,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            shape: BoxShape.circle,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            initial,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-        ),
-        title: Text(
-          student.fullName,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-        subtitle: Text(
-          student.studentNumber.trim().isEmpty
-              ? 'رقم غير محدد'
-              : student.studentNumber,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-        ),
-        trailing: Icon(
-          Icons.arrow_back_ios_new,
-          color: colorScheme.onSurface,
-          size: 16,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) { final scheme = Theme.of(context).colorScheme; return Card(margin: EdgeInsets.zero, elevation: 0, color: scheme.surfaceVariant, child: ListTile(onTap: onTap, leading: CircleAvatar(backgroundColor: scheme.surface, foregroundColor: scheme.primary, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first)), title: Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(student.studentNumber.isEmpty ? 'رقم غير محدد' : student.studentNumber), trailing: const Icon(Icons.arrow_back_ios_new, size: 16))); }
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.colorScheme,
-    required this.icon,
-    required this.message,
-  });
-
-  final ColorScheme colorScheme;
-  final IconData icon;
+  const _EmptyState({required this.message});
   final String message;
-
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: colorScheme.surfaceVariant,
-      surfaceTintColor: colorScheme.surfaceVariant,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(icon, size: 42, color: colorScheme.primary),
-            const SizedBox(height: 10),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(24), child: Center(child: Text(message))));
 }
 
-class _DashboardError extends StatelessWidget {
-  const _DashboardError({
-    required this.colorScheme,
-    required this.onRetry,
-  });
-
-  final ColorScheme colorScheme;
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.onRetry});
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 48,
-              color: colorScheme.primary,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'تعذر تحميل البيانات المحلية.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onRetry,
-              child: const Text('إعادة المحاولة'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) { final scheme = Theme.of(context).colorScheme; return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.error_outline_rounded, size: 48, color: scheme.error), const SizedBox(height: 12), const Text('تعذر تحميل البيانات المحلية.'), const SizedBox(height: 12), FilledButton(onPressed: onRetry, child: const Text('إعادة المحاولة'))])); }
 }

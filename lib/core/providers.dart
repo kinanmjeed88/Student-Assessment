@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'database/app_snapshot.dart';
 import 'database/database_service.dart';
+import 'database/isar_models.dart';
 import 'database/local_repository.dart';
 import 'database/local_store.dart';
-import 'database/isar_models.dart';
 import 'notifications/notification_service.dart';
 
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
@@ -22,8 +22,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService(FlutterLocalNotificationsPlugin());
 });
 
-final appControllerProvider =
-    AsyncNotifierProvider<AppController, AppSnapshot>(AppController.new);
+final appControllerProvider = AsyncNotifierProvider<AppController, AppSnapshot>(AppController.new);
 
 class AppController extends AsyncNotifier<AppSnapshot> {
   LocalStore get _repository => ref.read(localRepositoryProvider);
@@ -35,87 +34,177 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     state = await AsyncValue.guard(_repository.loadSnapshot);
   }
 
-  Future<void> addClass(String name) async {
-    if (name.trim().isEmpty) return;
+  Future<void> _mutate(Future<void> Function() operation) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await _repository.createClass(name: name);
+      await operation();
       return _repository.loadSnapshot();
     });
   }
+
+  Future<void> addClass({required String name, String stage = '', String academicYear = '', String notes = ''}) =>
+      _mutate(() => _repository.createClass(name: name, stage: stage, academicYear: academicYear, notes: notes));
+
+  Future<void> addSection({required String classUuid, required String name, String notes = ''}) =>
+      _mutate(() => _repository.createSection(classUuid: classUuid, name: name, notes: notes));
 
   Future<void> addStudent({
     required String firstName,
     required String lastName,
     required String classUuid,
     String studentNumber = '',
-  }) async {
-    if (firstName.trim().isEmpty ||
-        lastName.trim().isEmpty ||
-        classUuid.isEmpty) {
-      return;
-    }
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await _repository.createStudent(
+    String fatherName = '',
+    String sectionUuid = '',
+    StudentGender gender = StudentGender.male,
+    String guardianName = '',
+    String guardianPhone = '',
+  }) => _mutate(() => _repository.createStudent(
         firstName: firstName,
         lastName: lastName,
         classUuid: classUuid,
         studentNumber: studentNumber,
-      );
-      return _repository.loadSnapshot();
-    });
-  }
+        fatherName: fatherName,
+        sectionUuid: sectionUuid,
+        gender: gender,
+        guardianName: guardianName,
+        guardianPhone: guardianPhone,
+      ));
 
-  Future<void> restoreBackup(String json) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await _repository.restoreBackupJson(json);
-      return _repository.loadSnapshot();
-    });
-  }
+  Future<void> updateStudent({
+    required String studentUuid,
+    required String firstName,
+    required String lastName,
+    required String classUuid,
+    String studentNumber = '',
+    String fatherName = '',
+    String sectionUuid = '',
+    StudentGender gender = StudentGender.male,
+    StudentStatus status = StudentStatus.active,
+    String guardianName = '',
+    String guardianPhone = '',
+  }) => _mutate(() => _repository.updateStudent(
+        studentUuid: studentUuid,
+        firstName: firstName,
+        lastName: lastName,
+        classUuid: classUuid,
+        studentNumber: studentNumber,
+        fatherName: fatherName,
+        sectionUuid: sectionUuid,
+        gender: gender,
+        status: status,
+        guardianName: guardianName,
+        guardianPhone: guardianPhone,
+      ));
 
   Future<void> saveSettings({
     required String schoolName,
     required String teacherName,
     required String academicYear,
     required String stage,
-  }) async {
-    await _repository.updateSettings(
-      schoolName: schoolName,
-      teacherName: teacherName,
-      academicYear: academicYear,
-      stage: stage,
-    );
-    await refresh();
-  }
+    double? dismissalThreshold,
+    double? warningThreshold,
+    PenaltyRules? penalties,
+  }) => _mutate(() => _repository.updateSettings(
+        schoolName: schoolName,
+        teacherName: teacherName,
+        academicYear: academicYear,
+        stage: stage,
+        dismissalThreshold: dismissalThreshold,
+        warningThreshold: warningThreshold,
+        penalties: penalties,
+      ));
 
   Future<void> setAttendance({
     required String studentUuid,
     required DateTime date,
     required AttendanceStatus status,
-  }) async {
-    await _repository.setAttendance(
-      studentUuid: studentUuid,
-      date: date,
-      status: status,
-    );
-    await refresh();
-  }
+    String reason = '',
+    String notes = '',
+  }) => _mutate(() => _repository.setAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
 
-  Future<void> deleteClass(String classUuid) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await _repository.deleteClassCascade(classUuid);
-      return _repository.loadSnapshot();
-    });
-  }
+  Future<void> createGradeField({required String subject, required String title, required double maxScore, required String term}) =>
+      _mutate(() => _repository.createGradeField(subject: subject, title: title, maxScore: maxScore, term: term));
 
-  Future<void> deleteStudent(String studentUuid) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await _repository.deleteStudentCascade(studentUuid);
-      return _repository.loadSnapshot();
-    });
-  }
+  Future<void> saveGrade({required String studentUuid, required String fieldUuid, required double score, String notes = ''}) =>
+      _mutate(() => _repository.saveGrade(studentUuid: studentUuid, fieldUuid: fieldUuid, score: score, notes: notes));
+
+  Future<void> createGradeEntry({
+    required String studentUuid,
+    required String subject,
+    required String title,
+    required double maxScore,
+    required String term,
+    required double score,
+    String notes = '',
+  }) => _mutate(() => _repository.createGradeEntry(
+        studentUuid: studentUuid,
+        subject: subject,
+        title: title,
+        maxScore: maxScore,
+        term: term,
+        score: score,
+        notes: notes,
+      ));
+
+  Future<void> addBehavior({
+    required String studentUuid,
+    required BehaviorCategory category,
+    required String title,
+    required String details,
+    required BehaviorViolationType violationType,
+    String actionTaken = '',
+    String followUp = '',
+    DateTime? date,
+  }) => _mutate(() => _repository.createBehavior(
+        studentUuid: studentUuid,
+        category: category,
+        title: title,
+        details: details,
+        violationType: violationType,
+        actionTaken: actionTaken,
+        followUp: followUp,
+        date: date,
+      ));
+
+  Future<void> deleteBehavior(String behaviorUuid) => _mutate(() => _repository.deleteBehavior(behaviorUuid));
+
+  Future<void> addNote({
+    required String studentUuid,
+    required NoteCategory category,
+    required String title,
+    required String details,
+    bool needsFollowUp = false,
+    DateTime? followUpDate,
+  }) => _mutate(() => _repository.createNote(
+        studentUuid: studentUuid,
+        category: category,
+        title: title,
+        details: details,
+        needsFollowUp: needsFollowUp,
+        followUpDate: followUpDate,
+      ));
+
+  Future<void> deleteNote(String noteUuid) => _mutate(() => _repository.deleteNote(noteUuid));
+
+  Future<void> importStudents({
+    required String classUuid,
+    required String sectionUuid,
+    required String sourceFilename,
+    required StudentImportFormat sourceFormat,
+    required List<String> names,
+  }) => _mutate(() => _repository.importStudents(
+        classUuid: classUuid,
+        sectionUuid: sectionUuid,
+        sourceFilename: sourceFilename,
+        sourceFormat: sourceFormat,
+        names: names,
+      ));
+
+  Future<void> revertImport(String importUuid) => _mutate(() => _repository.revertImport(importUuid));
+
+  Future<void> restoreBackup(String json) => _mutate(() => _repository.restoreBackupJson(json));
+
+  Future<void> deleteClass(String classUuid) => _mutate(() => _repository.deleteClassCascade(classUuid));
+
+  Future<void> deleteStudent(String studentUuid) => _mutate(() => _repository.deleteStudentCascade(studentUuid));
 }

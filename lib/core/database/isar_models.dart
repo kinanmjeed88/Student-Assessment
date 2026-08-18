@@ -8,7 +8,7 @@ enum AttendanceStatus { present, absent, excused, late, leave }
 enum BehaviorCategory { positive, followup, negative }
 enum BehaviorViolationType { none, absence, lessonDisruption, seriousMisconduct, other }
 enum NoteCategory { academic, health, educational, attendance, other }
-enum StudentImportFormat { excel, text }
+enum StudentImportFormat { excel, word, text }
 
 @embedded
 class PenaltyRules {

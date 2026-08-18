@@ -16,7 +16,7 @@ class ClassesPage extends ConsumerWidget {
         loading: () => const SizedBox.shrink(),
         error: (_, __) => const SizedBox.shrink(),
         data: (snapshot) => Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           appBar: AppBar(
             title: const Text('الفصول والشعب'),
             actions: [
@@ -52,8 +52,8 @@ class ClassesPage extends ConsumerWidget {
                               Container(
                                 width: 52,
                                 height: 52,
-                                decoration: BoxDecoration(color: const Color(0xFFE8F0FF), borderRadius: BorderRadius.circular(16)),
-                                child: const Icon(Icons.class_, color: Color(0xFF1D4ED8)),
+                                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(16)),
+                                child: Icon(Icons.class_, color: Theme.of(context).colorScheme.primary),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
