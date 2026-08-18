@@ -156,14 +156,14 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                     TextFormField(controller: number, decoration: const InputDecoration(labelText: 'رقم الطالب')),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<StudentGender>(
-                      value: gender,
+                      initialValue: gender,
                       decoration: const InputDecoration(labelText: 'الجنس'),
                       items: const [DropdownMenuItem(value: StudentGender.male, child: Text('ذكر')), DropdownMenuItem(value: StudentGender.female, child: Text('أنثى'))],
                       onChanged: (value) => setDialogState(() => gender = value ?? gender),
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      value: classUuid,
+                      initialValue: classUuid,
                       decoration: const InputDecoration(labelText: 'الصف'),
                       items: snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(),
                       onChanged: (value) => setDialogState(() {
@@ -173,7 +173,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      value: sectionUuid.isEmpty ? null : sectionUuid,
+                      initialValue: sectionUuid.isEmpty ? null : sectionUuid,
                       decoration: const InputDecoration(labelText: 'الشعبة (اختياري)'),
                       items: snapshot.sections.where((item) => item.classUuid == classUuid).map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(),
                       onChanged: (value) => setDialogState(() => sectionUuid = value ?? ''),
@@ -185,7 +185,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                     if (student != null) ...[
                       const SizedBox(height: 10),
                       DropdownButtonFormField<StudentStatus>(
-                        value: status,
+                        initialValue: status,
                         decoration: const InputDecoration(labelText: 'حالة الطالب'),
                         items: const [DropdownMenuItem(value: StudentStatus.active, child: Text('نشط')), DropdownMenuItem(value: StudentStatus.transferred, child: Text('منقول')), DropdownMenuItem(value: StudentStatus.graduated, child: Text('متخرج')), DropdownMenuItem(value: StudentStatus.suspended, child: Text('موقوف'))],
                         onChanged: (value) => setDialogState(() => status = value ?? status),

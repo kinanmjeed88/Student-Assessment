@@ -170,14 +170,14 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = [
-      const _Action('إدارة الطلاب', Icons.groups_rounded, const StudentsPage()),
-      const _Action('إدارة الفصول والشعب', Icons.class_rounded, const ClassesPage()),
-      const _Action('تسجيل حضور اليوم', Icons.fact_check_rounded, const AttendancePage()),
-      const _Action('الدرجات والتقييمات', Icons.grade_outlined, const GradesPage()),
-      const _Action('السلوك والمتابعة', Icons.psychology_outlined, const BehaviorPage()),
-      const _Action('التقارير والتصدير', Icons.assessment_outlined, const ReportsPage()),
-      const _Action('استيراد الطلاب', Icons.upload_file_outlined, const ImportStudentsPage()),
-      const _Action('سجل الاستيراد', Icons.history_outlined, const ImportHistoryPage()),
+      _Action('إدارة الطلاب', Icons.groups_rounded, const StudentsPage()),
+      _Action('إدارة الفصول والشعب', Icons.class_rounded, const ClassesPage()),
+      _Action('تسجيل حضور اليوم', Icons.fact_check_rounded, const AttendancePage()),
+      _Action('الدرجات والتقييمات', Icons.grade_outlined, const GradesPage()),
+      _Action('السلوك والمتابعة', Icons.psychology_outlined, const BehaviorPage()),
+      _Action('التقارير والتصدير', Icons.assessment_outlined, const ReportsPage()),
+      _Action('استيراد الطلاب', Icons.upload_file_outlined, const ImportStudentsPage()),
+      _Action('سجل الاستيراد', Icons.history_outlined, const ImportHistoryPage()),
     ];
     return Column(children: [for (var index = 0; index < actions.length; index++) ...[Card(margin: EdgeInsets.zero, elevation: 0, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: ListTile(onTap: () => onOpen(actions[index].page), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.surface, foregroundColor: Theme.of(context).colorScheme.primary, child: Icon(actions[index].icon)), title: Text(actions[index].title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)), trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurface))), if (index != actions.length - 1) const SizedBox(height: 10)]]);
   }
