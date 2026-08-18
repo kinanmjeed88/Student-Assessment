@@ -1,13 +1,12 @@
 import 'dart:convert';
-
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/widgets/app_components.dart';
 import '../../dashboard/presentation/app_shell.dart';
 import '../../import/presentation/import_history_page.dart';
 import '../../import/presentation/import_students_page.dart';
@@ -15,6 +14,7 @@ import '../../reports/presentation/reports_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
+
   @override
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
@@ -28,127 +28,142 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _saving = false;
 
   @override
-  void dispose() { _schoolController.dispose(); _teacherController.dispose(); _yearController.dispose(); _stageController.dispose(); super.dispose(); }
+  void dispose() {
+    _schoolController.dispose();
+    _teacherController.dispose();
+    _yearController.dispose();
+    _stageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appControllerProvider);
-    return AsyncStateView(state: state, child: state.when(loading: () => const SizedBox.shrink(), error: (_, __) => const SizedBox.shrink(), data: (snapshot) {
-      if (!_initialized) { _schoolController.text = snapshot.settings.schoolName; _teacherController.text = snapshot.settings.teacherName; _yearController.text = snapshot.settings.academicYear; _stageController.text = snapshot.settings.stage; _initialized = true; }
-      return Scaffold(
-        appBar: AppBar(title: const Text('الإعدادات')),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-          children: [
-            Text(
-              'بيانات المدرسة',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _field(_schoolController, 'اسم المدرسة'),
-                    const SizedBox(height: 12),
-                    _field(_teacherController, 'اسم المعلم'),
-                    const SizedBox(height: 12),
-                    _field(_yearController, 'العام الدراسي'),
-                    const SizedBox(height: 12),
-                    _field(_stageController, 'المرحلة الدراسية'),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: _saving
-                          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.save_outlined),
-                      label: const Text('حفظ الإعدادات'),
-                    ),
-                  ],
+    return AsyncStateView(
+      state: state,
+      child: state.when(
+        loading: () => const SizedBox.shrink(),
+        error: (_, __) => const SizedBox.shrink(),
+        data: (snapshot) {
+          if (!_initialized) {
+            _schoolController.text = snapshot.settings.schoolName;
+            _teacherController.text = snapshot.settings.teacherName;
+            _yearController.text = snapshot.settings.academicYear;
+            _stageController.text = snapshot.settings.stage;
+            _initialized = true;
+          }
+          return Scaffold(
+            appBar: AppBar(title: const Text('الإعدادات')),
+            body: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              children: [
+                AppResponsiveContent(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AppPageHeader(title: 'إعدادات النظام', subtitle: 'خصّص بيانات المدرسة ونظّم أدوات البيانات والإشعارات.'),
+                      const AppSectionHeader(title: 'بيانات المؤسسة', subtitle: 'تظهر هذه البيانات في التقارير والملفات المصدّرة.'),
+                      AppSpacing.compact,
+                      AppSurfaceCard(
+                        child: Column(
+                          children: [
+                            _field(_schoolController, 'اسم المدرسة', Icons.school_outlined),
+                            AppSpacing.item,
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final compact = constraints.maxWidth < 520;
+                                final teacher = _field(_teacherController, 'اسم المعلم', Icons.person_outline);
+                                final year = _field(_yearController, 'العام الدراسي', Icons.calendar_today_outlined);
+                                return compact ? Column(children: [teacher, AppSpacing.item, year]) : Row(children: [Expanded(child: teacher), const SizedBox(width: 12), Expanded(child: year)]);
+                              },
+                            ),
+                            AppSpacing.item,
+                            _field(_stageController, 'المرحلة الدراسية', Icons.account_tree_outlined),
+                            const SizedBox(height: 18),
+                            Align(alignment: AlignmentDirectional.centerStart, child: FilledButton.icon(onPressed: _saving ? null : _save, icon: _saving ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined), label: const Text('حفظ البيانات'))),
+                          ],
+                        ),
+                      ),
+                      AppSpacing.section,
+                      const AppSectionHeader(title: 'إدارة البيانات', subtitle: 'استورد وسلّم التقارير والنسخ الاحتياطية بأمان.'),
+                      AppSpacing.compact,
+                      AppSurfaceCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _tile(context, Icons.assessment_outlined, 'التقارير والتصدير', 'إنشاء ملفات XLSX وPDF ونسخ احتياطية', const ReportsPage()),
+                            const Divider(height: 1),
+                            _tile(context, Icons.upload_file_outlined, 'استيراد الطلاب', 'إضافة مجموعة من ملف Excel أو CSV أو Word', const ImportStudentsPage()),
+                            const Divider(height: 1),
+                            _tile(context, Icons.history_outlined, 'سجل الاستيراد', 'مراجعة العمليات والتراجع عنها بأمان', const ImportHistoryPage()),
+                            const Divider(height: 1),
+                            _actionTile(context, Icons.restore_outlined, 'استعادة نسخة JSON', 'استبدال البيانات المحلية بمحتوى ملف احتياطي', _restoreBackup),
+                            const Divider(height: 1),
+                            _actionTile(context, Icons.backup_outlined, 'تصدير نسخة احتياطية', 'JSON شامل لجميع مجالات التطبيق', _exportBackup),
+                          ],
+                        ),
+                      ),
+                      AppSpacing.section,
+                      const AppSectionHeader(title: 'الإشعارات والخصوصية', subtitle: 'تحكم في الصلاحيات وطبيعة تخزين البيانات.'),
+                      AppSpacing.compact,
+                      AppSurfaceCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _actionTile(context, Icons.notifications_active_outlined, 'صلاحيات التنبيهات', 'تهيئة إشعارات Android عند الحاجة', _requestNotificationPermission),
+                            const Divider(height: 1),
+                            const ListTile(leading: Icon(Icons.offline_bolt_outlined), title: Text('وضع العمل المحلي'), subtitle: Text('البيانات محفوظة في Isar ولا يتطلب التطبيق اتصالاً بالشبكة.')),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              'إدارة البيانات',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: Column(
-                children: [
-                  _tile(context, Icons.assessment_outlined, 'التقارير والتصدير', 'إنشاء XLSX وPDF ونسخ احتياطية', const ReportsPage()),
-                  const Divider(height: 1),
-                  _tile(context, Icons.upload_file_outlined, 'استيراد الطلاب', 'إضافة مجموعة من ملف Excel أو CSV', const ImportStudentsPage()),
-                  const Divider(height: 1),
-                  _tile(context, Icons.history_outlined, 'سجل الاستيراد', 'مراجعة العمليات والتراجع عنها', const ImportHistoryPage()),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.restore_outlined),
-                    title: const Text('استعادة نسخة JSON'),
-                    subtitle: const Text('استبدال البيانات المحلية بملف احتياطي موثوق.'),
-                    trailing: const Icon(Icons.chevron_left),
-                    onTap: _restoreBackup,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.backup_outlined),
-                    title: const Text('تصدير نسخة احتياطية'),
-                    subtitle: const Text('JSON شامل لجميع المجالات.'),
-                    trailing: const Icon(Icons.chevron_left),
-                    onTap: _exportBackup,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'التنبيهات',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.notifications_active_outlined),
-                title: const Text('صلاحيات التنبيهات'),
-                subtitle: const Text('تهيئة Android 13+ والتنبيهات الدقيقة عند الحاجة.'),
-                trailing: const Icon(Icons.chevron_left),
-                onTap: _requestNotificationPermission,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.offline_bolt_outlined),
-                title: Text('وضع العمل المحلي'),
-                subtitle: Text('البيانات محفوظة في Isar ولا يتطلب التطبيق اتصالاً بالشبكة.'),
-              ),
-            ),
-          ],
-        ),
-      );
-    }));
+          );
+        },
+      ),
+    );
   }
 
-  TextField _field(TextEditingController controller, String label) => TextField(controller: controller, decoration: InputDecoration(labelText: label));
-  ListTile _tile(BuildContext context, IconData icon, String title, String subtitle, Widget page) => ListTile(leading: Icon(icon, color: Theme.of(context).colorScheme.primary), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(subtitle), trailing: const Icon(Icons.chevron_left), onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => page)));
+  TextField _field(TextEditingController controller, String label, IconData icon) => TextField(controller: controller, decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)));
 
-  Future<void> _save() async { setState(() => _saving = true); await ref.read(appControllerProvider.notifier).saveSettings(schoolName: _schoolController.text, teacherName: _teacherController.text, academicYear: _yearController.text, stage: _stageController.text); if (!mounted) return; setState(() => _saving = false); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الإعدادات بنجاح.'))); }
+  ListTile _tile(BuildContext context, IconData icon, String title, String subtitle, Widget page) => ListTile(leading: Icon(icon, color: Theme.of(context).colorScheme.primary), title: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)), subtitle: Text(subtitle), trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant), onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => page)));
 
-  Future<void> _requestNotificationPermission() async { final granted = await ref.read(notificationServiceProvider).requestPermissions(); if (!mounted) return; ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(granted ? 'تم تفعيل صلاحية التنبيهات.' : 'لم يتم منح صلاحية التنبيهات.'))); }
+  ListTile _actionTile(BuildContext context, IconData icon, String title, String subtitle, VoidCallback onTap) => ListTile(leading: Icon(icon, color: Theme.of(context).colorScheme.primary), title: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)), subtitle: Text(subtitle), trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant), onTap: onTap);
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    await ref.read(appControllerProvider.notifier).saveSettings(schoolName: _schoolController.text, teacherName: _teacherController.text, academicYear: _yearController.text, stage: _stageController.text);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الإعدادات بنجاح.')));
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final granted = await ref.read(notificationServiceProvider).requestPermissions();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(granted ? 'تم تفعيل صلاحية التنبيهات.' : 'لم يتم منح صلاحية التنبيهات.')));
+  }
 
   Future<void> _restoreBackup() async {
-    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('استعادة النسخة؟'), content: const Text('سيتم حذف البيانات المحلية الحالية واستبدالها بمحتوى الملف.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('متابعة'))]));
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('استعادة النسخة؟'), content: const Text('سيتم حذف البيانات المحلية الحالية واستبدالها بمحتوى الملف.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('متابعة'))]));
     if (confirmed != true) return;
     final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
     if (files.isEmpty) return;
     final bytes = await files.first.readAsBytes();
-    try { await ref.read(appControllerProvider.notifier).restoreBackup(utf8.decode(bytes)); if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت استعادة النسخة الاحتياطية.'))); } on FormatException catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message))); }
+    try {
+      await ref.read(appControllerProvider.notifier).restoreBackup(utf8.decode(bytes));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت استعادة النسخة الاحتياطية.')));
+    } on FormatException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   Future<void> _exportBackup() async {
     final json = await ref.read(localRepositoryProvider).exportBackupJson();
-    final path = await FilePicker.saveFile(dialogTitle: 'حفظ النسخة الاحتياطية', fileName: 'al-moktaber-backup.json', bytes: Uint8List.fromList(utf8.encode(json)));
+    final path = await FilePicker.saveFile(dialogTitle: 'حفظ النسخة الاحتياطية', fileName: 'student-record-backup.json', bytes: Uint8List.fromList(utf8.encode(json)));
     if (mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تصدير النسخة الاحتياطية.')));
   }
 }

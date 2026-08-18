@@ -5,6 +5,8 @@ import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/iterable_extensions.dart';
+import '../../../core/widgets/app_components.dart';
 import '../../dashboard/presentation/app_shell.dart';
 import '../../import/presentation/import_students_page.dart';
 import 'student_details_page.dart';
@@ -56,66 +58,84 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
     }).toList(growable: false);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('الطلاب'),
         actions: [
           IconButton(
             tooltip: 'استيراد الطلاب',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ImportStudentsPage())),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ImportStudentsPage())),
             icon: const Icon(Icons.upload_file_outlined),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showStudentForm(snapshot),
-        icon: const Icon(Icons.person_add_alt_1),
+        icon: const Icon(Icons.person_add_alt_1_outlined),
         label: const Text('إضافة طالب'),
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(appControllerProvider.notifier).refresh(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
           children: [
-            TextField(
-              controller: _searchController,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(hintText: 'ابحث بالاسم أو الرقم...', prefixIcon: Icon(Icons.search)),
+            AppResponsiveContent(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppPageHeader(
+                    title: 'دليل الطلاب',
+                    subtitle: 'ابحث وراجع الملفات الأكاديمية والسلوكية من مكان واحد.',
+                    actions: [
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ImportStudentsPage())),
+                        icon: const Icon(Icons.file_upload_outlined),
+                        label: const Text('استيراد'),
+                      ),
+                    ],
+                  ),
+                  _FilterPanel(
+                    controller: _searchController,
+                    classFilter: _classFilter,
+                    classItems: snapshot.classes,
+                    attentionFilter: _attentionFilter,
+                    onSearchChanged: (_) => setState(() {}),
+                    onClassChanged: (value) => setState(() => _classFilter = value ?? 'all'),
+                    onAttentionChanged: (value) => setState(() => _attentionFilter = value),
+                  ),
+                  AppSpacing.section,
+                  AppSectionHeader(
+                    title: 'النتائج',
+                    subtitle: '${students.length} طالب مطابق للمرشحات الحالية.',
+                  ),
+                  AppSpacing.compact,
+                  if (students.isEmpty)
+                    AppEmptyState(
+                      icon: Icons.person_search_outlined,
+                      title: 'لا توجد نتائج',
+                      message: _searchController.text.trim().isEmpty ? 'أضف طالباً جديداً أو استورد قائمة الطلاب.' : 'جرّب تغيير عبارة البحث أو المرشحات.',
+                      action: _searchController.text.trim().isEmpty ? FilledButton.icon(onPressed: () => _showStudentForm(snapshot), icon: const Icon(Icons.person_add_alt_1_outlined), label: const Text('إضافة طالب')) : null,
+                    )
+                  else
+                    ...students.map(
+                      (student) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _StudentCard(
+                          snapshot: snapshot,
+                          student: student,
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => StudentDetailsPage(studentUuid: student.uuid))),
+                          onEdit: () => _showStudentForm(snapshot, student: student),
+                          onDelete: () => _deleteStudent(student),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            _FilterRow(
-              label: 'الصف',
-              value: _classFilter,
-              items: [
-                const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')),
-                ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))),
-              ],
-              onChanged: (value) => setState(() => _classFilter = value ?? 'all'),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                _attentionChip('all', 'الكل'),
-                _attentionChip('behavior-alert', 'تنبيهات السلوك'),
-                _attentionChip('repeated-absence', 'غياب متكرر'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text('${students.length} طالب', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 10),
-            if (students.isEmpty)
-              const _EmptyStudents()
-            else
-              ...students.map((student) => _StudentCard(snapshot: snapshot, student: student, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => StudentDetailsPage(studentUuid: student.uuid))), onEdit: () => _showStudentForm(snapshot, student: student), onDelete: () => _deleteStudent(student))),
           ],
         ),
       ),
     );
-  }
-
-  Widget _attentionChip(String value, String label) {
-    return ChoiceChip(label: Text(label), selected: _attentionFilter == value, onSelected: (_) => setState(() => _attentionFilter = value));
   }
 
   Future<void> _showStudentForm(AppSnapshot snapshot, {Student? student}) async {
@@ -140,28 +160,35 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(student == null ? 'إضافة طالب' : 'تعديل ملف الطالب'),
-          content: SizedBox(
-            width: 520,
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
             child: Form(
               key: formKey,
               child: SingleChildScrollView(
                 child: Column(
                   children: [
                     _RequiredField(controller: firstName, label: 'الاسم الأول'),
-                    const SizedBox(height: 10),
-                    TextFormField(controller: fatherName, decoration: const InputDecoration(labelText: 'اسم الأب')),
-                    const SizedBox(height: 10),
-                    _RequiredField(controller: lastName, label: 'اسم العائلة'),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxWidth < 420;
+                        final fields = [
+                          Expanded(child: TextFormField(controller: fatherName, decoration: const InputDecoration(labelText: 'اسم الأب'))),
+                          Expanded(child: _RequiredField(controller: lastName, label: 'اسم العائلة')),
+                        ];
+                        return compact ? Column(children: [fields[0], const SizedBox(height: 12), fields[1]]) : Row(children: [fields[0], const SizedBox(width: 12), fields[1]]);
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     TextFormField(controller: number, decoration: const InputDecoration(labelText: 'رقم الطالب')),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<StudentGender>(
                       initialValue: gender,
                       decoration: const InputDecoration(labelText: 'الجنس'),
                       items: const [DropdownMenuItem(value: StudentGender.male, child: Text('ذكر')), DropdownMenuItem(value: StudentGender.female, child: Text('أنثى'))],
                       onChanged: (value) => setDialogState(() => gender = value ?? gender),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: classUuid,
                       decoration: const InputDecoration(labelText: 'الصف'),
@@ -171,19 +198,19 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                         if (!snapshot.sections.any((section) => section.uuid == sectionUuid && section.classUuid == classUuid)) sectionUuid = '';
                       }),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: sectionUuid.isEmpty ? null : sectionUuid,
                       decoration: const InputDecoration(labelText: 'الشعبة (اختياري)'),
                       items: snapshot.sections.where((item) => item.classUuid == classUuid).map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(),
                       onChanged: (value) => setDialogState(() => sectionUuid = value ?? ''),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     TextFormField(controller: guardian, decoration: const InputDecoration(labelText: 'ولي الأمر')),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'هاتف ولي الأمر')),
                     if (student != null) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       DropdownButtonFormField<StudentStatus>(
                         initialValue: status,
                         decoration: const InputDecoration(labelText: 'حالة الطالب'),
@@ -198,7 +225,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
-            ElevatedButton(
+            FilledButton(
               onPressed: () async {
                 if (!(formKey.currentState?.validate() ?? false)) return;
                 final controller = ref.read(appControllerProvider.notifier);
@@ -224,13 +251,78 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
   }
 
   Future<void> _deleteStudent(Student student) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('حذف الطالب؟'), content: Text('سيتم حذف حضور ودرجات وسلوك وملاحظات ${student.fullName}.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف'))]));
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('حذف الطالب؟'), content: Text('سيتم حذف حضور ودرجات وسلوك وملاحظات ${student.fullName}.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف'))]));
     if (confirmed == true) await ref.read(appControllerProvider.notifier).deleteStudent(student.uuid);
+  }
+}
+
+class _FilterPanel extends StatelessWidget {
+  const _FilterPanel({required this.controller, required this.classFilter, required this.classItems, required this.attentionFilter, required this.onSearchChanged, required this.onClassChanged, required this.onAttentionChanged});
+
+  final TextEditingController controller;
+  final String classFilter;
+  final List<SchoolClass> classItems;
+  final String attentionFilter;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String?> onClassChanged;
+  final ValueChanged<String> onAttentionChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(controller: controller, onChanged: onSearchChanged, decoration: const InputDecoration(hintText: 'ابحث بالاسم أو الرقم...', prefixIcon: Icon(Icons.search_outlined))),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 520;
+                final dropdown = DropdownButtonFormField<String>(
+                  initialValue: classFilter,
+                  decoration: const InputDecoration(labelText: 'تصفية حسب الصف'),
+                  items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...classItems.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
+                  onChanged: onClassChanged,
+                );
+                return compact ? dropdown : Row(children: [Expanded(child: dropdown), const SizedBox(width: 12), Expanded(child: _AttentionFilters(value: attentionFilter, onChanged: onAttentionChanged))]);
+              },
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(builder: (context, constraints) => constraints.maxWidth < 520 ? _AttentionFilters(value: attentionFilter, onChanged: onAttentionChanged) : const SizedBox.shrink()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttentionFilters extends StatelessWidget {
+  const _AttentionFilters({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ChoiceChip(label: const Text('الكل'), selected: value == 'all', onSelected: (_) => onChanged('all')),
+        ChoiceChip(label: const Text('تنبيهات السلوك'), selected: value == 'behavior-alert', onSelected: (_) => onChanged('behavior-alert')),
+        ChoiceChip(label: const Text('غياب متكرر'), selected: value == 'repeated-absence', onSelected: (_) => onChanged('repeated-absence')),
+      ],
+    );
   }
 }
 
 class _RequiredField extends StatelessWidget {
   const _RequiredField({required this.controller, required this.label});
+
   final TextEditingController controller;
   final String label;
 
@@ -238,19 +330,9 @@ class _RequiredField extends StatelessWidget {
   Widget build(BuildContext context) => TextFormField(controller: controller, decoration: InputDecoration(labelText: label), validator: (value) => value == null || value.trim().isEmpty ? 'هذا الحقل مطلوب' : null);
 }
 
-class _FilterRow extends StatelessWidget {
-  const _FilterRow({required this.label, required this.value, required this.items, required this.onChanged});
-  final String label;
-  final String value;
-  final List<DropdownMenuItem<String>> items;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String>(initialValue: value, decoration: InputDecoration(labelText: label), items: items, onChanged: onChanged);
-}
-
 class _StudentCard extends StatelessWidget {
   const _StudentCard({required this.snapshot, required this.student, required this.onTap, required this.onEdit, required this.onDelete});
+
   final AppSnapshot snapshot;
   final Student student;
   final VoidCallback onTap;
@@ -262,30 +344,35 @@ class _StudentCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final summary = calculateBehaviorSummary(records: snapshot.behaviorsFor(student.uuid), settings: snapshot.settings);
     final absences = snapshot.attendanceFor(student.uuid).where((item) => item.status == AttendanceStatus.absent).length;
+    final schoolClass = snapshot.classes.where((item) => item.uuid == student.classUuid).firstOrNull;
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.primary, child: Text(student.firstName.isEmpty ? '?' : student.firstName.characters.first)),
-        title: Text(student.fullName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-        subtitle: Padding(padding: const EdgeInsets.only(top: 4), child: Wrap(spacing: 6, runSpacing: 4, children: [Text(student.studentNumber.isEmpty ? 'دون رقم' : student.studentNumber), if (absences > 0) _MiniBadge(label: 'غياب $absences', color: scheme.error), if (summary.hasAlert) _MiniBadge(label: summary.label, color: scheme.tertiary)])),
-        trailing: PopupMenuButton<String>(onSelected: (value) { if (value == 'edit') onEdit(); if (value == 'delete') onDelete(); }, itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('تعديل')), PopupMenuItem(value: 'delete', child: Text('حذف'))]),
+        contentPadding: const EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8),
+        leading: CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first)),
+        title: Text(student.fullName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              Text(schoolClass?.name ?? 'صف غير محدد'),
+              if (student.studentNumber.isNotEmpty) AppStatusPill(label: student.studentNumber, icon: Icons.badge_outlined),
+              if (absences > 0) AppStatusPill(label: 'غياب $absences', icon: Icons.event_busy_outlined, tone: AppStatusTone.error),
+              if (summary.hasAlert) AppStatusPill(label: summary.label, icon: Icons.rule_folder_outlined, tone: AppStatusTone.warning),
+            ],
+          ),
+        ),
+        trailing: PopupMenuButton<String>(
+          tooltip: 'إجراءات الطالب',
+          onSelected: (value) {
+            if (value == 'edit') onEdit();
+            if (value == 'delete') onDelete();
+          },
+          itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('تعديل الملف')), PopupMenuItem(value: 'delete', child: Text('حذف الطالب'))],
+        ),
       ),
     );
   }
-}
-
-class _MiniBadge extends StatelessWidget {
-  const _MiniBadge({required this.label, required this.color});
-  final String label;
-  final Color color;
-  @override
-  Widget build(BuildContext context) => DecoratedBox(decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(8)), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700))));
-}
-
-class _EmptyStudents extends StatelessWidget {
-  const _EmptyStudents();
-  @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 70), child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.groups_outlined, size: 56, color: Theme.of(context).colorScheme.primary), const SizedBox(height: 12), Text('لا توجد نتائج مطابقة.', style: Theme.of(context).textTheme.titleMedium)]));
 }

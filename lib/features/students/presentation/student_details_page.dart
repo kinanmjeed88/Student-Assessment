@@ -10,6 +10,7 @@ import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/utils/iterable_extensions.dart';
+import '../../../core/widgets/app_components.dart';
 
 class StudentDetailsPage extends ConsumerWidget {
   const StudentDetailsPage({required this.studentUuid, super.key});
@@ -55,7 +56,6 @@ class _StudentProfile extends ConsumerStatefulWidget {
 }
 
 class _StudentProfileState extends ConsumerState<_StudentProfile> {
-  int _tab = 0;
 
   AppSnapshot get snapshot => widget.snapshot;
   Student get student => widget.student;
@@ -72,90 +72,50 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     final summary = calculateBehaviorSummary(records: behaviors, settings: snapshot.settings);
     final absentCount = attendance.where((item) => item.status == AttendanceStatus.absent).length;
     final average = _average(snapshot, grades);
+    final profileHeader = _ProfileHeader(
+      student: student,
+      schoolClass: schoolClass?.name,
+      section: section?.name,
+      summary: summary,
+      attendanceCount: attendance.where((item) => item.status == AttendanceStatus.present).length,
+      absentCount: absentCount,
+      average: average,
+      onExportExcel: () => _exportExcel(context),
+      onExportPdf: () => _exportPdf(context),
+    );
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text('بيانات الطالب', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-            ),
-            IconButton(
-              tooltip: 'تصدير Excel',
-              onPressed: () => _exportExcel(context),
-              icon: const Icon(Icons.table_view_outlined),
-            ),
-            IconButton(
-              tooltip: 'تصدير PDF',
-              onPressed: () => _exportPdf(context),
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-            ),
-          ],
-        ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: scheme.primaryContainer,
-                  foregroundColor: scheme.primary,
-                  child: Text(student.firstName.isEmpty ? '؟' : student.firstName.substring(0, 1), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+    return DefaultTabController(
+      length: 4,
+      child: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: AppResponsiveContent(child: profileHeader))),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _TabBarHeaderDelegate(
+              child: Material(
+                color: scheme.surface,
+                child: const TabBar(
+                  isScrollable: true,
+                  tabs: [
+                    Tab(text: 'الدرجات', icon: Icon(Icons.grade_outlined)),
+                    Tab(text: 'الحضور', icon: Icon(Icons.fact_check_outlined)),
+                    Tab(text: 'السلوك', icon: Icon(Icons.rule_folder_outlined)),
+                    Tab(text: 'الملاحظات', icon: Icon(Icons.note_alt_outlined)),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Text(student.fullName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-                const SizedBox(height: 6),
-                Text('${schoolClass?.name ?? 'الصف غير محدد'}${section == null ? '' : ' — ${section.name}'}'),
-                const SizedBox(height: 12),
-                Chip(label: Text(_statusLabel(student.status)), avatar: Icon(_statusIcon(student.status), size: 18)),
-              ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-        Card(
-          color: summary.dismissed ? scheme.errorContainer : summary.warning ? scheme.tertiaryContainer : scheme.surfaceContainerHighest,
-          child: ListTile(
-            leading: Icon(summary.dismissed || summary.warning ? Icons.warning_amber_outlined : Icons.verified_outlined, color: summary.dismissed ? scheme.error : scheme.primary),
-            title: Text(summary.dismissed ? 'إشعار فصل' : summary.warning ? 'تنبيه سلوك' : 'السجل السلوكي سليم', style: const TextStyle(fontWeight: FontWeight.w900)),
-            subtitle: Text('النقاط: ${summary.totalPoints.toStringAsFixed(1)} من ${summary.dismissalThreshold.toStringAsFixed(1)} — ${summary.negativeCount} مخالفات، ${summary.followUpCount} متابعات، ${summary.positiveCount} إيجابيات'),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
+        ],
+        body: TabBarView(
           children: [
-            Expanded(child: _Metric(label: 'متوسط الدرجات', value: average == null ? '—' : '${average.toStringAsFixed(0)}%', icon: Icons.grade_outlined)),
-            const SizedBox(width: 10),
-            Expanded(child: _Metric(label: 'الغياب', value: '$absentCount', icon: Icons.event_busy_outlined)),
-            const SizedBox(width: 10),
-            Expanded(child: _Metric(label: 'الحضور', value: '${attendance.where((item) => item.status == AttendanceStatus.present).length}', icon: Icons.fact_check_outlined)),
+            _TabBody(child: _GradesSection(snapshot: snapshot, grades: grades, studentUuid: student.uuid, onAdd: () => _addGrade(context))),
+            _TabBody(child: _AttendanceSection(records: attendance)),
+            _TabBody(child: _BehaviorSection(records: behaviors, summary: summary, onAdd: () => _addBehavior(context), onDelete: _deleteBehavior)),
+            _TabBody(child: _NotesSection(notes: notes, onAdd: () => _addNote(context), onDelete: _deleteNote)),
           ],
         ),
-        const SizedBox(height: 18),
-        _StudentInfoCard(student: student),
-        const SizedBox(height: 20),
-        SegmentedButton<int>(
-          segments: const [
-            ButtonSegment(value: 0, label: Text('الدرجات'), icon: Icon(Icons.grade_outlined)),
-            ButtonSegment(value: 1, label: Text('الحضور'), icon: Icon(Icons.fact_check_outlined)),
-            ButtonSegment(value: 2, label: Text('السلوك'), icon: Icon(Icons.psychology_outlined)),
-            ButtonSegment(value: 3, label: Text('الملاحظات'), icon: Icon(Icons.note_alt_outlined)),
-          ],
-          selected: {_tab},
-          onSelectionChanged: (selection) => setState(() => _tab = selection.first),
-          multiSelectionEnabled: false,
-          showSelectedIcon: false,
-        ),
-        const SizedBox(height: 16),
-        switch (_tab) {
-          0 => _GradesSection(snapshot: snapshot, grades: grades, studentUuid: student.uuid, onAdd: () => _addGrade(context)),
-          1 => _AttendanceSection(records: attendance),
-          2 => _BehaviorSection(records: behaviors, summary: summary, onAdd: () => _addBehavior(context), onDelete: _deleteBehavior),
-          _ => _NotesSection(notes: notes, onAdd: () => _addNote(context), onDelete: _deleteNote),
-        },
-      ],
+      ),
     );
   }
 
@@ -354,6 +314,101 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
   IconData _statusIcon(StudentStatus status) => switch (status) { StudentStatus.active => Icons.check_circle_outline, StudentStatus.transferred => Icons.swap_horiz, StudentStatus.graduated => Icons.school_outlined, StudentStatus.suspended => Icons.pause_circle_outline };
 }
 
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendanceCount, required this.absentCount, required this.average, required this.onExportExcel, required this.onExportPdf});
+
+  final Student student;
+  final String? schoolClass;
+  final String? section;
+  final BehaviorSummary summary;
+  final int attendanceCount;
+  final int absentCount;
+  final double? average;
+  final VoidCallback onExportExcel;
+  final VoidCallback onExportPdf;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final statusTone = student.status == StudentStatus.active ? AppStatusTone.success : AppStatusTone.warning;
+    final alertColor = summary.dismissed ? scheme.errorContainer : summary.warning ? scheme.tertiaryContainer : scheme.surfaceContainerHighest;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 520;
+                final identity = Row(
+                  children: [
+                    CircleAvatar(radius: 32, backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900))),
+                    const SizedBox(width: 14),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(student.fullName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)), const SizedBox(height: 6), Text('${schoolClass ?? 'الصف غير محدد'}${section == null ? '' : ' — $section'}'), const SizedBox(height: 8), AppStatusPill(label: _statusLabelForProfile(student.status), icon: _statusIconForProfile(student.status), tone: statusTone)])),
+                  ],
+                );
+                final actions = Wrap(spacing: 8, children: [OutlinedButton.icon(onPressed: onExportExcel, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel')), OutlinedButton.icon(onPressed: onExportPdf, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF'))]);
+                return compact ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [identity, const SizedBox(height: 16), actions]) : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: identity), const SizedBox(width: 16), actions]);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          color: alertColor,
+          child: ListTile(
+            leading: Icon(summary.dismissed || summary.warning ? Icons.warning_amber_outlined : Icons.verified_outlined, color: summary.dismissed ? scheme.error : scheme.primary),
+            title: Text(summary.dismissed ? 'إشعار فصل' : summary.warning ? 'تنبيه سلوك' : 'السجل السلوكي سليم', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+            subtitle: Text('النقاط: ${summary.totalPoints.toStringAsFixed(1)} من ${summary.dismissalThreshold.toStringAsFixed(1)} — ${summary.negativeCount} مخالفات، ${summary.followUpCount} متابعات، ${summary.positiveCount} إيجابيات'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth < 560 ? 2 : 3;
+            final width = (constraints.maxWidth - ((columns - 1) * 10)) / columns;
+            return Wrap(spacing: 10, runSpacing: 10, children: [SizedBox(width: width, child: _Metric(label: 'متوسط الدرجات', value: average == null ? '—' : '${average!.toStringAsFixed(0)}%', icon: Icons.grade_outlined)), SizedBox(width: width, child: _Metric(label: 'الغياب', value: '$absentCount', icon: Icons.event_busy_outlined)), SizedBox(width: columns == 2 ? constraints.maxWidth : width, child: _Metric(label: 'الحضور', value: '$attendanceCount', icon: Icons.fact_check_outlined))]);
+          },
+        ),
+        const SizedBox(height: 12),
+        _StudentInfoCard(student: student),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+class _TabBody extends StatelessWidget {
+  const _TabBody({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 14, 20, 32), child: AppResponsiveContent(child: child));
+}
+
+class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _TabBarHeaderDelegate({required this.child});
+
+  final Widget child;
+
+  @override
+  double get minExtent => 72;
+
+  @override
+  double get maxExtent => 72;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
+
+  @override
+  bool shouldRebuild(covariant _TabBarHeaderDelegate oldDelegate) => oldDelegate.child != child;
+}
+
+String _statusLabelForProfile(StudentStatus status) => switch (status) { StudentStatus.active => 'نشط', StudentStatus.transferred => 'منقول', StudentStatus.graduated => 'متخرج', StudentStatus.suspended => 'موقوف' };
+IconData _statusIconForProfile(StudentStatus status) => switch (status) { StudentStatus.active => Icons.check_circle_outline, StudentStatus.transferred => Icons.swap_horiz, StudentStatus.graduated => Icons.school_outlined, StudentStatus.suspended => Icons.pause_circle_outline };
+
 class _StudentInfoCard extends StatelessWidget {
   const _StudentInfoCard({required this.student});
   final Student student;
@@ -433,7 +488,7 @@ class _BehaviorSection extends StatelessWidget {
   final VoidCallback onAdd;
   final Future<void> Function(String uuid) onDelete;
   @override
-  Widget build(BuildContext context) => _SectionCard(title: 'السلوك', icon: Icons.psychology_outlined, action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')), child: Column(children: [if (records.isEmpty) const Align(alignment: Alignment.centerRight, child: Text('لا توجد سجلات سلوك لهذا الطالب.')), if (records.isNotEmpty) ...records.map((record) => Dismissible(key: ValueKey(record.uuid), direction: DismissDirection.startToEnd, confirmDismiss: (_) async { await onDelete(record.uuid); return false; }, background: Container(color: Theme.of(context).colorScheme.error, alignment: Alignment.centerLeft, padding: const EdgeInsetsDirectional.only(start: 20), child: const Icon(Icons.delete_outline)), child: ListTile(leading: Icon(record.category == BehaviorCategory.positive ? Icons.thumb_up_outlined : Icons.warning_amber_outlined), title: Text(record.title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${record.details}\n${_date(record.date)}'), trailing: Text(record.penaltyPoints == 0 ? 'إيجابي' : '-${record.penaltyPoints.toStringAsFixed(0)}')))), const Divider(), Align(alignment: Alignment.centerRight, child: Text('إجمالي النقاط: ${summary.totalPoints.toStringAsFixed(1)}'))]));
+  Widget build(BuildContext context) => _SectionCard(title: 'السلوك', icon: Icons.rule_folder_outlined, action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')), child: Column(children: [if (records.isEmpty) const Align(alignment: Alignment.centerRight, child: Text('لا توجد سجلات سلوك لهذا الطالب.')), if (records.isNotEmpty) ...records.map((record) => Dismissible(key: ValueKey(record.uuid), direction: DismissDirection.startToEnd, confirmDismiss: (_) async { await onDelete(record.uuid); return false; }, background: Container(color: Theme.of(context).colorScheme.error, alignment: Alignment.centerLeft, padding: const EdgeInsetsDirectional.only(start: 20), child: const Icon(Icons.delete_outline)), child: ListTile(leading: Icon(record.category == BehaviorCategory.positive ? Icons.thumb_up_outlined : Icons.warning_amber_outlined), title: Text(record.title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${record.details}\n${_date(record.date)}'), trailing: Text(record.penaltyPoints == 0 ? 'إيجابي' : '-${record.penaltyPoints.toStringAsFixed(0)}')))), const Divider(), Align(alignment: Alignment.centerRight, child: Text('إجمالي النقاط: ${summary.totalPoints.toStringAsFixed(1)}'))]));
 }
 
 class _NotesSection extends StatelessWidget {
