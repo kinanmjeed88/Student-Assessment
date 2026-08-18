@@ -1,0 +1,142 @@
+name: Build Flutter Android
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.dart'
+      - 'android/**'
+      - 'assets/**'
+      - 'lib/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'analysis_options.yaml'
+      - 'scripts/**'
+      - '.github/workflows/build-flutter.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.dart'
+      - 'android/**'
+      - 'assets/**'
+      - 'lib/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'analysis_options.yaml'
+      - 'scripts/**'
+      - '.github/workflows/build-flutter.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-flutter-android:
+    name: Analyze, test, signed APK and AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      FLUTTER_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      FLUTTER_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      FLUTTER_KEY_ALIAS: student-record-release
+      FLUTTER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: stable
+          cache: true
+
+      - name: Verify Flutter toolchain
+        run: flutter --version
+
+      - name: Verify root Flutter project
+        run: |
+          test -f pubspec.yaml
+          test -f android/app/build.gradle
+          test -f lib/main.dart
+          test -x android/gradlew || chmod +x android/gradlew
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      - name: Generate Isar code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run static checks
+        run: ./scripts/static_check.sh
+
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Validate Android signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || { echo 'Missing ANDROID_KEYSTORE_BASE64'; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo 'Missing ANDROID_KEYSTORE_PASSWORD'; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo 'Missing ANDROID_KEY_PASSWORD'; exit 1; }
+
+      - name: Restore release keystore
+        working-directory: android
+        run: |
+          printf '%s' "$FLUTTER_KEYSTORE_BASE64" | base64 --decode > almoktaber-release.keystore
+          cat > key.properties <<EOF
+          storePassword=$FLUTTER_KEYSTORE_PASSWORD
+          keyPassword=$FLUTTER_KEY_PASSWORD
+          keyAlias=$FLUTTER_KEY_ALIAS
+          storeFile=almoktaber-release.keystore
+          EOF
+          chmod 600 almoktaber-release.keystore key.properties
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Build release AAB
+        run: flutter build appbundle --release
+
+      - name: Verify release signatures
+        run: |
+          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$apksigner_path"
+          "$apksigner_path" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
+          jarsigner -verify -verbose -certs build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload signed APK and AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-record-signed-android-${{ github.run_number }}
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Clean signing files
+        if: always()
+        run: rm -f android/almoktaber-release.keystore android/key.properties
