@@ -23,6 +23,11 @@ jobs:
     defaults:
       run:
         working-directory: flutter_app
+    env:
+      FLUTTER_KEYSTORE_BASE64: ${{ secrets.FLUTTER_KEYSTORE_BASE64 }}
+      FLUTTER_KEYSTORE_PASSWORD: ${{ secrets.FLUTTER_KEYSTORE_PASSWORD }}
+      FLUTTER_KEY_ALIAS: ${{ secrets.FLUTTER_KEY_ALIAS }}
+      FLUTTER_KEY_PASSWORD: ${{ secrets.FLUTTER_KEY_PASSWORD }}
 
     steps:
       - name: Check out source
@@ -73,13 +78,8 @@ jobs:
         run: flutter test
 
       - name: Restore optional release keystore
-        if: ${{ secrets.FLUTTER_KEYSTORE_BASE64 != '' && secrets.FLUTTER_KEYSTORE_PASSWORD != '' && secrets.FLUTTER_KEY_ALIAS != '' && secrets.FLUTTER_KEY_PASSWORD != '' }}
+        if: ${{ env.FLUTTER_KEYSTORE_BASE64 != '' && env.FLUTTER_KEYSTORE_PASSWORD != '' && env.FLUTTER_KEY_ALIAS != '' && env.FLUTTER_KEY_PASSWORD != '' }}
         working-directory: flutter_app/android
-        env:
-          FLUTTER_KEYSTORE_BASE64: ${{ secrets.FLUTTER_KEYSTORE_BASE64 }}
-          FLUTTER_KEYSTORE_PASSWORD: ${{ secrets.FLUTTER_KEYSTORE_PASSWORD }}
-          FLUTTER_KEY_ALIAS: ${{ secrets.FLUTTER_KEY_ALIAS }}
-          FLUTTER_KEY_PASSWORD: ${{ secrets.FLUTTER_KEY_PASSWORD }}
         run: |
           printf '%s' "$FLUTTER_KEYSTORE_BASE64" | base64 --decode > almoktaber-release.keystore
           cat > key.properties <<EOF
