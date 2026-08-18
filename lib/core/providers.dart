@@ -163,7 +163,7 @@ class AppController extends AsyncNotifier<AppSnapshot> {
         violationType: violationType,
         actionTaken: actionTaken,
         followUp: followUp,
-        date: date,
+        date: date ?? DateTime.now(),
       ));
 
   Future<void> deleteBehavior(String behaviorUuid) => _mutate(() => _repository.deleteBehavior(behaviorUuid));

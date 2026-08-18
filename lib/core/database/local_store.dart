@@ -1,3 +1,4 @@
+import 'app_snapshot.dart';
 import 'isar_models.dart';
 
 abstract interface class LocalStore {

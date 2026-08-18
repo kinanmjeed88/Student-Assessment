@@ -6,7 +6,7 @@ import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
 import '../../dashboard/presentation/app_shell.dart';
-import '../import/presentation/import_students_page.dart';
+import '../../import/presentation/import_students_page.dart';
 import 'student_details_page.dart';
 
 class StudentsPage extends ConsumerStatefulWidget {
