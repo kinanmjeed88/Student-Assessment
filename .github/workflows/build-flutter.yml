@@ -60,6 +60,7 @@ jobs:
             find android/app/src/main -name MainActivity.kt -exec sed -i 's/^package .*/package com.almoktaber/' {} +
             cp "$tmp_dir/build.gradle" android/app/build.gradle
             cp "$tmp_dir/AndroidManifest.xml" android/app/src/main/AndroidManifest.xml
+            rm -f test/widget_test.dart
           fi
 
       - name: Install Dart dependencies

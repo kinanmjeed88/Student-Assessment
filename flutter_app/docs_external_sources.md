@@ -25,3 +25,16 @@
 
 8. Printing: https://pub.dev/packages/printing
    - The package documentation covers sharing generated PDF bytes with `Printing.sharePdf` and printing via `Printing.layoutPdf`.
+
+
+## file_picker 12.0.0 API verification
+
+- Official API reference: https://pub.dev/documentation/file_picker/latest/file_picker/FilePicker-class.html
+- Official changelog: https://pub.dev/packages/file_picker/changelog
+- In 12.0.0, the public API uses static `FilePicker.pickFile`, `FilePicker.pickFiles`, and `FilePicker.saveFile`; `saveFile` requires `fileName` and `bytes`, while `PlatformFile.readAsBytes()` is the supported deferred-read path.
+- The 12.0.0 changelog states that the package requires Flutter 3.38 / Dart 3.10, so CI pins Flutter 3.47.0.
+
+## timezone compatibility verification
+
+- Pub package metadata: https://pub.dev/api/packages/timezone
+- `flutter_local_notifications` 17.2.4 requires `timezone ^0.9.0`; the project therefore pins `timezone: ^0.9.4` instead of the incompatible 0.11.x line.

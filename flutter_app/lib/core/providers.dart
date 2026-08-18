@@ -5,6 +5,7 @@ import 'database/app_snapshot.dart';
 import 'database/database_service.dart';
 import 'database/local_repository.dart';
 import 'database/local_store.dart';
+import 'database/isar_models.dart';
 import 'notifications/notification_service.dart';
 
 final databaseServiceProvider = Provider<DatabaseService>((ref) {

@@ -20,6 +20,7 @@ class NotificationService {
 
     const settings = InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(),
     );
     await _plugin.initialize(
       settings,
@@ -61,6 +62,7 @@ class NotificationService {
       tz.TZDateTime.from(scheduledAt, tz.local),
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 

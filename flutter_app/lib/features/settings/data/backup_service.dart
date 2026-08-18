@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 
 class BackupService {
   Future<String?> saveJson(String json) async {
-    final path = await FilePicker.platform.saveFile(
+    final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ النسخة الاحتياطية',
       fileName: 'almoktaber-backup.json',
       type: FileType.custom,

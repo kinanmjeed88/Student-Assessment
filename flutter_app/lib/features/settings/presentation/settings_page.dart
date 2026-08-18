@@ -159,12 +159,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
     );
     if (confirmed != true) return;
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['json'],
-      withData: true,
     );
-    final bytes = result?.files.single.bytes;
+    final bytes = await result?.readAsBytes();
     if (bytes == null) return;
     try {
       await ref.read(appControllerProvider.notifier).restoreBackup(utf8.decode(bytes));

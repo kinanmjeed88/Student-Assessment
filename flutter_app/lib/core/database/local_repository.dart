@@ -8,6 +8,8 @@ import 'database_service.dart';
 import 'isar_models.dart';
 import 'local_store.dart';
 
+final _uuid = const Uuid();
+
 class LocalRepository implements LocalStore {
   LocalRepository(this._databaseService);
 
@@ -24,7 +26,7 @@ class LocalRepository implements LocalStore {
       await db.writeTxn(() => db.appSettings.put(settings));
     }
 
-    final classes = await db.schoolClasss.where().findAll();
+    final classes = await db.schoolClasses.where().findAll();
     final sections = await db.sections.where().findAll();
     final students = await db.students.where().findAll();
     final gradeFields = await db.gradeFields.where().findAll();
@@ -56,7 +58,7 @@ class LocalRepository implements LocalStore {
       ..stage = stage.trim()
       ..academicYear = academicYear.trim()
       ..notes = notes.trim();
-    await db.writeTxn(() => db.schoolClasss.put(schoolClass));
+    await db.writeTxn(() => db.schoolClasses.put(schoolClass));
     return schoolClass;
   }
 
@@ -148,7 +150,7 @@ class LocalRepository implements LocalStore {
       await db.clear();
       await db.appSettings.put(_settingsFromJson(decoded['settings']));
       for (final item in _maps(decoded['classes'])) {
-        await db.schoolClasss.put(_classFromJson(item));
+        await db.schoolClasses.put(_classFromJson(item));
       }
       for (final item in _maps(decoded['sections'])) {
         await db.sections.put(_sectionFromJson(item));
@@ -237,11 +239,11 @@ class LocalRepository implements LocalStore {
         await db.sections.delete(section.id);
       }
 
-      final schoolClass = await db.schoolClasss
+      final schoolClass = await db.schoolClasses
           .filter()
           .uuidEqualTo(classUuid)
           .findFirst();
-      if (schoolClass != null) await db.schoolClasss.delete(schoolClass.id);
+      if (schoolClass != null) await db.schoolClasses.delete(schoolClass.id);
     });
   }
 
@@ -276,7 +278,7 @@ class LocalRepository implements LocalStore {
       'schemaVersion': 1,
       'exportedAt': DateTime.now().toIso8601String(),
       'settings': (await db.appSettings.get(1) ?? AppSettings()).toJson(),
-      'classes': (await db.schoolClasss.where().findAll()).map((e) => e.toJson()).toList(),
+      'classes': (await db.schoolClasses.where().findAll()).map((e) => e.toJson()).toList(),
       'sections': (await db.sections.where().findAll()).map((e) => e.toJson()).toList(),
       'students': (await db.students.where().findAll()).map((e) => e.toJson()).toList(),
       'attendance': (await db.attendanceRecords.where().findAll()).map((e) => e.toJson()).toList(),
