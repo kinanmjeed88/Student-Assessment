@@ -1,0 +1,107 @@
+name: Build Flutter Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'flutter_app/**'
+      - '.github/workflows/build-flutter.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-flutter-android:
+    name: Analyze, test, APK and AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: flutter_app
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: flutter_app/pubspec.yaml
+          cache: true
+
+      - name: Verify Flutter toolchain
+        run: flutter --version
+
+      - name: Generate Android platform files when absent
+        run: |
+          if [ ! -f android/gradlew ]; then
+            tmp_dir="$(mktemp -d)"
+            cp android/app/build.gradle "$tmp_dir/build.gradle"
+            cp android/app/src/main/AndroidManifest.xml "$tmp_dir/AndroidManifest.xml"
+            rm -rf android
+            flutter create --platforms=android --org com.almoktaber --project-name almoktaber .
+            find android/app/src/main -name MainActivity.kt -exec sed -i 's/^package .*/package com.almoktaber/' {} +
+            cp "$tmp_dir/build.gradle" android/app/build.gradle
+            cp "$tmp_dir/AndroidManifest.xml" android/app/src/main/AndroidManifest.xml
+          fi
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      - name: Generate Isar code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run static checks
+        run: ./scripts/static_check.sh
+
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Restore optional release keystore
+        if: ${{ secrets.FLUTTER_KEYSTORE_BASE64 != '' && secrets.FLUTTER_KEYSTORE_PASSWORD != '' && secrets.FLUTTER_KEY_ALIAS != '' && secrets.FLUTTER_KEY_PASSWORD != '' }}
+        working-directory: flutter_app/android
+        env:
+          FLUTTER_KEYSTORE_BASE64: ${{ secrets.FLUTTER_KEYSTORE_BASE64 }}
+          FLUTTER_KEYSTORE_PASSWORD: ${{ secrets.FLUTTER_KEYSTORE_PASSWORD }}
+          FLUTTER_KEY_ALIAS: ${{ secrets.FLUTTER_KEY_ALIAS }}
+          FLUTTER_KEY_PASSWORD: ${{ secrets.FLUTTER_KEY_PASSWORD }}
+        run: |
+          printf '%s' "$FLUTTER_KEYSTORE_BASE64" | base64 --decode > almoktaber-release.keystore
+          cat > key.properties <<EOF
+          storePassword=$FLUTTER_KEYSTORE_PASSWORD
+          keyPassword=$FLUTTER_KEY_PASSWORD
+          keyAlias=$FLUTTER_KEY_ALIAS
+          storeFile=almoktaber-release.keystore
+          EOF
+          chmod 600 almoktaber-release.keystore key.properties
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Build release AAB
+        run: flutter build appbundle --release
+
+      - name: Upload APK and AAB artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: almoktaber-flutter-android-${{ github.run_number }}
+          path: |
+            flutter_app/build/app/outputs/flutter-apk/app-release.apk
+            flutter_app/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
