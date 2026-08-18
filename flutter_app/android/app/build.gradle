@@ -1,3 +1,9 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'dev.flutter.flutter-gradle-plugin'
+}
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -10,12 +16,6 @@ def keyPropertiesFile = rootProject.file('key.properties')
 def hasReleaseKey = keyPropertiesFile.exists()
 if (hasReleaseKey) {
     keyProperties.load(new FileInputStream(keyPropertiesFile))
-}
-
-plugins {
-    id 'com.android.application'
-    id 'kotlin-android'
-    id 'dev.flutter.flutter-gradle-plugin'
 }
 
 android {
