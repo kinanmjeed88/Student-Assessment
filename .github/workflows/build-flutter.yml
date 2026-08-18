@@ -26,7 +26,7 @@ jobs:
     env:
       FLUTTER_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       FLUTTER_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      FLUTTER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      FLUTTER_KEY_ALIAS: student-record-release
       FLUTTER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
     steps:
