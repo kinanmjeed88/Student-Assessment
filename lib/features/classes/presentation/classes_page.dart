@@ -340,39 +340,68 @@ class _ClassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Card(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 14, 12),
           child: Row(
             children: [
-              CircleAvatar(radius: 24, backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: const Icon(Icons.class_outlined)),
-              const SizedBox(width: 12),
+              CircleAvatar(
+                radius: 21,
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.onPrimaryContainer,
+                child: const Icon(Icons.class_outlined, size: 22),
+              ),
+              const SizedBox(width: 8),
               Expanded(
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-                          if (stage.trim().isNotEmpty) Text(stage, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
-                        ],
-                      ),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(width: 8),
-                    AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined),
-                    const SizedBox(width: 8),
-                    AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success),
-                    const SizedBox(width: 8),
-                    IconButton(onPressed: onAddSection, tooltip: 'إضافة شعبة', icon: const Icon(Icons.add_circle_outline)),
+                    if (stage.trim().isNotEmpty)
+                      Text(
+                        stage,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall,
+                      ),
                   ],
                 ),
               ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success),
+                ),
+              ),
+              IconButton(
+                onPressed: onAddSection,
+                tooltip: 'إضافة شعبة',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                icon: const Icon(Icons.add_circle_outline),
+              ),
               PopupMenuButton<String>(
                 tooltip: 'إجراءات الصف',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                 onSelected: (value) {
                   if (value == 'edit') onEdit();
                   if (value == 'delete') onDelete();

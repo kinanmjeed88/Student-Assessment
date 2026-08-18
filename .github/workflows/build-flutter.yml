@@ -40,7 +40,7 @@ concurrency:
 
 jobs:
   build-flutter-android:
-    name: Analyze, test, signed APK and AAB
+    name: Analyze, test and signed APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -131,23 +131,18 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      - name: Build release AAB
-        run: flutter build appbundle --release
-
       - name: Verify release signatures
         run: |
           apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$apksigner_path"
           "$apksigner_path" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
-          jarsigner -verify -verbose -certs build/app/outputs/bundle/release/app-release.aab
 
-      - name: Upload signed APK and AAB
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: student-record-signed-android-${{ github.run_number }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 30
 
