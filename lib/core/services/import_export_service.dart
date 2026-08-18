@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:excel_plus/excel_plus.dart';
@@ -8,6 +8,7 @@ import 'package:xml/xml.dart';
 
 class ImportedStudentsFile {
   const ImportedStudentsFile({required this.filename, required this.names, required this.format});
+
   final String filename;
   final List<String> names;
   final String format;
@@ -15,17 +16,16 @@ class ImportedStudentsFile {
 
 class ImportExportService {
   Future<ImportedStudentsFile?> pickStudentsFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['xlsx', 'xls', 'csv', 'txt', 'docx'],
-      withData: true,
     );
-    if (result == null || result.files.isEmpty) return null;
-    final picked = result.files.single;
-    final extension = (picked.extension ?? '').toLowerCase();
-    final bytes = picked.bytes ?? (picked.path == null ? null : await File(picked.path!).readAsBytes());
-    if (bytes == null || bytes.isEmpty) throw const FormatException('تعذر قراءة الملف المحدد.');
+    if (picked == null) return null;
 
+    final Uint8List bytes = await picked.readAsBytes();
+    if (bytes.isEmpty) throw const FormatException('تعذر قراءة الملف المحدد.');
+
+    final extension = (picked.extension ?? '').toLowerCase();
     final rawNames = switch (extension) {
       'txt' || 'csv' => _readDelimited(bytes),
       'docx' => _readDocx(bytes),
@@ -34,6 +34,7 @@ class ImportExportService {
     };
     final filtered = _cleanNames(rawNames);
     if (filtered.isEmpty) throw const FormatException('لم يتم العثور على أسماء طلاب في الملف.');
+
     return ImportedStudentsFile(
       filename: picked.name,
       names: filtered,
@@ -43,7 +44,10 @@ class ImportExportService {
 
   List<String> _readDelimited(List<int> bytes) {
     final text = utf8.decode(bytes, allowMalformed: true);
-    return text.split(RegExp(r'\r?\n')).expand((line) => line.split(RegExp(r'[,;\t]')).take(1)).toList();
+    return text
+        .split(RegExp(r'\r?\n'))
+        .expand((line) => line.split(RegExp(r'[,;\t]')).take(1))
+        .toList();
   }
 
   List<String> _readWorkbook(List<int> bytes) {
@@ -51,7 +55,10 @@ class ImportExportService {
     final names = <String>[];
     for (final table in workbook.tables.values) {
       for (final row in table.rows) {
-        final values = row.map((cell) => cell?.value?.toString().trim() ?? '').where((value) => value.isNotEmpty).toList();
+        final values = row
+            .map((cell) => cell?.value?.toString().trim() ?? '')
+            .where((value) => value.isNotEmpty)
+            .toList();
         if (values.isNotEmpty) names.add(values.first);
       }
     }
@@ -68,10 +75,20 @@ class ImportExportService {
       }
     }
     if (documentFile == null) throw const FormatException('ملف Word لا يحتوي على مستند صالح.');
-    final xml = XmlDocument.parse(utf8.decode(documentFile.readBytes(), allowMalformed: true));
+
+    final documentBytes = documentFile.readBytes();
+    if (documentBytes == null) throw const FormatException('تعذر قراءة محتوى ملف Word.');
+    final xml = XmlDocument.parse(utf8.decode(documentBytes, allowMalformed: true));
     return xml.descendants
+        .whereType<XmlElement>()
         .where((element) => element.name.local == 'p')
-        .map((paragraph) => paragraph.descendants.where((element) => element.name.local == 't').map((element) => element.text).join())
+        .map(
+          (paragraph) => paragraph.descendants
+              .whereType<XmlElement>()
+              .where((element) => element.name.local == 't')
+              .map((element) => element.innerText)
+              .join(),
+        )
         .where((value) => value.trim().isNotEmpty)
         .toList();
   }

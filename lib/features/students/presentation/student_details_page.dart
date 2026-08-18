@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -335,13 +337,13 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
 
   Future<void> _exportExcel(BuildContext context) async {
     final bytes = ReportService().exportStudentXlsx(snapshot, student.uuid);
-    final path = await FilePicker.platform.saveFile(dialogTitle: 'حفظ ملف الطالب', fileName: 'بيانات_${student.fullName}.xlsx', bytes: bytes);
+    final path = await FilePicker.saveFile(dialogTitle: 'حفظ ملف الطالب', fileName: 'بيانات_${student.fullName}.xlsx', bytes: Uint8List.fromList(bytes));
     if (context.mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ الملف: $path')));
   }
 
   Future<void> _exportPdf(BuildContext context) async {
     final bytes = await ReportService().exportStudentPdf(snapshot, student.uuid);
-    final path = await FilePicker.platform.saveFile(dialogTitle: 'حفظ ملف الطالب PDF', fileName: 'ملف_${student.fullName}.pdf', bytes: bytes);
+    final path = await FilePicker.saveFile(dialogTitle: 'حفظ ملف الطالب PDF', fileName: 'ملف_${student.fullName}.pdf', bytes: Uint8List.fromList(bytes));
     if (context.mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ الملف: $path')));
   }
 

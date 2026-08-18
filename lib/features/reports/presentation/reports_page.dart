@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,7 +58,7 @@ class ReportsPage extends ConsumerWidget {
   }
 
   Future<void> _export(BuildContext context, List<int> bytes, String filename) async {
-    final path = await FilePicker.platform.saveFile(dialogTitle: 'حفظ التقرير', fileName: filename, bytes: bytes);
+    final path = await FilePicker.saveFile(dialogTitle: 'حفظ التقرير', fileName: filename, bytes: Uint8List.fromList(bytes));
     if (context.mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ الملف: $path')));
   }
 }

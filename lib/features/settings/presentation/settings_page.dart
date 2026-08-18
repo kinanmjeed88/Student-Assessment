@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 
 import 'package:flutter/material.dart';
@@ -138,15 +140,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _restoreBackup() async {
     final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('استعادة النسخة؟'), content: const Text('سيتم حذف البيانات المحلية الحالية واستبدالها بمحتوى الملف.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('متابعة'))]));
     if (confirmed != true) return;
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json'], withData: true);
-    final bytes = result?.files.single.bytes;
-    if (bytes == null) return;
+    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+    if (files.isEmpty) return;
+    final bytes = await files.first.readAsBytes();
     try { await ref.read(appControllerProvider.notifier).restoreBackup(utf8.decode(bytes)); if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت استعادة النسخة الاحتياطية.'))); } on FormatException catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message))); }
   }
 
   Future<void> _exportBackup() async {
     final json = await ref.read(localRepositoryProvider).exportBackupJson();
-    final path = await FilePicker.platform.saveFile(dialogTitle: 'حفظ النسخة الاحتياطية', fileName: 'al-moktaber-backup.json', bytes: utf8.encode(json));
+    final path = await FilePicker.saveFile(dialogTitle: 'حفظ النسخة الاحتياطية', fileName: 'al-moktaber-backup.json', bytes: Uint8List.fromList(utf8.encode(json)));
     if (mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تصدير النسخة الاحتياطية.')));
   }
 }
