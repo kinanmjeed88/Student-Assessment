@@ -97,6 +97,13 @@ jobs:
       - name: Build release AAB
         run: flutter build appbundle --release
 
+      - name: Verify release signatures
+        run: |
+          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$apksigner_path"
+          "$apksigner_path" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
+          jarsigner -verify -verbose -certs build/app/outputs/bundle/release/app-release.aab
+
       - name: Upload APK and AAB artifacts
         uses: actions/upload-artifact@v4
         with:
