@@ -123,7 +123,44 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(margin: EdgeInsets.zero, elevation: 2, shadowColor: scheme.onSurface.withOpacity(.14), child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 178), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16), child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: [CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.primary, child: Icon(icon)), const SizedBox(height: 12), Text(value, style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w700))])));
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 2,
+      shadowColor: scheme.onSurface.withOpacity(.14),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 178),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.primary,
+                child: Icon(icon),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

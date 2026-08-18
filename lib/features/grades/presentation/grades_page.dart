@@ -70,7 +70,54 @@ class _GradesPageState extends ConsumerState<GradesPage> {
     final maxScore = TextEditingController(text: '100');
     final term = TextEditingController(text: 'الفصل الأول');
     final key = GlobalKey<FormState>();
-    await showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(title: const Text('إضافة حقل تقييم'), content: Form(key: key, child: Column(mainAxisSize: MainAxisSize.min, children: [_required(subject, 'المادة'), const SizedBox(height: 10), _required(title, 'اسم التقييم'), const SizedBox(height: 10), TextFormField(controller: maxScore, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'الدرجة العظمى'), validator: (v) => double.tryParse(v ?? '') == null ? 'أدخل رقماً صحيحاً' : null), const SizedBox(height: 10), TextFormField(controller: term, decoration: const InputDecoration(labelText: 'الفصل'))]), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')), ElevatedButton(onPressed: () async { if (!(key.currentState?.validate() ?? false)) return; await ref.read(appControllerProvider.notifier).createGradeField(subject: subject.text, title: title.text, maxScore: double.parse(maxScore.text), term: term.text); if (dialogContext.mounted) Navigator.pop(dialogContext); }, child: const Text('إنشاء'))]));
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('إضافة حقل تقييم'),
+        content: Form(
+          key: key,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _required(subject, 'المادة'),
+              const SizedBox(height: 10),
+              _required(title, 'اسم التقييم'),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: maxScore,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'الدرجة العظمى'),
+                validator: (value) => double.tryParse(value ?? '') == null ? 'أدخل رقماً صحيحاً' : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: term,
+                decoration: const InputDecoration(labelText: 'الفصل'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!(key.currentState?.validate() ?? false)) return;
+              await ref.read(appControllerProvider.notifier).createGradeField(
+                    subject: subject.text,
+                    title: title.text,
+                    maxScore: double.parse(maxScore.text),
+                    term: term.text,
+                  );
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            },
+            child: const Text('إنشاء'),
+          ),
+        ],
+      ),
+    );
     subject.dispose(); title.dispose(); maxScore.dispose(); term.dispose();
   }
 

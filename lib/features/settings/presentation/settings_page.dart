@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,14 +33,98 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final state = ref.watch(appControllerProvider);
     return AsyncStateView(state: state, child: state.when(loading: () => const SizedBox.shrink(), error: (_, __) => const SizedBox.shrink(), data: (snapshot) {
       if (!_initialized) { _schoolController.text = snapshot.settings.schoolName; _teacherController.text = snapshot.settings.teacherName; _yearController.text = snapshot.settings.academicYear; _stageController.text = snapshot.settings.stage; _initialized = true; }
-      return Scaffold(appBar: AppBar(title: const Text('الإعدادات')), body: ListView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 28), children: [
-        Text('بيانات المدرسة', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)), const SizedBox(height: 12),
-        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [_field(_schoolController, 'اسم المدرسة'), const SizedBox(height: 12), _field(_teacherController, 'اسم المعلم'), const SizedBox(height: 12), _field(_yearController, 'العام الدراسي'), const SizedBox(height: 12), _field(_stageController, 'المرحلة الدراسية'), const SizedBox(height: 16), FilledButton.icon(onPressed: _saving ? null : _save, icon: _saving ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined), label: const Text('حفظ الإعدادات'))])),
-        const SizedBox(height: 24), Text('إدارة البيانات', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)), const SizedBox(height: 12),
-        Card(child: Column(children: [_tile(context, Icons.assessment_outlined, 'التقارير والتصدير', 'إنشاء XLSX وPDF ونسخ احتياطية', const ReportsPage()), const Divider(height: 1), _tile(context, Icons.upload_file_outlined, 'استيراد الطلاب', 'إضافة مجموعة من ملف Excel أو CSV', const ImportStudentsPage()), const Divider(height: 1), _tile(context, Icons.history_outlined, 'سجل الاستيراد', 'مراجعة العمليات والتراجع عنها', const ImportHistoryPage()), const Divider(height: 1), ListTile(leading: const Icon(Icons.restore_outlined), title: const Text('استعادة نسخة JSON'), subtitle: const Text('استبدال البيانات المحلية بملف احتياطي موثوق.'), trailing: const Icon(Icons.chevron_left), onTap: _restoreBackup), ListTile(leading: const Icon(Icons.backup_outlined), title: const Text('تصدير نسخة احتياطية'), subtitle: const Text('JSON شامل لجميع المجالات.'), trailing: const Icon(Icons.chevron_left), onTap: _exportBackup)])),
-        const SizedBox(height: 24), Text('التنبيهات', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)), const SizedBox(height: 12), Card(child: ListTile(leading: const Icon(Icons.notifications_active_outlined), title: const Text('صلاحيات التنبيهات'), subtitle: const Text('تهيئة Android 13+ والتنبيهات الدقيقة عند الحاجة.'), trailing: const Icon(Icons.chevron_left), onTap: _requestNotificationPermission)),
-        const SizedBox(height: 20), const Card(child: ListTile(leading: Icon(Icons.offline_bolt_outlined), title: Text('وضع العمل المحلي'), subtitle: Text('البيانات محفوظة في Isar ولا يتطلب التطبيق اتصالاً بالشبكة.'))),
-      ]));
+      return Scaffold(
+        appBar: AppBar(title: const Text('الإعدادات')),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          children: [
+            Text(
+              'بيانات المدرسة',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _field(_schoolController, 'اسم المدرسة'),
+                    const SizedBox(height: 12),
+                    _field(_teacherController, 'اسم المعلم'),
+                    const SizedBox(height: 12),
+                    _field(_yearController, 'العام الدراسي'),
+                    const SizedBox(height: 12),
+                    _field(_stageController, 'المرحلة الدراسية'),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.save_outlined),
+                      label: const Text('حفظ الإعدادات'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'إدارة البيانات',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Column(
+                children: [
+                  _tile(context, Icons.assessment_outlined, 'التقارير والتصدير', 'إنشاء XLSX وPDF ونسخ احتياطية', const ReportsPage()),
+                  const Divider(height: 1),
+                  _tile(context, Icons.upload_file_outlined, 'استيراد الطلاب', 'إضافة مجموعة من ملف Excel أو CSV', const ImportStudentsPage()),
+                  const Divider(height: 1),
+                  _tile(context, Icons.history_outlined, 'سجل الاستيراد', 'مراجعة العمليات والتراجع عنها', const ImportHistoryPage()),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.restore_outlined),
+                    title: const Text('استعادة نسخة JSON'),
+                    subtitle: const Text('استبدال البيانات المحلية بملف احتياطي موثوق.'),
+                    trailing: const Icon(Icons.chevron_left),
+                    onTap: _restoreBackup,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.backup_outlined),
+                    title: const Text('تصدير نسخة احتياطية'),
+                    subtitle: const Text('JSON شامل لجميع المجالات.'),
+                    trailing: const Icon(Icons.chevron_left),
+                    onTap: _exportBackup,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'التنبيهات',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.notifications_active_outlined),
+                title: const Text('صلاحيات التنبيهات'),
+                subtitle: const Text('تهيئة Android 13+ والتنبيهات الدقيقة عند الحاجة.'),
+                trailing: const Icon(Icons.chevron_left),
+                onTap: _requestNotificationPermission,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.offline_bolt_outlined),
+                title: Text('وضع العمل المحلي'),
+                subtitle: Text('البيانات محفوظة في Isar ولا يتطلب التطبيق اتصالاً بالشبكة.'),
+              ),
+            ),
+          ],
+        ),
+      );
     }));
   }
 

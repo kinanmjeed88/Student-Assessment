@@ -143,5 +143,14 @@ class _BehaviorCard extends StatelessWidget {
 class _EmptyBehavior extends StatelessWidget {
   const _EmptyBehavior();
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 80), child: Column(children: [Icon(Icons.fact_check_outlined, size: 60, color: Theme.of(context).colorScheme.primary), const SizedBox(height: 12), const Text('لا توجد سجلات سلوك حتى الآن.')]))
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 80),
+        child: Column(
+          children: [
+            Icon(Icons.fact_check_outlined, size: 60, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 12),
+            const Text('لا توجد سجلات سلوك حتى الآن.'),
+          ],
+        ),
+      );
 }
