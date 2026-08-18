@@ -25,7 +25,7 @@ class ImportExportService {
     final Uint8List bytes = await picked.readAsBytes();
     if (bytes.isEmpty) throw const FormatException('تعذر قراءة الملف المحدد.');
 
-    final extension = (picked.extension ?? '').toLowerCase();
+    final extension = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : '';
     final rawNames = switch (extension) {
       'txt' || 'csv' => _readDelimited(bytes),
       'docx' => _readDocx(bytes),

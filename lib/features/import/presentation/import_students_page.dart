@@ -32,7 +32,7 @@ class _ImportStudentsPageState extends ConsumerState<ImportStudentsPage> {
   Widget _content(BuildContext context, AppSnapshot snapshot) {
     final classUuid = _classUuid ?? (snapshot.classes.isEmpty ? null : snapshot.classes.first.uuid);
     final sections = snapshot.sections.where((section) => section.classUuid == classUuid).toList(growable: false);
-    final sectionUuid = _sectionUuid != null && sections.any((item) => item.uuid == _sectionUuid) ? _sectionUuid : (sections.isEmpty ? '' : sections.first.uuid);
+    final sectionUuid = _sectionUuid != null && sections.any((item) => item.uuid == _sectionUuid) ? _sectionUuid! : (sections.isEmpty ? '' : sections.first.uuid);
     return Scaffold(
       appBar: AppBar(title: const Text('استيراد الطلاب')),
       body: ListView(

@@ -108,7 +108,7 @@ class ClassesPage extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () async {
-              await ref.read(appControllerProvider.notifier).addClass(name.text);
+              await ref.read(appControllerProvider.notifier).addClass(name: name.text);
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             },
             child: const Text('حفظ'),
