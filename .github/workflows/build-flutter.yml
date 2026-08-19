@@ -76,11 +76,14 @@ jobs:
             tmp_dir="$(mktemp -d)"
             cp android/app/build.gradle "$tmp_dir/build.gradle"
             cp android/app/src/main/AndroidManifest.xml "$tmp_dir/AndroidManifest.xml"
+            cp -R android/app/src/main/res "$tmp_dir/res"
             rm -rf android
             flutter create --platforms=android --org com.almoktaber --project-name almoktaber .
             find android/app/src/main -name MainActivity.kt -exec sed -i 's/^package .*/package com.almoktaber/' {} +
             cp "$tmp_dir/build.gradle" android/app/build.gradle
             cp "$tmp_dir/AndroidManifest.xml" android/app/src/main/AndroidManifest.xml
+            rm -rf android/app/src/main/res
+            cp -R "$tmp_dir/res" android/app/src/main/res
             rm -f test/widget_test.dart
           fi
 
