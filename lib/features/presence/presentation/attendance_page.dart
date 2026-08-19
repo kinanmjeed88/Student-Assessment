@@ -68,28 +68,33 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                               child: ListTile(
                                 title: Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.w800)),
                                 subtitle: Text(student.studentNumber.isEmpty ? 'بدون رقم' : student.studentNumber),
-                                trailing: DropdownButton<AttendanceStatus>(
-                                  value: status,
-                                  underline: const SizedBox.shrink(),
-                                  items: AttendanceStatus.values
-                                      .map((value) => DropdownMenuItem(value: value, child: Text(_statusLabel(value))))
-                                      .toList(),
-                                  onChanged: (value) async {
-                                    if (value == null) return;
-                                    setState(() => _draft[student.uuid] = value);
-                                    await ref.read(appControllerProvider.notifier).updateAttendance(
-                                      studentUuid: student.uuid,
-                                      date: _selectedDate,
-                                      status: value,
-                                    );
-                                  },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    DropdownButton<AttendanceStatus>(
+                                      value: status,
+                                      underline: const SizedBox.shrink(),
+                                      items: AttendanceStatus.values
+                                          .map((value) => DropdownMenuItem(value: value, child: Text(_statusLabel(value))))
+                                          .toList(),
+                                      onChanged: (value) async {
+                                        if (value == null) return;
+                                        setState(() => _draft[student.uuid] = value);
+                                        await ref.read(appControllerProvider.notifier).updateAttendance(
+                                          studentUuid: student.uuid,
+                                          date: _selectedDate,
+                                          status: value,
+                                        );
+                                      },
+                                    ),
+                                    if (existing != null)
+                                      IconButton(
+                                        tooltip: 'حذف سجل الحضور',
+                                        onPressed: () => _deleteAttendance(student.uuid),
+                                        icon: const Icon(Icons.delete_outline),
+                                      ),
+                                  ],
                                 ),
-                                if (existing != null)
-                                  IconButton(
-                                    tooltip: 'حذف سجل الحضور',
-                                    onPressed: () => _deleteAttendance(student.uuid),
-                                    icon: const Icon(Icons.delete_outline),
-                                  ),
                               ),
                             );
                           },
