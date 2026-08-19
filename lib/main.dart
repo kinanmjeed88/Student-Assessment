@@ -7,12 +7,32 @@ import 'core/notifications/notification_service.dart';
 import 'core/providers.dart';
 import 'core/theme/app_theme.dart';
 import 'features/dashboard/presentation/app_shell.dart';
+import 'features/students/presentation/student_details_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final notificationService =
       NotificationService(FlutterLocalNotificationsPlugin());
+  final navigatorKey = GlobalKey<NavigatorState>();
+  String? pendingPayload;
+
+  void openNotificationTarget(String? payload) {
+    if (payload == null || !payload.startsWith('student:')) return;
+    final studentUuid = payload.substring('student:'.length);
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) {
+      pendingPayload = payload;
+      return;
+    }
+    navigator.push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => StudentDetailsPage(studentUuid: studentUuid),
+      ),
+    );
+  }
+
+  notificationService.onNotificationTap = openNotificationTarget;
   await notificationService.initialize();
 
   runApp(
@@ -20,17 +40,26 @@ Future<void> main() async {
       overrides: [
         notificationServiceProvider.overrideWithValue(notificationService),
       ],
-      child: const AlMoktaberApp(),
+      child: AlMoktaberApp(navigatorKey: navigatorKey),
     ),
   );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final payload = pendingPayload;
+    pendingPayload = null;
+    openNotificationTarget(payload);
+  });
 }
 
 class AlMoktaberApp extends StatelessWidget {
-  const AlMoktaberApp({super.key});
+  const AlMoktaberApp({required this.navigatorKey, super.key});
+
+  final GlobalKey<NavigatorState> navigatorKey;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'حليف القرآن',
       theme: AppTheme.light(),

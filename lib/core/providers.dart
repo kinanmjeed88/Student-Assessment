@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'behavior/behavior_summary.dart';
 import 'database/app_snapshot.dart';
 import 'database/database_service.dart';
 import 'database/isar_models.dart';
@@ -192,16 +193,68 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     String actionTaken = '',
     String followUp = '',
     DateTime? date,
-  }) => _mutate(() => _repository.createBehavior(
-        studentUuid: studentUuid,
-        category: category,
-        title: title,
-        details: details,
-        violationType: violationType,
-        actionTaken: actionTaken,
-        followUp: followUp,
-        date: date ?? DateTime.now(),
-      ));
+  }) async {
+    final previousSummary = _behaviorSummary(studentUuid);
+    await _mutate(() => _repository.createBehavior(
+          studentUuid: studentUuid,
+          category: category,
+          title: title,
+          details: details,
+          violationType: violationType,
+          actionTaken: actionTaken,
+          followUp: followUp,
+          date: date ?? DateTime.now(),
+        ));
+    await _notifyBehaviorAlert(studentUuid, previousSummary);
+  }
+
+  AppSnapshot? get _loadedSnapshot {
+    final currentState = state;
+    return currentState is AsyncData<AppSnapshot> ? currentState.value : null;
+  }
+
+  BehaviorSummary? _behaviorSummary(String studentUuid) {
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return null;
+    return calculateBehaviorSummary(
+      records: snapshot.behaviorsFor(studentUuid),
+      settings: snapshot.settings,
+    );
+  }
+
+  Future<void> _notifyBehaviorAlert(
+    String studentUuid,
+    BehaviorSummary? previousSummary,
+  ) async {
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return;
+    Student? student;
+    for (final item in snapshot.students) {
+      if (item.uuid == studentUuid) {
+        student = item;
+        break;
+      }
+    }
+    if (student == null) return;
+
+    final summary = _behaviorSummary(studentUuid);
+    if (summary == null || !summary.hasAlert) return;
+    final alreadyAlerted = previousSummary?.hasAlert == true;
+    if (alreadyAlerted) return;
+
+    final points = summary.totalPoints == summary.totalPoints.roundToDouble()
+        ? summary.totalPoints.toStringAsFixed(0)
+        : summary.totalPoints.toStringAsFixed(1);
+    try {
+      await ref.read(notificationServiceProvider).showBehaviorAlert(
+            studentUuid: student.uuid,
+            title: 'إشعار سلوكي: ${student.fullName}',
+            body: '${summary.label} • الدرجة السلوكية $points',
+          );
+    } catch (_) {
+      // لا ينبغي أن يمنع تعذر إشعار النظام حفظ السجل داخل قاعدة البيانات.
+    }
+  }
 
   Future<void> updateBehavior({
     required String behaviorUuid,
