@@ -31,6 +31,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _disruptionPointsController = TextEditingController();
   final _seriousMisconductPointsController = TextEditingController();
   final _otherPointsController = TextEditingController();
+  bool _institutionLineAnimated = false;
+  double _institutionLineSpeed = 40;
   bool _initialized = false;
   bool _saving = false;
 
@@ -69,6 +71,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _disruptionPointsController.text = _number(snapshot.settings.penalties.lessonDisruption);
             _seriousMisconductPointsController.text = _number(snapshot.settings.penalties.seriousMisconduct);
             _otherPointsController.text = _number(snapshot.settings.penalties.other);
+            _institutionLineAnimated = snapshot.settings.institutionLineAnimated;
+            _institutionLineSpeed = snapshot.settings.institutionLineSpeed.clamp(10, 200).toDouble();
             _initialized = true;
           }
           return Scaffold(
@@ -100,6 +104,49 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             _field(_stageController, 'المرحلة الدراسية', Icons.account_tree_outlined),
                             const SizedBox(height: 18),
                             Align(alignment: AlignmentDirectional.centerStart, child: FilledButton.icon(onPressed: _saving ? null : _save, icon: _saving ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined), label: const Text('حفظ البيانات'))),
+                          ],
+                        ),
+                      ),
+                      AppSpacing.section,
+                      const AppSectionHeader(title: 'سطر المؤسسة في الرئيسية', subtitle: 'اعرض اسم المعلم والمدرسة أسفل عنوان سجل الطالب بشكل ثابت أو متحرك.'),
+                      AppSpacing.compact,
+                      AppSurfaceCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            SwitchListTile(
+                              secondary: const Icon(Icons.short_text_outlined),
+                              title: const Text('تفعيل الحركة'),
+                              subtitle: const Text('يتحرك السطر تلقائياً عندما يكون النص أطول من المساحة المتاحة.'),
+                              value: _institutionLineAnimated,
+                              onChanged: _saving
+                                  ? null
+                                  : (value) {
+                                      setState(() => _institutionLineAnimated = value);
+                                      _saveInstitutionLineSettings();
+                                    },
+                            ),
+                            if (_institutionLineAnimated) ...[
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text('سرعة الحركة: ${_institutionLineSpeed.round()} بكسل/ثانية', style: Theme.of(context).textTheme.titleSmall),
+                                    Slider(
+                                      value: _institutionLineSpeed,
+                                      min: 10,
+                                      max: 200,
+                                      divisions: 19,
+                                      label: '${_institutionLineSpeed.round()}',
+                                      onChanged: _saving ? null : (value) => setState(() => _institutionLineSpeed = value),
+                                      onChangeEnd: _saving ? null : (_) => _saveInstitutionLineSettings(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -225,6 +272,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             warningThreshold: warning,
             dismissalThreshold: dismissal,
             penalties: penalties,
+            institutionLineAnimated: _institutionLineAnimated,
+            institutionLineSpeed: _institutionLineSpeed,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الإعدادات بنجاح.')));
@@ -232,6 +281,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveInstitutionLineSettings() async {
+    try {
+      await ref.read(appControllerProvider.notifier).saveSettings(
+            schoolName: _schoolController.text,
+            teacherName: _teacherController.text,
+            academicYear: _yearController.text,
+            stage: _stageController.text,
+            institutionLineAnimated: _institutionLineAnimated,
+            institutionLineSpeed: _institutionLineSpeed,
+          );
+    } on FormatException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 

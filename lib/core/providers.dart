@@ -112,6 +112,8 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     double? dismissalThreshold,
     double? warningThreshold,
     PenaltyRules? penalties,
+    bool? institutionLineAnimated,
+    double? institutionLineSpeed,
   }) => _mutate(() => _repository.updateSettings(
         schoolName: schoolName,
         teacherName: teacherName,
@@ -120,6 +122,8 @@ class AppController extends AsyncNotifier<AppSnapshot> {
         dismissalThreshold: dismissalThreshold,
         warningThreshold: warningThreshold,
         penalties: penalties,
+        institutionLineAnimated: institutionLineAnimated,
+        institutionLineSpeed: institutionLineSpeed,
       ));
 
   Future<void> setAttendance({

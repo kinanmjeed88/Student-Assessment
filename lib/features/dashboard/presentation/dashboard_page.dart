@@ -78,6 +78,7 @@ class _DashboardContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _DashboardHeader(
+          settings: snapshot.settings,
           alertCount: alerts.length,
           onNotifications: () => _showBehaviorNotifications(context, alerts),
         ),
@@ -127,38 +128,171 @@ class _DashboardContent extends StatelessWidget {
 }
 
 class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({required this.alertCount, required this.onNotifications});
+  const _DashboardHeader({required this.settings, required this.alertCount, required this.onNotifications});
 
+  final AppSettings settings;
   final int alertCount;
   final VoidCallback onNotifications;
+
+  String _institutionText() {
+    final teacher = settings.teacherName.trim();
+    final school = settings.schoolName.trim();
+    if (teacher.isEmpty) return school;
+    if (school.isEmpty) return teacher;
+    return '$teacher - $school';
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Row(
+    final institutionText = _institutionText();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            'سجل الطالب',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.headlineSmall?.copyWith(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w900,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'سجل الطالب',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.headlineSmall?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
-          ),
+            Badge.count(
+              count: alertCount,
+              isLabelVisible: alertCount > 0,
+              child: IconButton(
+                tooltip: 'الإشعارات السلوكية',
+                onPressed: onNotifications,
+                icon: const Icon(Icons.notifications_none_outlined),
+              ),
+            ),
+          ],
         ),
-        Badge.count(
-          count: alertCount,
-          isLabelVisible: alertCount > 0,
-          child: IconButton(
-            tooltip: 'الإشعارات السلوكية',
-            onPressed: onNotifications,
-            icon: const Icon(Icons.notifications_none_outlined),
+        if (institutionText.isNotEmpty)
+          _InstitutionLine(
+            text: institutionText,
+            animated: settings.institutionLineAnimated,
+            speed: settings.institutionLineSpeed,
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _InstitutionLine extends StatelessWidget {
+  const _InstitutionLine({required this.text, required this.animated, required this.speed});
+
+  final String text;
+  final bool animated;
+  final double speed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final style = Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        );
+    if (!animated) {
+      return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style),
+          textDirection: Directionality.of(context),
+          maxLines: 1,
+        )..layout();
+        if (painter.width <= constraints.maxWidth) {
+          return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+        }
+        return _ScrollingInstitutionLine(
+          text: text,
+          style: style,
+          width: painter.width,
+          viewportWidth: constraints.maxWidth,
+          speed: speed,
+        );
+      },
+    );
+  }
+}
+
+class _ScrollingInstitutionLine extends StatefulWidget {
+  const _ScrollingInstitutionLine({required this.text, required this.style, required this.width, required this.viewportWidth, required this.speed});
+
+  final String text;
+  final TextStyle? style;
+  final double width;
+  final double viewportWidth;
+  final double speed;
+
+  @override
+  State<_ScrollingInstitutionLine> createState() => _ScrollingInstitutionLineState();
+}
+
+class _ScrollingInstitutionLineState extends State<_ScrollingInstitutionLine> with SingleTickerProviderStateMixin {
+  static const _gap = 32.0;
+  late final AnimationController _controller;
+
+  double get _distance => widget.width + _gap;
+
+  Duration get _duration {
+    final pixelsPerSecond = widget.speed.clamp(10, 200).toDouble();
+    return Duration(milliseconds: (_distance / pixelsPerSecond * 1000).round().clamp(1000, 120000));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: _duration)..repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScrollingInstitutionLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.width != widget.width || oldWidget.speed != widget.speed) {
+      _controller
+        ..duration = _duration
+        ..repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: SizedBox(
+        height: 24,
+        width: widget.viewportWidth,
+        child: AnimatedBuilder(
+          animation: _controller,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(widget.text, style: widget.style, maxLines: 1),
+              const SizedBox(width: _gap),
+              Text(widget.text, style: widget.style, maxLines: 1),
+            ],
+          ),
+          builder: (context, child) => Transform.translate(
+            offset: Offset(-_controller.value * _distance, 0),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }

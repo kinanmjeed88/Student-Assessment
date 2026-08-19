@@ -239,6 +239,8 @@ class LocalRepository implements LocalStore {
     double? dismissalThreshold,
     double? warningThreshold,
     PenaltyRules? penalties,
+    bool? institutionLineAnimated,
+    double? institutionLineSpeed,
   }) async {
     final db = await _db;
     await db.writeTxn(() async {
@@ -259,6 +261,15 @@ class LocalRepository implements LocalStore {
           ..lessonDisruption = penalties.lessonDisruption
           ..seriousMisconduct = penalties.seriousMisconduct
           ..other = penalties.other;
+      }
+      if (institutionLineAnimated != null) {
+        settings.institutionLineAnimated = institutionLineAnimated;
+      }
+      if (institutionLineSpeed != null) {
+        if (institutionLineSpeed <= 0) {
+          throw const FormatException('سرعة سطر المؤسسة يجب أن تكون أكبر من صفر.');
+        }
+        settings.institutionLineSpeed = institutionLineSpeed;
       }
       if (settings.warningThreshold > settings.dismissalThreshold) {
         throw const FormatException('حد التنبيه يجب أن يكون أقل من حد الفصل.');

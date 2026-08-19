@@ -21,6 +21,7 @@ class StudentsPage extends ConsumerStatefulWidget {
 class _StudentsPageState extends ConsumerState<StudentsPage> {
   final _searchController = TextEditingController();
   String _classFilter = 'all';
+  String _sectionFilter = 'all';
   String _attentionFilter = 'all';
 
   @override
@@ -47,6 +48,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
       final query = _searchController.text.trim();
       final matchesQuery = query.isEmpty || student.fullName.contains(query) || student.studentNumber.contains(query);
       final matchesClass = _classFilter == 'all' || student.classUuid == _classFilter;
+      final matchesSection = _sectionFilter == 'all' || student.sectionUuid == _sectionFilter;
       final summary = calculateBehaviorSummary(records: snapshot.behaviorsFor(student.uuid), settings: snapshot.settings);
       final absences = snapshot.attendanceFor(student.uuid).where((item) => item.status == AttendanceStatus.absent).length;
       final matchesAttention = switch (_attentionFilter) {
@@ -54,7 +56,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
         'repeated-absence' => absences >= 2,
         _ => true,
       };
-      return matchesQuery && matchesClass && matchesAttention;
+      return matchesQuery && matchesClass && matchesSection && matchesAttention;
     }).toList(growable: false);
 
     return Scaffold(
@@ -86,10 +88,16 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                   _FilterPanel(
                     controller: _searchController,
                     classFilter: _classFilter,
+                    sectionFilter: _sectionFilter,
                     classItems: snapshot.classes,
+                    sectionItems: snapshot.sections,
                     attentionFilter: _attentionFilter,
                     onSearchChanged: (_) => setState(() {}),
-                    onClassChanged: (value) => setState(() => _classFilter = value ?? 'all'),
+                    onClassChanged: (value) => setState(() {
+                      _classFilter = value ?? 'all';
+                      _sectionFilter = 'all';
+                    }),
+                    onSectionChanged: (value) => setState(() => _sectionFilter = value ?? 'all'),
                     onAttentionChanged: (value) => setState(() => _attentionFilter = value),
                   ),
                   const SizedBox(height: 12),
@@ -246,14 +254,17 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
 }
 
 class _FilterPanel extends StatelessWidget {
-  const _FilterPanel({required this.controller, required this.classFilter, required this.classItems, required this.attentionFilter, required this.onSearchChanged, required this.onClassChanged, required this.onAttentionChanged});
+  const _FilterPanel({required this.controller, required this.classFilter, required this.sectionFilter, required this.classItems, required this.sectionItems, required this.attentionFilter, required this.onSearchChanged, required this.onClassChanged, required this.onSectionChanged, required this.onAttentionChanged});
 
   final TextEditingController controller;
   final String classFilter;
+  final String sectionFilter;
   final List<SchoolClass> classItems;
+  final List<Section> sectionItems;
   final String attentionFilter;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onClassChanged;
+  final ValueChanged<String?> onSectionChanged;
   final ValueChanged<String> onAttentionChanged;
 
   @override
@@ -285,6 +296,19 @@ class _FilterPanel extends StatelessWidget {
                 ...classItems.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))),
               ],
               onChanged: onClassChanged,
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: sectionFilter,
+              isDense: true,
+              decoration: const InputDecoration(labelText: 'تصفية حسب الشعبة', isDense: true),
+              items: [
+                const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
+                ...sectionItems
+                    .where((item) => classFilter == 'all' || item.classUuid == classFilter)
+                    .map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))),
+              ],
+              onChanged: classFilter == 'all' ? null : onSectionChanged,
             ),
             const SizedBox(height: 8),
             _AttentionFilters(value: attentionFilter, onChanged: onAttentionChanged),

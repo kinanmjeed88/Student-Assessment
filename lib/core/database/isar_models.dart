@@ -55,6 +55,8 @@ class AppSettings {
   double dismissalThreshold = 50;
   double warningThreshold = 40;
   PenaltyRules penalties = PenaltyRules();
+  bool institutionLineAnimated = false;
+  double institutionLineSpeed = 40;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -67,6 +69,8 @@ class AppSettings {
           'warningThreshold': warningThreshold,
           'penalties': penalties.toJson(),
         },
+        'institutionLineAnimated': institutionLineAnimated,
+        'institutionLineSpeed': institutionLineSpeed,
       };
 }
 
