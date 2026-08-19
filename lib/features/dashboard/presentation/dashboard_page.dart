@@ -562,29 +562,3 @@ class _StudentListItem extends StatelessWidget {
     );
   }
 }
-
-class _DashboardError extends StatelessWidget {
-  const _DashboardError({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: AppSpacing.page,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded, size: 48, color: scheme.error),
-            const SizedBox(height: 12),
-            const Text('تعذر تحميل البيانات المحلية.'),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
-          ],
-        ),
-      ),
-    );
-  }
-}

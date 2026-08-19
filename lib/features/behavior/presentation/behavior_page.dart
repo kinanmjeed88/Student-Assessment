@@ -322,7 +322,7 @@ class _BehaviorCard extends StatelessWidget {
     };
 
     return Card(
-      margin: EdgeInsets.only(bottom: AppTokens.compactGap),
+      margin: const EdgeInsets.only(bottom: AppTokens.compactGap),
       child: ListTile(
         onTap: onOpenStudent,
         leading: Icon(icon, color: color),

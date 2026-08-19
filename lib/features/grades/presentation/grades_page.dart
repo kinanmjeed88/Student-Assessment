@@ -193,7 +193,7 @@ class _GradeRow extends StatelessWidget {
         ? const Text('لم تُسجل الدرجة بعد')
         : Text('${grade.score} من ${field.maxScore} — ${(percentage * 100).toStringAsFixed(0)}%');
     return Card(
-      margin: EdgeInsets.only(bottom: AppTokens.compactGap),
+      margin: const EdgeInsets.only(bottom: AppTokens.compactGap),
       child: ListTile(
         onTap: onEdit,
         leading: Icon(Icons.person_outline, color: scheme.primary),

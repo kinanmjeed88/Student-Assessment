@@ -292,7 +292,7 @@ class _NoteCard extends StatelessWidget {
     final student = snapshot.students.where((item) => item.uuid == note.studentUuid).firstOrNull;
     final scheme = Theme.of(context).colorScheme;
     return Card(
-      margin: EdgeInsets.only(bottom: AppTokens.compactGap),
+      margin: const EdgeInsets.only(bottom: AppTokens.compactGap),
       child: ListTile(
         onTap: onOpenStudent,
         leading: Icon(Icons.sticky_note_2_outlined, color: scheme.primary),
