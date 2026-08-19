@@ -241,20 +241,30 @@ class LocalRepository implements LocalStore {
     PenaltyRules? penalties,
   }) async {
     final db = await _db;
-    final settings = await db.appSettings.get(1) ?? AppSettings();
-    settings
-      ..id = 1
-      ..schoolName = schoolName.trim()
-      ..teacherName = teacherName.trim()
-      ..academicYear = academicYear.trim()
-      ..stage = stage.trim();
-    if (dismissalThreshold != null) settings.dismissalThreshold = dismissalThreshold;
-    if (warningThreshold != null) settings.warningThreshold = warningThreshold;
-    if (penalties != null) settings.penalties = penalties;
-    if (settings.warningThreshold > settings.dismissalThreshold) {
-      throw const FormatException('حد التنبيه يجب أن يكون أقل من حد الفصل.');
-    }
-    await db.writeTxn(() => db.appSettings.put(settings));
+    await db.writeTxn(() async {
+      final settings = await db.appSettings.get(1) ?? AppSettings();
+      settings
+        ..id = 1
+        ..schoolName = schoolName.trim()
+        ..teacherName = teacherName.trim()
+        ..academicYear = academicYear.trim()
+        ..stage = stage.trim();
+      if (dismissalThreshold != null) settings.dismissalThreshold = dismissalThreshold;
+      if (warningThreshold != null) settings.warningThreshold = warningThreshold;
+      if (penalties != null) {
+        // تحديث خصائص الكائن المضمّن نفسه يضمن أن Isar يحفظ القيم الجديدة
+        // بدلاً من الاحتفاظ بنسخة embedded قديمة عند استبدال المرجع بالكامل.
+        settings.penalties
+          ..absence = penalties.absence
+          ..lessonDisruption = penalties.lessonDisruption
+          ..seriousMisconduct = penalties.seriousMisconduct
+          ..other = penalties.other;
+      }
+      if (settings.warningThreshold > settings.dismissalThreshold) {
+        throw const FormatException('حد التنبيه يجب أن يكون أقل من حد الفصل.');
+      }
+      await db.appSettings.put(settings);
+    });
   }
 
   @override
@@ -447,7 +457,6 @@ class LocalRepository implements LocalStore {
       throw const FormatException('عنوان السلوك وتفاصيله حقول مطلوبة.');
     }
     final db = await _db;
-    final settings = await db.appSettings.get(1) ?? AppSettings();
     final record = BehaviorRecord()
       ..uuid = _uuid.v4()
       ..studentUuid = studentUuid
@@ -457,9 +466,12 @@ class LocalRepository implements LocalStore {
       ..actionTaken = actionTaken.trim()
       ..followUp = followUp.trim()
       ..date = date ?? DateTime.now()
-      ..violationType = violationType
-      ..penaltyPoints = category == BehaviorCategory.negative ? settings.penalties.forType(violationType) : 0;
-    await db.writeTxn(() => db.behaviorRecords.put(record));
+      ..violationType = violationType;
+    await db.writeTxn(() async {
+      final settings = await db.appSettings.get(1) ?? AppSettings();
+      record.penaltyPoints = category == BehaviorCategory.negative ? settings.penalties.forType(violationType) : 0;
+      await db.behaviorRecords.put(record);
+    });
     return record;
   }
 
