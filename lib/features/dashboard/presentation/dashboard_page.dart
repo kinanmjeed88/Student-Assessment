@@ -11,6 +11,7 @@ import '../../classes/presentation/classes_page.dart';
 import '../../grades/presentation/grades_page.dart';
 import '../../import/presentation/import_history_page.dart';
 import '../../import/presentation/import_students_page.dart';
+import '../../notes/presentation/notes_page.dart';
 import '../../presence/presentation/attendance_page.dart';
 import '../../reports/presentation/reports_page.dart';
 import '../../students/presentation/student_details_page.dart';
@@ -24,21 +25,23 @@ class DashboardPage extends ConsumerWidget {
     final state = ref.watch(appControllerProvider);
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _DashboardError(
-          onRetry: () => ref.read(appControllerProvider.notifier).refresh(),
-        ),
-        data: (snapshot) => RefreshIndicator(
-          onRefresh: () => ref.read(appControllerProvider.notifier).refresh(),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: AppSpacing.page,
-            child: AppResponsiveContent(
-              child: _DashboardContent(
-                snapshot: snapshot,
-                onOpen: (page) => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => page),
+      child: AsyncStateView(
+        state: state,
+        onRetry: () => ref.read(appControllerProvider.notifier).refresh(),
+        child: state.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (snapshot) => RefreshIndicator(
+            onRefresh: () => ref.read(appControllerProvider.notifier).refresh(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: AppSpacing.page,
+              child: AppResponsiveContent(
+                child: _DashboardContent(
+                  snapshot: snapshot,
+                  onOpen: (page) => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => page),
+                  ),
                 ),
               ),
             ),
@@ -310,35 +313,45 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: AppMetricTile(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 560
+            ? 3
+            : constraints.maxWidth >= 320
+                ? 2
+                : 1;
+        final gap = AppTokens.compactGap;
+        final tileWidth = columns == 1
+            ? constraints.maxWidth
+            : (constraints.maxWidth - (gap * (columns - 1))) / columns;
+        final tiles = [
+          AppMetricTile(
             label: 'إجمالي الطلاب',
             value: '$totalStudents',
             icon: Icons.groups_outlined,
             tone: AppStatusTone.neutral,
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: AppMetricTile(
+          AppMetricTile(
             label: 'تنبيهات السلوك',
             value: '$alerts',
             icon: Icons.rule_folder_outlined,
             tone: alerts > 0 ? AppStatusTone.warning : AppStatusTone.neutral,
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: AppMetricTile(
+          AppMetricTile(
             label: 'غياب اليوم',
             value: '$absentToday',
             icon: Icons.event_busy_outlined,
             tone: absentToday > 0 ? AppStatusTone.warning : AppStatusTone.success,
           ),
-        ),
-      ],
+        ];
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final tile in tiles) SizedBox(width: tileWidth, child: tile),
+          ],
+        );
+      },
     );
   }
 }
@@ -354,6 +367,7 @@ class _QuickActions extends StatelessWidget {
     _Action(title: 'تسجيل حضور اليوم', icon: Icons.fact_check_outlined, page: AttendancePage()),
     _Action(title: 'الدرجات والتقييمات', icon: Icons.analytics_outlined, page: GradesPage()),
     _Action(title: 'السلوك والمتابعة', icon: Icons.rule_folder_outlined, page: BehaviorPage()),
+    _Action(title: 'الملاحظات', icon: Icons.note_alt_outlined, page: NotesPage()),
     _Action(title: 'التقارير والتصدير', icon: Icons.assessment_outlined, page: ReportsPage()),
     _Action(title: 'استيراد الطلاب', icon: Icons.upload_file_outlined, page: ImportStudentsPage()),
     _Action(title: 'سجل الاستيراد', icon: Icons.history_outlined, page: ImportHistoryPage()),

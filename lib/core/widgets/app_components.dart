@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_tokens.dart';
+
 abstract final class AppSpacing {
-  static const page = EdgeInsets.fromLTRB(20, 16, 20, 32);
-  static const section = SizedBox(height: 24);
-  static const compact = SizedBox(height: 12);
-  static const item = SizedBox(height: 10);
+  static const page = AppTokens.pagePadding;
+  static const contentList = EdgeInsets.fromLTRB(20, 0, 20, 100);
+  static const emptyState = EdgeInsets.symmetric(vertical: 80);
+  static const section = SizedBox(height: AppTokens.sectionGap);
+  static const compact = SizedBox(height: AppTokens.compactGap);
+  static const item = SizedBox(height: AppTokens.itemGap);
 }
 
 class AppPageHeader extends StatelessWidget {
@@ -18,7 +22,7 @@ class AppPageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsetsDirectional.only(bottom: AppTokens.compactGap),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -38,8 +42,8 @@ class AppPageHeader extends StatelessWidget {
             ),
           ),
           if (actions.isNotEmpty) ...[
-            const SizedBox(width: 12),
-            Wrap(spacing: 4, children: actions),
+            const SizedBox(width: AppTokens.compactGap),
+            Flexible(child: Wrap(spacing: 4, children: actions)),
           ],
         ],
       ),
@@ -94,7 +98,7 @@ class AppSurfaceCard extends StatelessWidget {
     );
     return onTap == null ? card : InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppTokens.largeRadius),
       child: card,
     );
   }
@@ -148,7 +152,7 @@ class AppEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return AppSurfaceCard(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(AppTokens.cardPadding * 1.75),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -183,11 +187,15 @@ class AppResponsiveContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth >= 1100 ? 1080.0 : constraints.maxWidth;
+        final maxWidth = constraints.maxWidth >= AppTokens.contentMaxWidth
+            ? AppTokens.contentMaxWidth
+            : constraints.maxWidth;
         return Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
+            constraints: BoxConstraints(
+              maxWidth: maxWidth.clamp(0.0, AppTokens.contentMaxWidth).toDouble(),
+            ),
             child: child,
           ),
         );
@@ -214,7 +222,7 @@ class AppMetricTile extends StatelessWidget {
       AppStatusTone.neutral => (scheme.secondaryContainer, scheme.onSecondaryContainer),
     };
     return AppSurfaceCard(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(AppTokens.cardPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -246,7 +254,7 @@ class AppFormSheet extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + viewInsets.bottom),
+          padding: AppTokens.formPadding.add(EdgeInsetsDirectional.only(bottom: viewInsets.bottom)),
           child: AppResponsiveContent(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -273,7 +281,7 @@ class AppFormSheet extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    for (var index = 0; index < actions.length; index++) ...[if (index > 0) const SizedBox(width: 10), actions[index]],
+                    for (var index = 0; index < actions.length; index++) ...[if (index > 0) const SizedBox(width: AppTokens.compactGap), actions[index]],
                   ],
                 ),
               ],

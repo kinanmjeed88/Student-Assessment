@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/widgets/async_state_view.dart';
+
+export '../../../core/widgets/async_state_view.dart';
 import '../../classes/presentation/classes_page.dart';
 import '../../presence/presentation/attendance_page.dart';
 import '../../settings/presentation/settings_page.dart';
@@ -43,24 +46,6 @@ class _AppShellState extends ConsumerState<AppShell> {
           destinations: _destinations,
         ),
       ),
-    );
-  }
-}
-
-class AsyncStateView extends StatelessWidget {
-  const AsyncStateView({required this.state, required this.child, super.key});
-  final AsyncValue<dynamic> state;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return state.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) {
-        final scheme = Theme.of(context).colorScheme;
-        return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [Icon(Icons.error_outline, size: 48, color: scheme.error), const SizedBox(height: 12), Text('تعذر تحميل البيانات المحلية.\n$error'), const SizedBox(height: 12), ElevatedButton(onPressed: () => context.findAncestorStateOfType<_AppShellState>()?.ref.refresh(appControllerProvider), child: const Text('إعادة المحاولة'))])));
-      },
-      data: (_) => child,
     );
   }
 }

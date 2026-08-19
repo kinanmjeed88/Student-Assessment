@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/widgets/app_components.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
 import '../../dashboard/presentation/app_shell.dart';
@@ -57,7 +58,16 @@ class _GradesPageState extends ConsumerState<GradesPage> {
               TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'ابحث عن طالب')),
               const SizedBox(height: 16),
               if (students.isEmpty) const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('لا يوجد طلاب ضمن التصفية.'))),
-              if (selectedField != null) ...students.map((student) => _GradeRow(snapshot: snapshot, student: student, field: selectedField, onEdit: () => _showGradeForm(snapshot, student, selectedField))),
+              if (selectedField != null)
+                ...students.map(
+                  (student) => _GradeRow(
+                    snapshot: snapshot,
+                    student: student,
+                    field: selectedField,
+                    onEdit: () => _showGradeForm(snapshot, student, selectedField),
+                    onDelete: () => _deleteGrade(student, selectedField),
+                  ),
+                ),
             ],
           ],
         ),
@@ -106,6 +116,26 @@ class _GradesPageState extends ConsumerState<GradesPage> {
     subject.dispose(); title.dispose(); maxScore.dispose(); term.dispose();
   }
 
+  Future<void> _deleteGrade(Student student, GradeField field) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف الدرجة؟'),
+        content: Text('سيتم حذف درجة ${student.fullName} من حقل ${field.title}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(appControllerProvider.notifier).deleteGrade(
+            studentUuid: student.uuid,
+            fieldUuid: field.uuid,
+          );
+    }
+  }
+
   Future<void> _showGradeForm(AppSnapshot snapshot, Student student, GradeField field) async {
     final existing = snapshot.grades.where((item) => item.studentUuid == student.uuid && item.fieldUuid == field.uuid).firstOrNull;
     final score = TextEditingController(text: existing?.score.toString());
@@ -148,11 +178,12 @@ class _GradesPageState extends ConsumerState<GradesPage> {
 }
 
 class _GradeRow extends StatelessWidget {
-  const _GradeRow({required this.snapshot, required this.student, required this.field, required this.onEdit});
+  const _GradeRow({required this.snapshot, required this.student, required this.field, required this.onEdit, required this.onDelete});
   final AppSnapshot snapshot;
   final Student student;
   final GradeField field;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -161,6 +192,25 @@ class _GradeRow extends StatelessWidget {
     final subtitle = grade == null || percentage == null
         ? const Text('لم تُسجل الدرجة بعد')
         : Text('${grade.score} من ${field.maxScore} — ${(percentage * 100).toStringAsFixed(0)}%');
-    return Card(margin: const EdgeInsets.only(bottom: 10), child: ListTile(onTap: onEdit, leading: CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.primary, child: Text(student.firstName.characters.first)), title: Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: subtitle, trailing: IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined))));
+    return Card(
+      margin: EdgeInsets.only(bottom: AppTokens.compactGap),
+      child: ListTile(
+        onTap: onEdit,
+        leading: Icon(Icons.person_outline, color: scheme.primary),
+        title: Text(
+          student.fullName,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        subtitle: subtitle,
+        trailing: Wrap(
+          spacing: AppTokens.compactGap,
+          children: [
+            IconButton(onPressed: onEdit, tooltip: 'تعديل', icon: const Icon(Icons.edit_outlined)),
+            if (grade != null)
+              IconButton(onPressed: onDelete, tooltip: 'حذف', icon: const Icon(Icons.delete_outline)),
+          ],
+        ),
+      ),
+    );
   }
 }

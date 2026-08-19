@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/app_components.dart';
 import '../../dashboard/presentation/app_shell.dart';
 
 class AttendancePage extends ConsumerStatefulWidget {
@@ -41,7 +43,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
             body: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  padding: AppSpacing.contentList.copyWith(bottom: AppTokens.compactGap),
                   child: Card(
                     child: ListTile(
                       leading: const Icon(Icons.event_available),
@@ -55,11 +57,12 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                   child: students.isEmpty
                       ? const Center(child: Text('أضف طلاباً لبدء تسجيل الحضور.'))
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                          padding: AppSpacing.contentList.copyWith(top: 0, bottom: 28),
                           itemCount: students.length,
                           itemBuilder: (context, index) {
                             final student = students[index];
-                            final status = _draft[student.uuid] ?? AttendanceStatus.present;
+                            final existing = snapshot.attendance.where((item) => item.studentUuid == student.uuid && _sameDay(item.date, _selectedDate)).firstOrNull;
+                            final status = _draft[student.uuid] ?? existing?.status ?? AttendanceStatus.present;
                             return Card(
                               margin: const EdgeInsets.only(bottom: 10),
                               child: ListTile(
@@ -74,13 +77,19 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                                   onChanged: (value) async {
                                     if (value == null) return;
                                     setState(() => _draft[student.uuid] = value);
-                                    await ref.read(appControllerProvider.notifier).setAttendance(
+                                    await ref.read(appControllerProvider.notifier).updateAttendance(
                                       studentUuid: student.uuid,
                                       date: _selectedDate,
                                       status: value,
                                     );
                                   },
                                 ),
+                                if (existing != null)
+                                  IconButton(
+                                    tooltip: 'حذف سجل الحضور',
+                                    onPressed: () => _deleteAttendance(student.uuid),
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
                               ),
                             );
                           },
@@ -102,8 +111,36 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
       lastDate: DateTime(2100),
       locale: const Locale('ar'),
     );
-    if (picked != null && mounted) setState(() => _selectedDate = picked);
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedDate = picked;
+        _draft.clear();
+      });
+    }
   }
+
+  Future<void> _deleteAttendance(String studentUuid) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف سجل الحضور؟'),
+        content: const Text('سيتم حذف تسجيل هذا الطالب في التاريخ المحدد.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(appControllerProvider.notifier).deleteAttendance(
+          studentUuid: studentUuid,
+          date: _selectedDate,
+        );
+    setState(() => _draft.remove(studentUuid));
+  }
+
+  static bool _sameDay(DateTime first, DateTime second) =>
+      first.year == second.year && first.month == second.month && first.day == second.day;
 
   static String _dateLabel(DateTime date) => '${date.day}/${date.month}/${date.year}';
 
