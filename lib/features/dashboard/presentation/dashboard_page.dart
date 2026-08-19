@@ -258,7 +258,10 @@ class _ScrollingInstitutionLineState extends State<_ScrollingInstitutionLine> wi
   @override
   void didUpdateWidget(covariant _ScrollingInstitutionLine oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.width != widget.width || oldWidget.speed != widget.speed) {
+    if (oldWidget.text != widget.text ||
+        oldWidget.width != widget.width ||
+        oldWidget.viewportWidth != widget.viewportWidth ||
+        oldWidget.speed != widget.speed) {
       _controller
         ..duration = _duration
         ..repeat();
@@ -280,6 +283,7 @@ class _ScrollingInstitutionLineState extends State<_ScrollingInstitutionLine> wi
         child: AnimatedBuilder(
           animation: _controller,
           child: Row(
+            textDirection: TextDirection.ltr,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(widget.text, style: widget.style, maxLines: 1),
@@ -288,7 +292,7 @@ class _ScrollingInstitutionLineState extends State<_ScrollingInstitutionLine> wi
             ],
           ),
           builder: (context, child) => Transform.translate(
-            offset: Offset(-_controller.value * _distance, 0),
+            offset: Offset(-_distance + (_controller.value * _distance), 0),
             child: child,
           ),
         ),
