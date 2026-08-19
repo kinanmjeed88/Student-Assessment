@@ -348,6 +348,7 @@ class _ClassCard extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
+                flex: 3,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,17 +369,19 @@ class _ClassCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
+                flex: 2,
+                child: Align(
+                  alignment: AlignmentDirectional.center,
                   child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
+                flex: 2,
+                child: Align(
+                  alignment: AlignmentDirectional.center,
                   child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success),
                 ),
               ),
@@ -386,13 +389,15 @@ class _ClassCard extends StatelessWidget {
                 onPressed: onAddSection,
                 tooltip: 'إضافة شعبة',
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                 icon: const Icon(Icons.add_circle_outline),
               ),
               PopupMenuButton<String>(
                 tooltip: 'إجراءات الصف',
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                 onSelected: (value) {
                   if (value == 'edit') onEdit();
                   if (value == 'delete') onDelete();

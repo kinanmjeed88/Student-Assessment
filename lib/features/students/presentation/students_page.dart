@@ -396,26 +396,20 @@ class _StudentCard extends StatelessWidget {
         dense: true,
         onTap: onTap,
         contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                student.fullName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                secondary,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
+        title: Text(
+          student.fullName,
+          maxLines: 2,
+          overflow: TextOverflow.visible,
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsetsDirectional.only(top: 2),
+          child: Text(
+            secondary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
         ),
         trailing: PopupMenuButton<String>(
           tooltip: 'إجراءات الطالب',
