@@ -96,6 +96,8 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
                 color: scheme.surface,
                 child: const TabBar(
                   isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  labelPadding: EdgeInsets.symmetric(horizontal: 10),
                   tabs: [
                     Tab(text: 'الدرجات', icon: Icon(Icons.grade_outlined)),
                     Tab(text: 'الحضور', icon: Icon(Icons.fact_check_outlined)),
@@ -337,48 +339,97 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final statusTone = student.status == StudentStatus.active ? AppStatusTone.success : AppStatusTone.warning;
     final alertColor = summary.dismissed ? scheme.errorContainer : summary.warning ? scheme.tertiaryContainer : scheme.surfaceContainerHighest;
+    final buttonStyle = ButtonStyle(
+      backgroundColor: WidgetStatePropertyAll(scheme.primaryContainer),
+      foregroundColor: WidgetStatePropertyAll(scheme.onPrimaryContainer),
+      elevation: const WidgetStatePropertyAll(0),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 520;
-                final identity = Row(
-                  children: [
-                    CircleAvatar(radius: 32, backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900))),
-                    const SizedBox(width: 14),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(student.fullName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)), const SizedBox(height: 6), Text('${schoolClass ?? 'الصف غير محدد'}${section == null ? '' : ' — $section'}'), const SizedBox(height: 8), AppStatusPill(label: _statusLabelForProfile(student.status), icon: _statusIconForProfile(student.status), tone: statusTone)])),
-                  ],
-                );
-                final actions = Wrap(spacing: 8, children: [OutlinedButton.icon(onPressed: onExportExcel, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel')), OutlinedButton.icon(onPressed: onExportPdf, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF'))]);
-                return compact ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [identity, const SizedBox(height: 16), actions]) : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: identity), const SizedBox(width: 16), actions]);
-              },
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(student.fullName, style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text('${schoolClass ?? 'الصف غير محدد'}${section == null ? '' : ' — $section'}', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxWidth < 420;
+                    final status = AppStatusPill(label: _statusLabelForProfile(student.status), icon: _statusIconForProfile(student.status), tone: statusTone);
+                    final compactActions = Row(
+                      children: [
+                        Expanded(child: FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel'))),
+                        const SizedBox(width: 8),
+                        Expanded(child: FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF'))),
+                      ],
+                    );
+                    final wideActions = Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel')),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF')),
+                      ],
+                    );
+                    if (compact) {
+                      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Row(children: [status]), const SizedBox(height: 8), compactActions]);
+                    }
+                    return Row(children: [status, const SizedBox(width: 12), wideActions]);
+                  },
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Card(
           color: alertColor,
-          child: ListTile(
-            leading: Icon(summary.dismissed || summary.warning ? Icons.warning_amber_outlined : Icons.verified_outlined, color: summary.dismissed ? scheme.error : scheme.primary),
-            title: Text(summary.dismissed ? 'إشعار فصل' : summary.warning ? 'تنبيه سلوك' : 'السجل السلوكي سليم', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-            subtitle: Text('النقاط: ${summary.totalPoints.toStringAsFixed(1)} من ${summary.dismissalThreshold.toStringAsFixed(1)} — ${summary.negativeCount} مخالفات، ${summary.followUpCount} متابعات، ${summary.positiveCount} إيجابيات'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Icon(summary.dismissed || summary.warning ? Icons.warning_amber_outlined : Icons.verified_outlined, color: summary.dismissed ? scheme.error : scheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: Text(summary.dismissed ? 'إشعار فصل' : summary.warning ? 'تنبيه سلوك' : 'السجل السلوكي سليم', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                          Text('النقاط ${summary.totalPoints.toStringAsFixed(0)} من ${summary.dismissalThreshold.toStringAsFixed(0)}', style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text('${summary.negativeCount} مخالفات  •  ${summary.followUpCount} متابعات  •  ${summary.positiveCount} إيجابيات', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final columns = constraints.maxWidth < 560 ? 2 : 3;
-            final width = (constraints.maxWidth - ((columns - 1) * 10)) / columns;
-            return Wrap(spacing: 10, runSpacing: 10, children: [SizedBox(width: width, child: _Metric(label: 'متوسط الدرجات', value: average == null ? '—' : '${average!.toStringAsFixed(0)}%', icon: Icons.grade_outlined)), SizedBox(width: width, child: _Metric(label: 'الغياب', value: '$absentCount', icon: Icons.event_busy_outlined)), SizedBox(width: columns == 2 ? constraints.maxWidth : width, child: _Metric(label: 'الحضور', value: '$attendanceCount', icon: Icons.fact_check_outlined))]);
-          },
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _Metric(label: 'متوسط الدرجات', value: average == null ? '—' : '${average!.toStringAsFixed(0)}%', icon: Icons.grade_outlined)),
+            const SizedBox(width: 8),
+            Expanded(child: _Metric(label: 'الغياب', value: '$absentCount', icon: Icons.event_busy_outlined)),
+            const SizedBox(width: 8),
+            Expanded(child: _Metric(label: 'الحضور', value: '$attendanceCount', icon: Icons.fact_check_outlined)),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         _StudentInfoCard(student: student),
         const SizedBox(height: 8),
       ],
@@ -392,7 +443,7 @@ class _TabBody extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 14, 20, 32), child: AppResponsiveContent(child: child));
+  Widget build(BuildContext context) => SingleChildScrollView(padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 20, 24), child: AppResponsiveContent(child: child));
 }
 
 class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -473,38 +524,150 @@ class _Metric extends StatelessWidget {
 
 class _GradesSection extends StatelessWidget {
   const _GradesSection({required this.snapshot, required this.grades, required this.studentUuid, required this.onAdd});
+
   final AppSnapshot snapshot;
   final List<Grade> grades;
   final String studentUuid;
   final VoidCallback onAdd;
+
   @override
-  Widget build(BuildContext context) => _SectionCard(title: 'الدرجات', icon: Icons.grade_outlined, action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')), child: grades.isEmpty ? const Text('لا توجد درجات مسجلة لهذا الطالب.') : Column(children: grades.map((grade) { final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull; if (field == null) return const SizedBox.shrink(); final ratio = field.maxScore <= 0 ? 0 : grade.score / field.maxScore; return ListTile(leading: CircleAvatar(child: Text('${(ratio * 100).round()}')), title: Text('${field.subject} — ${field.title}', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${field.term} · ${grade.notes.isEmpty ? 'بدون ملاحظات' : grade.notes}'), trailing: Text('${grade.score}/${field.maxScore}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))); }).toList()));
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'الدرجات',
+        icon: Icons.grade_outlined,
+        action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')),
+        child: grades.isEmpty
+            ? const Align(alignment: AlignmentDirectional.centerEnd, child: Text('لا توجد درجات مسجلة لهذا الطالب.'))
+            : Column(
+                children: grades.map((grade) {
+                  final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
+                  if (field == null) return const SizedBox.shrink();
+                  final ratio = field.maxScore <= 0 ? 0.0 : grade.score / field.maxScore;
+                  final scoreColor = ratio <= 0.5 ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.tertiary;
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(backgroundColor: scoreColor.withValues(alpha: 0.12), foregroundColor: scoreColor, child: Text('${(ratio * 100).round()}')),
+                    title: Text('${field.subject} — ${field.title}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    subtitle: Text('${field.term} · ${grade.notes.isEmpty ? 'بدون ملاحظات' : grade.notes}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: Text('${grade.score}/${field.maxScore}', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scoreColor, fontWeight: FontWeight.w900)),
+                  );
+                }).toList(),
+              ),
+      );
 }
 
 class _AttendanceSection extends StatelessWidget {
   const _AttendanceSection({required this.records});
+
   final List<AttendanceRecord> records;
+
   @override
-  Widget build(BuildContext context) => _SectionCard(title: 'سجل الحضور', icon: Icons.fact_check_outlined, child: records.isEmpty ? const Text('لا توجد سجلات حضور لهذا الطالب.') : Column(children: records.take(50).map((record) => ListTile(leading: Icon(_attendanceIcon(record.status), color: _attendanceColor(context, record.status)), title: Text(_date(record.date), style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(record.reason.isEmpty ? record.status.name : '${record.status.name} — ${record.reason}'), trailing: record.notes.isEmpty ? null : const Icon(Icons.notes_outlined, size: 18))).toList()));
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'الحضور والغياب',
+        icon: Icons.fact_check_outlined,
+        child: records.isEmpty
+            ? const Align(alignment: AlignmentDirectional.centerEnd, child: Text('لا توجد سجلات حضور لهذا الطالب.'))
+            : Column(
+                children: records.take(50).map((record) {
+                  final label = _attendanceLabel(record.status);
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(_attendanceIcon(record.status), color: _attendanceColor(context, record.status)),
+                    title: Text(_date(record.date), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    subtitle: Text(record.reason.isEmpty ? label : '$label — ${record.reason}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: record.notes.isEmpty ? null : const Icon(Icons.notes_outlined, size: 18),
+                  );
+                }).toList(),
+              ),
+      );
 }
 
 class _BehaviorSection extends StatelessWidget {
   const _BehaviorSection({required this.records, required this.summary, required this.onAdd, required this.onDelete});
+
   final List<BehaviorRecord> records;
   final BehaviorSummary summary;
   final VoidCallback onAdd;
   final Future<void> Function(String uuid) onDelete;
+
   @override
-  Widget build(BuildContext context) => _SectionCard(title: 'السلوك', icon: Icons.rule_folder_outlined, action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')), child: Column(children: [if (records.isEmpty) const Align(alignment: Alignment.centerRight, child: Text('لا توجد سجلات سلوك لهذا الطالب.')), if (records.isNotEmpty) ...records.map((record) => Dismissible(key: ValueKey(record.uuid), direction: DismissDirection.startToEnd, confirmDismiss: (_) async { await onDelete(record.uuid); return false; }, background: Container(color: Theme.of(context).colorScheme.error, alignment: Alignment.centerLeft, padding: const EdgeInsetsDirectional.only(start: 20), child: const Icon(Icons.delete_outline)), child: ListTile(leading: Icon(record.category == BehaviorCategory.positive ? Icons.thumb_up_outlined : Icons.warning_amber_outlined), title: Text(record.title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${record.details}\n${_date(record.date)}'), trailing: Text(record.penaltyPoints == 0 ? 'إيجابي' : '-${record.penaltyPoints.toStringAsFixed(0)}')))), const Divider(), Align(alignment: Alignment.centerRight, child: Text('إجمالي النقاط: ${summary.totalPoints.toStringAsFixed(1)}'))]));
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _SectionCard(
+      title: 'السلوك',
+      icon: Icons.rule_folder_outlined,
+      action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (records.isEmpty) const Align(alignment: AlignmentDirectional.centerEnd, child: Text('لا توجد سجلات سلوك لهذا الطالب.')),
+          if (records.isNotEmpty)
+            ...records.map(
+              (record) => Dismissible(
+                key: ValueKey(record.uuid),
+                direction: DismissDirection.startToEnd,
+                confirmDismiss: (_) async {
+                  await onDelete(record.uuid);
+                  return false;
+                },
+                background: Container(color: scheme.error, alignment: Alignment.centerLeft, padding: const EdgeInsetsDirectional.only(start: 20), child: const Icon(Icons.delete_outline)),
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(_behaviorIcon(record.category), color: _behaviorColor(context, record.category)),
+                  title: Text(record.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  subtitle: Text('${record.details}\n${_date(record.date)}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                  trailing: Text(record.penaltyPoints == 0 ? 'إيجابي' : '-${record.penaltyPoints.toStringAsFixed(0)}', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: record.penaltyPoints == 0 ? scheme.tertiary : scheme.error, fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ),
+          const Divider(height: 16),
+          Align(alignment: AlignmentDirectional.centerEnd, child: Text('إجمالي النقاط: ${summary.totalPoints.toStringAsFixed(1)}', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900))),
+        ],
+      ),
+    );
+  }
 }
 
 class _NotesSection extends StatelessWidget {
   const _NotesSection({required this.notes, required this.onAdd, required this.onDelete});
+
   final List<StudentNote> notes;
   final VoidCallback onAdd;
   final Future<void> Function(String uuid) onDelete;
+
   @override
-  Widget build(BuildContext context) => _SectionCard(title: 'الملاحظات', icon: Icons.note_alt_outlined, action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')), child: notes.isEmpty ? const Text('لا توجد ملاحظات لهذا الطالب.') : Column(children: notes.map((note) => Dismissible(key: ValueKey(note.uuid), direction: DismissDirection.startToEnd, confirmDismiss: (_) async { await onDelete(note.uuid); return false; }, background: Container(color: Theme.of(context).colorScheme.error, alignment: Alignment.centerLeft, padding: const EdgeInsetsDirectional.only(start: 20), child: const Icon(Icons.delete_outline)), child: ListTile(leading: const Icon(Icons.note_alt_outlined), title: Text(note.title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${note.details}\n${_date(note.date)}'), trailing: note.needsFollowUp ? const Icon(Icons.flag_outlined) : null))).toList()));
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'الملاحظات',
+        icon: Icons.note_alt_outlined,
+        action: FilledButton.tonalIcon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('إضافة')),
+        child: notes.isEmpty
+            ? const Align(alignment: AlignmentDirectional.centerEnd, child: Text('لا توجد ملاحظات لهذا الطالب.'))
+            : Column(
+                children: notes
+                    .map(
+                      (note) => Dismissible(
+                        key: ValueKey(note.uuid),
+                        direction: DismissDirection.startToEnd,
+                        confirmDismiss: (_) async {
+                          await onDelete(note.uuid);
+                          return false;
+                        },
+                        background: Container(color: Theme.of(context).colorScheme.error, alignment: Alignment.centerLeft, padding: const EdgeInsetsDirectional.only(start: 20), child: const Icon(Icons.delete_outline)),
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.note_alt_outlined, color: Theme.of(context).colorScheme.primary),
+                          title: Text(note.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                          subtitle: Text('${note.details}\n${_date(note.date)}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                          trailing: note.needsFollowUp ? Icon(Icons.flag_outlined, color: Theme.of(context).colorScheme.tertiary) : null,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+      );
 }
 
 class _SectionCard extends StatelessWidget {
@@ -545,5 +708,8 @@ class _SectionCard extends StatelessWidget {
 }
 
 IconData _attendanceIcon(AttendanceStatus status) => switch (status) { AttendanceStatus.present => Icons.check_circle_outline, AttendanceStatus.absent => Icons.cancel_outlined, AttendanceStatus.excused => Icons.assignment_turned_in_outlined, AttendanceStatus.late => Icons.schedule_outlined, AttendanceStatus.leave => Icons.event_available_outlined };
-Color _attendanceColor(BuildContext context, AttendanceStatus status) => switch (status) { AttendanceStatus.present => Theme.of(context).colorScheme.primary, AttendanceStatus.absent => Theme.of(context).colorScheme.error, AttendanceStatus.excused => Theme.of(context).colorScheme.tertiary, AttendanceStatus.late => Theme.of(context).colorScheme.secondary, AttendanceStatus.leave => Theme.of(context).colorScheme.primary };
+String _attendanceLabel(AttendanceStatus status) => switch (status) { AttendanceStatus.present => 'حاضر', AttendanceStatus.absent => 'غائب', AttendanceStatus.excused => 'معذور', AttendanceStatus.late => 'متأخر', AttendanceStatus.leave => 'إجازة' };
+Color _attendanceColor(BuildContext context, AttendanceStatus status) => switch (status) { AttendanceStatus.present => Theme.of(context).colorScheme.tertiary, AttendanceStatus.absent => Theme.of(context).colorScheme.error, AttendanceStatus.excused => Theme.of(context).colorScheme.secondary, AttendanceStatus.late => Theme.of(context).colorScheme.tertiary, AttendanceStatus.leave => Theme.of(context).colorScheme.primary };
+IconData _behaviorIcon(BehaviorCategory category) => switch (category) { BehaviorCategory.positive => Icons.thumb_up_alt_outlined, BehaviorCategory.negative => Icons.warning_amber_outlined, BehaviorCategory.followup => Icons.follow_the_signs_outlined };
+Color _behaviorColor(BuildContext context, BehaviorCategory category) => switch (category) { BehaviorCategory.positive => Theme.of(context).colorScheme.tertiary, BehaviorCategory.negative => Theme.of(context).colorScheme.error, BehaviorCategory.followup => Color.alphaBlend(Theme.of(context).colorScheme.error.withValues(alpha: 0.45), Theme.of(context).colorScheme.surface) };
 String _date(DateTime value) => '${value.year}/${value.month.toString().padLeft(2, '0')}/${value.day.toString().padLeft(2, '0')}';
