@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers.dart';
-import '../../../core/widgets/async_state_view.dart';
-
 export '../../../core/widgets/async_state_view.dart';
 import '../../classes/presentation/classes_page.dart';
 import '../../presence/presentation/attendance_page.dart';
