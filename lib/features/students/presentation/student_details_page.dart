@@ -491,15 +491,32 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
   Future<bool> _confirmDelete(String title) async => await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: Text(title), content: const Text('لا يمكن التراجع عن هذه العملية.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف'))])) ?? false;
 
   Future<void> _exportExcel(BuildContext context) async {
-    final bytes = ReportService().exportStudentXlsx(snapshot, student.uuid);
-    final path = await FilePicker.saveFile(dialogTitle: 'حفظ ملف الطالب', fileName: 'بيانات_${student.fullName}.xlsx', bytes: Uint8List.fromList(bytes));
-    if (context.mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ الملف: $path')));
+    try {
+      final bytes = ReportService().exportStudentXlsx(snapshot, student.uuid);
+      await _saveExport(context, bytes: bytes, fileName: 'بيانات_${student.fullName}.xlsx', dialogTitle: 'حفظ ملف الطالب');
+    } catch (error) {
+      if (context.mounted) _showExportError(context, error);
+    }
   }
 
   Future<void> _exportPdf(BuildContext context) async {
-    final bytes = await ReportService().exportStudentPdf(snapshot, student.uuid);
-    final path = await FilePicker.saveFile(dialogTitle: 'حفظ ملف الطالب PDF', fileName: 'ملف_${student.fullName}.pdf', bytes: Uint8List.fromList(bytes));
-    if (context.mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ الملف: $path')));
+    try {
+      final bytes = await ReportService().exportStudentPdf(snapshot, student.uuid);
+      await _saveExport(context, bytes: bytes, fileName: 'ملف_${student.fullName}.pdf', dialogTitle: 'حفظ ملف الطالب PDF');
+    } catch (error) {
+      if (context.mounted) _showExportError(context, error);
+    }
+  }
+
+  Future<void> _saveExport(BuildContext context, {required List<int> bytes, required String fileName, required String dialogTitle}) async {
+    if (bytes.isEmpty) throw const FormatException('تعذر إنشاء الملف لأن الملف الناتج فارغ.');
+    final path = await FilePicker.saveFile(dialogTitle: dialogTitle, fileName: fileName, bytes: Uint8List.fromList(bytes));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(path == null ? 'تم إلغاء حفظ الملف.' : 'تم حفظ الملف بنجاح.')));
+  }
+
+  void _showExportError(BuildContext context, Object error) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إنشاء الملف: $error')));
   }
 
   InputDecoration _decoration(String label) => InputDecoration(labelText: label);
