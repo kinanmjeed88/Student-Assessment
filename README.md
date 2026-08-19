@@ -1,4 +1,4 @@
-# حليف القرآن — Flutter migration baseline
+# سجل الطالب — Flutter migration baseline
 
 هذا المجلد هو أساس الهجرة الأصلي إلى Flutter، بينما يبقى مشروع React Native/Expo في جذر المستودع للمقارنة المرجعية. يعتمد الأساس على Feature-First مع فصل واضح بين `core`, `data`, `domain`, و`presentation`. التخزين محلي بالكامل عبر Isar، وإدارة الحالة عبر Riverpod، والواجهة عربية RTL من جذور `MaterialApp`.
 

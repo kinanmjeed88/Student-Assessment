@@ -61,7 +61,7 @@ class AlMoktaberApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-      title: 'حليف القرآن',
+      title: 'سجل الطالب',
       theme: AppTheme.light(),
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],

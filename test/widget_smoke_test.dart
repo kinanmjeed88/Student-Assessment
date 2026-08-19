@@ -10,13 +10,13 @@ void main() {
           key: ValueKey('root-rtl'),
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            body: Text('حليف القرآن'),
+            body: Text('سجل الطالب'),
           ),
         ),
       ),
     );
 
-    expect(find.text('حليف القرآن'), findsOneWidget);
+    expect(find.text('سجل الطالب'), findsOneWidget);
     expect(find.byKey(const ValueKey('root-rtl')), findsOneWidget);
   });
 }
