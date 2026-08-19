@@ -34,4 +34,6 @@ if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
+python3 scripts/verify_android_icon.py
+
 echo 'Static Flutter baseline checks passed.'
