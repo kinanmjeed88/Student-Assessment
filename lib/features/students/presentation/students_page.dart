@@ -77,23 +77,12 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
         onRefresh: () => ref.read(appControllerProvider.notifier).refresh(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
           children: [
             AppResponsiveContent(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppPageHeader(
-                    title: 'دليل الطلاب',
-                    subtitle: 'ابحث وراجع الملفات الأكاديمية والسلوكية من مكان واحد.',
-                    actions: [
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ImportStudentsPage())),
-                        icon: const Icon(Icons.file_upload_outlined),
-                        label: const Text('استيراد'),
-                      ),
-                    ],
-                  ),
                   _FilterPanel(
                     controller: _searchController,
                     classFilter: _classFilter,
@@ -103,12 +92,12 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                     onClassChanged: (value) => setState(() => _classFilter = value ?? 'all'),
                     onAttentionChanged: (value) => setState(() => _attentionFilter = value),
                   ),
-                  AppSpacing.section,
+                  const SizedBox(height: 12),
                   AppSectionHeader(
-                    title: 'النتائج',
+                    title: 'الطلاب',
                     subtitle: '${students.length} طالب مطابق للمرشحات الحالية.',
                   ),
-                  AppSpacing.compact,
+                  const SizedBox(height: 6),
                   if (students.isEmpty)
                     AppEmptyState(
                       icon: Icons.person_search_outlined,
@@ -119,7 +108,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                   else
                     ...students.map(
                       (student) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: 6),
                         child: _StudentCard(
                           snapshot: snapshot,
                           student: student,
@@ -273,26 +262,32 @@ class _FilterPanel extends StatelessWidget {
     return Card(
       color: scheme.surfaceContainerHighest,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(controller: controller, onChanged: onSearchChanged, decoration: const InputDecoration(hintText: 'ابحث بالاسم أو الرقم...', prefixIcon: Icon(Icons.search_outlined))),
-            const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 520;
-                final dropdown = DropdownButtonFormField<String>(
-                  initialValue: classFilter,
-                  decoration: const InputDecoration(labelText: 'تصفية حسب الصف'),
-                  items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...classItems.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
-                  onChanged: onClassChanged,
-                );
-                return compact ? dropdown : Row(children: [Expanded(child: dropdown), const SizedBox(width: 12), Expanded(child: _AttentionFilters(value: attentionFilter, onChanged: onAttentionChanged))]);
-              },
+            TextField(
+              controller: controller,
+              onChanged: onSearchChanged,
+              decoration: const InputDecoration(
+                hintText: 'ابحث بالاسم أو الرقم...',
+                prefixIcon: Icon(Icons.search_outlined),
+                isDense: true,
+              ),
             ),
-            const SizedBox(height: 12),
-            LayoutBuilder(builder: (context, constraints) => constraints.maxWidth < 520 ? _AttentionFilters(value: attentionFilter, onChanged: onAttentionChanged) : const SizedBox.shrink()),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: classFilter,
+              isDense: true,
+              decoration: const InputDecoration(labelText: 'تصفية حسب الصف', isDense: true),
+              items: [
+                const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')),
+                ...classItems.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))),
+              ],
+              onChanged: onClassChanged,
+            ),
+            const SizedBox(height: 8),
+            _AttentionFilters(value: attentionFilter, onChanged: onAttentionChanged),
           ],
         ),
       ),
@@ -306,15 +301,35 @@ class _AttentionFilters extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
 
+  Widget _choice(BuildContext context, {required String label, required String filterValue}) {
+    final scheme = Theme.of(context).colorScheme;
+    final selected = value == filterValue;
+    return Expanded(
+      child: ChoiceChip(
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        selected: selected,
+        onSelected: (_) => onChanged(filterValue),
+        showCheckmark: false,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: selected ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
+        selectedColor: scheme.primaryContainer,
+        backgroundColor: scheme.surface,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Row(
       children: [
-        ChoiceChip(label: const Text('الكل'), selected: value == 'all', onSelected: (_) => onChanged('all')),
-        ChoiceChip(label: const Text('تنبيهات السلوك'), selected: value == 'behavior-alert', onSelected: (_) => onChanged('behavior-alert')),
-        ChoiceChip(label: const Text('غياب متكرر'), selected: value == 'repeated-absence', onSelected: (_) => onChanged('repeated-absence')),
+        _choice(context, label: 'الكل', filterValue: 'all'),
+        const SizedBox(width: 6),
+        _choice(context, label: 'تنبيهات السلوك', filterValue: 'behavior-alert'),
+        const SizedBox(width: 6),
+        _choice(context, label: 'غياب متكرر', filterValue: 'repeated-absence'),
       ],
     );
   }
@@ -341,36 +356,52 @@ class _StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final summary = calculateBehaviorSummary(records: snapshot.behaviorsFor(student.uuid), settings: snapshot.settings);
-    final absences = snapshot.attendanceFor(student.uuid).where((item) => item.status == AttendanceStatus.absent).length;
     final schoolClass = snapshot.classes.where((item) => item.uuid == student.classUuid).firstOrNull;
+    final section = snapshot.sections.where((item) => item.uuid == student.sectionUuid).firstOrNull;
+    final textTheme = Theme.of(context).textTheme;
+    final secondary = [
+      schoolClass?.name ?? 'صف غير محدد',
+      if (section != null) section.name,
+    ].join(' • ');
+
     return Card(
       child: ListTile(
+        dense: true,
         onTap: onTap,
-        contentPadding: const EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8),
-        leading: CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer, child: Text(student.firstName.isEmpty ? '؟' : student.firstName.characters.first)),
-        title: Text(student.fullName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              Text(schoolClass?.name ?? 'صف غير محدد'),
-              if (student.studentNumber.isNotEmpty) AppStatusPill(label: student.studentNumber, icon: Icons.badge_outlined),
-              if (absences > 0) AppStatusPill(label: 'غياب $absences', icon: Icons.event_busy_outlined, tone: AppStatusTone.error),
-              if (summary.hasAlert) AppStatusPill(label: summary.label, icon: Icons.rule_folder_outlined, tone: AppStatusTone.warning),
-            ],
-          ),
+        contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                student.fullName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                secondary,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
         ),
         trailing: PopupMenuButton<String>(
           tooltip: 'إجراءات الطالب',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
           onSelected: (value) {
             if (value == 'edit') onEdit();
             if (value == 'delete') onDelete();
           },
-          itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('تعديل الملف')), PopupMenuItem(value: 'delete', child: Text('حذف الطالب'))],
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('تعديل الملف')),
+            PopupMenuItem(value: 'delete', child: Text('حذف الطالب')),
+          ],
         ),
       ),
     );

@@ -19,7 +19,6 @@ class ClassesPage extends ConsumerWidget {
         error: (_, __) => const SizedBox.shrink(),
         data: (snapshot) => Scaffold(
           appBar: AppBar(
-            title: const Text('الصفوف والشعب'),
             actions: [
               IconButton(
                 tooltip: 'إضافة صف',
@@ -349,13 +348,6 @@ class _ClassCard extends StatelessWidget {
           padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 14, 12),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 21,
-                backgroundColor: scheme.primaryContainer,
-                foregroundColor: scheme.onPrimaryContainer,
-                child: const Icon(Icons.class_outlined, size: 22),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -365,7 +357,7 @@ class _ClassCard extends StatelessWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                      style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     if (stage.trim().isNotEmpty)
                       Text(
