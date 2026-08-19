@@ -396,7 +396,6 @@ class _ClassCard extends StatelessWidget {
               PopupMenuButton<String>(
                 tooltip: 'إجراءات الصف',
                 padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
                 constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                 onSelected: (value) {
                   if (value == 'edit') onEdit();
