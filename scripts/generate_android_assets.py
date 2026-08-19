@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 
 root = Path(__file__).resolve().parents[1]
-source = root / 'assets' / 'images' / 'app_icon.png'
+source = root / 'assets' / 'images' / 'favicon.png'
 image = Image.open(source).convert('RGBA')
 
 sizes = {

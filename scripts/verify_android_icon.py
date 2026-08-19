@@ -4,7 +4,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "android" / "app" / "src" / "main" / "res"
-SOURCE = ROOT / "assets" / "images" / "app_icon.png"
+SOURCE = ROOT / "assets" / "images" / "favicon.png"
 MANIFEST = ROOT / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
 ADAPTIVE = RES / "mipmap-anydpi-v26" / "ic_launcher.xml"
 FOREGROUND = RES / "drawable-nodpi" / "ic_launcher_foreground.png"

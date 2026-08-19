@@ -1,29 +1,23 @@
 # تدقيق أيقونة التطبيق
 
-## النتيجة الأولية
+## القرار المعتمد
 
-الصورة المطلوبة موجودة فعلياً في `assets/images/app_icon.png` بأبعاد 1920×1920. لكن هذا المسار هو asset عام لتطبيق Flutter، ولا يحدد تلقائياً أيقونة تطبيق Android.
+تم اعتماد `assets/images/favicon.png` كمصدر وحيد ورسمي لأيقونة تطبيق «سجل الطالب». الملف عبارة عن صورة مربعة عالية الدقة لدفتر أزرق مع علامة تحقق خضراء، وهي مناسبة للهوية الأكاديمية للتطبيق ولا تحتوي على نص قد يتشوه عند التصغير.
 
-ملف Android Manifest يربط الأيقونة بالاسم `@mipmap/ic_launcher`. موارد Android الحالية تحتوي على `mipmap-anydpi-v26/ic_launcher.xml` الذي يربط foreground فقط بـ `@drawable/ic_launcher_foreground`، كما توجد صور `mipmap-*/ic_launcher.png` مولدة مسبقاً.
+## آلية الربط
 
-السبب المرجح لعدم ظهور صورة `app_icon.png` هو أن صورة التطبيق الكاملة داخل `assets/images` لم تُربط مباشرة بموارد `mipmap` المستخدمة من Manifest. بدلاً من ذلك، يعتمد Android على موارد launcher منفصلة، وقد تكون هذه الموارد قديمة أو adaptive icon غير مكتملة الخلفية.
+يربط `AndroidManifest.xml` أيقونة التطبيق بالاسم `@mipmap/ic_launcher`. يولّد `scripts/generate_android_assets.py` موارد launcher التقليدية من `favicon.png` للكثافات `mdpi` و`hdpi` و`xhdpi` و`xxhdpi` و`xxxhdpi`، كما يولد foreground شفافاً لـ Adaptive Icon داخل `drawable-nodpi/ic_launcher_foreground.png`.
 
-## المطلوب في الإصلاح
+يظل ملف `mipmap-anydpi-v26/ic_launcher.xml` هو مورد Adaptive Icon لأجهزة Android 8 وما بعدها، بينما تستخدم أجهزة Android الأقدم صور `mipmap-*/ic_launcher.png`. بهذه الطريقة يستخدم النظام المصدر نفسه في جميع الحالات دون اختلاف بين كثافات الشاشة أو إصدارات Android.
 
-يجب تحويل الصورة المطلوبة إلى موارد launcher واضحة لكل كثافات Android، وربط adaptive icon بخلفية وforeground ثابتين، مع الإبقاء على fallback للأجهزة قبل Android 8. يجب أيضاً التحقق من عدم قص الشعار داخل safe zone الخاصة بـ adaptive icon، ثم بناء APK جديد والتحقق من موارد `@mipmap/ic_launcher` داخل الحزمة.
+## إزالة المصادر القديمة
 
-## نتيجة المعاينة البصرية
+تم حذف `app_icon.png` وملفات `android_icon_background.png` و`android_icon_foreground.png` و`android_icon_monochrome.png` من `assets/images` لأنها لم تعد مصادر معتمدة للأيقونة. بقي `favicon.png` هو المصدر الوحيد للأيقونة، مع إبقاء `splash_icon.png` كأصل مستقل لشاشة البداية وليس كأيقونة launcher.
 
-المعاينة تؤكد أن `android/app/src/main/res/drawable-nodpi/ic_launcher_foreground.png` يحتوي على الشعار الأكاديمي، لكنه يحتوي على مساحة شفافة كبيرة حول صورة مربعة كاملة. هذا يجعل العلامة أصغر عند تطبيق قناع adaptive icon، كما أن الاعتماد على `assets/images/app_icon.png` وحده لا يربط الصورة تلقائياً بـ Android Manifest.
+## التحقق
 
-الإصلاح الأنسب هو إعادة توليد الموارد من المصدر نفسه مع ضبط adaptive icon بطريقة صريحة، وإضافة نسخة legacy مرتبطة بالاسم نفسه، ثم فحص APK النهائي للتأكد من احتوائه على الموارد الجديدة.
+يتحقق `scripts/verify_android_icon.py` من وجود `favicon.png`، وربط Manifest بالاسم الصحيح، ووجود Adaptive Icon، وسلامة foreground بصيغة RGBA وبأبعاد 1024×1024، ووجود جميع موارد launcher بالأحجام الصحيحة. وقد اجتاز الفحص بعد إعادة التوليد.
 
-## مقارنة مصادر الأيقونة
+## ملاحظة التثبيت
 
-`assets/images/android_icon_foreground.png` يحتوي على رمز كتاب مع علامة تحقق، وهو مختلف بصرياً عن `assets/images/app_icon.png` التي تحتوي على ملف الطالب والشعار الأكاديمي. لذلك لا يجوز استخدامه مصدراً للـ launcher في هذا الطلب؛ المصدر الصحيح للأيقونة المطلوبة هو `app_icon.png`، مع توليد موارد Android منه بشكل موحد.
-
-## التدقيق النهائي لمصادر assets/images
-
-تحتوي `assets/images` على عدة مصادر مختلفة: `android_icon_background.png` هو قالب إرشادي فاتح وليس خلفية launcher نهائية، و`android_icon_monochrome.png` يحتوي علامة رمادية مختلفة، بينما `android_icon_foreground.png` يحتوي رمز كتاب مع علامة تحقق. هذه الملفات لا تطابق الشعار الأكاديمي الموجود في `app_icon.png`. لذلك يجب اعتماد مصدر واحد فقط للـ launcher وعدم خلط هذه الملفات في موارد Android.
-
-الربط الحالي يستخدم `@mipmap/ic_launcher`، لكن مولد الموارد يعتمد على `app_icon.png` ويضع صورة مربعة كاملة داخل foreground شفاف. هذا يترك احتمال قص/تصغير الشعار داخل قناع adaptive icon. الإصلاح النهائي سيستخدم الصورة المطلوبة كمورد launcher مباشر، مع إبقاء adaptive resource متوافقاً، وفحص الحزمة الناتجة نفسها.
+بعد تثبيت APK الجديد، قد يحتفظ بعض مشغلات Android بالأيقونة القديمة في ذاكرة مؤقتة. إذا لم تتحدث الأيقونة مباشرة، يجب حذف النسخة القديمة من الجهاز ثم تثبيت APK الجديد، أو إعادة تشغيل المشغّل/الجهاز.
