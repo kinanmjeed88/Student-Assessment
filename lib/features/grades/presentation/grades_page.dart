@@ -18,6 +18,7 @@ class GradesPage extends ConsumerStatefulWidget {
 class _GradesPageState extends ConsumerState<GradesPage> {
   String? _fieldUuid;
   String _classUuid = 'all';
+  String _sectionUuid = 'all';
   final _search = TextEditingController();
 
   @override
@@ -37,7 +38,7 @@ class _GradesPageState extends ConsumerState<GradesPage> {
     final selectedField = field ?? (snapshot.gradeFields.isEmpty ? null : snapshot.gradeFields.first);
     final students = snapshot.students.where((student) {
       final query = _search.text.trim();
-      return (_classUuid == 'all' || student.classUuid == _classUuid) && (query.isEmpty || student.fullName.contains(query));
+      return (_classUuid == 'all' || student.classUuid == _classUuid) && (_sectionUuid == 'all' || student.sectionUuid == _sectionUuid) && (query.isEmpty || student.fullName.contains(query));
     }).toList(growable: false);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -51,10 +52,36 @@ class _GradesPageState extends ConsumerState<GradesPage> {
             if (snapshot.gradeFields.isEmpty)
               const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('لم تُنشأ حقول درجات بعد. أضف اختباراً أو تسميعاً أو تقييماً للبدء.')))
             else ...[
-              DropdownButtonFormField<String>(initialValue: selectedField?.uuid, decoration: const InputDecoration(labelText: 'حقل التقييم'), items: snapshot.gradeFields.map((item) => DropdownMenuItem(value: item.uuid, child: Text('${item.subject} — ${item.title} (${item.maxScore})'))).toList(), onChanged: (value) => setState(() => _fieldUuid = value)),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(initialValue: _classUuid, decoration: const InputDecoration(labelText: 'تصفية الصف'), items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))], onChanged: (value) => setState(() => _classUuid = value ?? 'all')),
-              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(initialValue: selectedField?.uuid, decoration: const InputDecoration(labelText: 'حقل التقييم'), items: snapshot.gradeFields.map((item) => DropdownMenuItem(value: item.uuid, child: Text('${item.subject} — ${item.title} (${item.maxScore})'))).toList(), onChanged: (value) => setState(() => _fieldUuid = value)),
+                  ),
+                  IconButton(onPressed: selectedField == null ? null : () => _showFieldForm(field: selectedField), tooltip: 'تعديل حقل التقييم', icon: const Icon(Icons.edit_outlined)),
+                  IconButton(onPressed: selectedField == null ? null : () => _deleteField(selectedField), tooltip: 'حذف حقل التقييم', icon: const Icon(Icons.delete_outline)),
+                ],
+              ),
+              AppSpacing.item,
+              DropdownButtonFormField<String>(
+                initialValue: _classUuid,
+                decoration: const InputDecoration(labelText: 'تصفية الصف'),
+                items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
+                onChanged: (value) => setState(() {
+                  _classUuid = value ?? 'all';
+                  if (_sectionUuid != 'all' && !snapshot.sections.any((section) => section.uuid == _sectionUuid && section.classUuid == _classUuid)) _sectionUuid = 'all';
+                }),
+              ),
+              AppSpacing.item,
+              DropdownButtonFormField<String>(
+                initialValue: _sectionUuid,
+                decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
+                items: [
+                  const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
+                  ...snapshot.sections.where((section) => _classUuid == 'all' || section.classUuid == _classUuid).map((section) => DropdownMenuItem(value: section.uuid, child: Text(section.name))),
+                ],
+                onChanged: (value) => setState(() => _sectionUuid = value ?? 'all'),
+              ),
+              AppSpacing.item,
               TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'ابحث عن طالب')),
               const SizedBox(height: 16),
               if (students.isEmpty) const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('لا يوجد طلاب ضمن التصفية.'))),
@@ -75,15 +102,15 @@ class _GradesPageState extends ConsumerState<GradesPage> {
     );
   }
 
-  Future<void> _showFieldForm() async {
-    final subject = TextEditingController();
-    final title = TextEditingController();
-    final maxScore = TextEditingController(text: '100');
-    final term = TextEditingController(text: 'الفصل الأول');
+  Future<void> _showFieldForm({GradeField? field}) async {
+    final subject = TextEditingController(text: field?.subject);
+    final title = TextEditingController(text: field?.title);
+    final maxScore = TextEditingController(text: (field?.maxScore ?? 100).toString());
+    final term = TextEditingController(text: field?.term ?? 'الفصل الأول');
     final key = GlobalKey<FormState>();
     await showAppFormSheet<void>(
       context: context,
-      title: 'إضافة حقل تقييم',
+      title: field == null ? 'إضافة حقل تقييم' : 'تعديل حقل التقييم',
       subtitle: 'عرّف المادة والتقييم والدرجة العظمى قبل إدخال درجات الطلاب.',
       child: Form(
         key: key,
@@ -105,15 +132,39 @@ class _GradesPageState extends ConsumerState<GradesPage> {
         FilledButton.icon(
           onPressed: () async {
             if (!(key.currentState?.validate() ?? false)) return;
-            await ref.read(appControllerProvider.notifier).createGradeField(subject: subject.text.trim(), title: title.text.trim(), maxScore: double.parse(maxScore.text), term: term.text.trim());
+            final controller = ref.read(appControllerProvider.notifier);
+            final value = double.parse(maxScore.text);
+            if (field == null) {
+              await controller.createGradeField(subject: subject.text.trim(), title: title.text.trim(), maxScore: value, term: term.text.trim());
+            } else {
+              await controller.updateGradeField(fieldUuid: field.uuid, subject: subject.text.trim(), title: title.text.trim(), maxScore: value, term: term.text.trim());
+            }
             if (context.mounted) Navigator.pop(context);
           },
-          icon: const Icon(Icons.add_task_outlined),
-          label: const Text('إنشاء الحقل'),
+          icon: Icon(field == null ? Icons.add_task_outlined : Icons.save_outlined),
+          label: Text(field == null ? 'إنشاء الحقل' : 'حفظ التعديل'),
         ),
       ],
     );
     subject.dispose(); title.dispose(); maxScore.dispose(); term.dispose();
+  }
+
+  Future<void> _deleteField(GradeField field) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف حقل التقييم؟'),
+        content: Text('سيتم حذف حقل ${field.title} وجميع درجات الطلاب المرتبطة به.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف نهائي')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(appControllerProvider.notifier).deleteGradeField(field.uuid);
+      if (mounted) setState(() => _fieldUuid = null);
+    }
   }
 
   Future<void> _deleteGrade(Student student, GradeField field) async {
@@ -142,7 +193,7 @@ class _GradesPageState extends ConsumerState<GradesPage> {
     final notes = TextEditingController(text: existing?.notes);
     await showAppFormSheet<void>(
       context: context,
-      title: 'إدخال درجة الطالب',
+      title: existing == null ? 'إدخال درجة الطالب' : 'تعديل درجة الطالب',
       subtitle: '${student.fullName} — ${field.subject} / ${field.title}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -163,11 +214,16 @@ class _GradesPageState extends ConsumerState<GradesPage> {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('أدخل قيمة بين 0 و${field.maxScore}')));
               return;
             }
-            await ref.read(appControllerProvider.notifier).saveGrade(studentUuid: student.uuid, fieldUuid: field.uuid, score: value, notes: notes.text.trim());
+            final controller = ref.read(appControllerProvider.notifier);
+            if (existing == null) {
+              await controller.saveGrade(studentUuid: student.uuid, fieldUuid: field.uuid, score: value, notes: notes.text.trim());
+            } else {
+              await controller.updateGrade(studentUuid: student.uuid, fieldUuid: field.uuid, subject: field.subject, title: field.title, maxScore: field.maxScore, term: field.term, score: value, notes: notes.text.trim());
+            }
             if (context.mounted) Navigator.pop(context);
           },
           icon: const Icon(Icons.save_outlined),
-          label: const Text('حفظ الدرجة'),
+          label: Text(existing == null ? 'حفظ الدرجة' : 'حفظ التعديل'),
         ),
       ],
     );

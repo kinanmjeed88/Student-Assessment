@@ -21,6 +21,8 @@ class BehaviorPage extends ConsumerStatefulWidget {
 
 class _BehaviorPageState extends ConsumerState<BehaviorPage> {
   String _filter = 'all';
+  String _classUuid = 'all';
+  String _sectionUuid = 'all';
   final _search = TextEditingController();
 
   @override
@@ -51,8 +53,10 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
           item.title.contains(query) ||
           item.details.contains(query) ||
           (student?.fullName.contains(query) ?? false);
+      final matchesClass = _classUuid == 'all' || student?.classUuid == _classUuid;
+      final matchesSection = _sectionUuid == 'all' || student?.sectionUuid == _sectionUuid;
       final matchesFilter = _filter == 'all' || item.category.name == _filter;
-      return matchesStudent && matchesQuery && matchesFilter;
+      return matchesStudent && matchesQuery && matchesClass && matchesSection && matchesFilter;
     }).toList(growable: false);
 
     return Scaffold(
@@ -75,6 +79,26 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
                 prefixIcon: Icon(Icons.search),
                 hintText: 'ابحث في السلوك أو اسم الطالب',
               ),
+            ),
+            AppSpacing.compact,
+            DropdownButtonFormField<String>(
+              initialValue: _classUuid,
+              decoration: const InputDecoration(labelText: 'تصفية الصف'),
+              items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
+              onChanged: (value) => setState(() {
+                _classUuid = value ?? 'all';
+                if (_sectionUuid != 'all' && !snapshot.sections.any((section) => section.uuid == _sectionUuid && section.classUuid == _classUuid)) _sectionUuid = 'all';
+              }),
+            ),
+            AppSpacing.item,
+            DropdownButtonFormField<String>(
+              initialValue: _sectionUuid,
+              decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
+              items: [
+                const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
+                ...snapshot.sections.where((section) => _classUuid == 'all' || section.classUuid == _classUuid).map((section) => DropdownMenuItem(value: section.uuid, child: Text(section.name))),
+              ],
+              onChanged: (value) => setState(() => _sectionUuid = value ?? 'all'),
             ),
             AppSpacing.compact,
             Wrap(
@@ -236,6 +260,7 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
             if (editing) {
               await controller.updateBehavior(
                 behaviorUuid: record.uuid,
+                studentUuid: studentUuid,
                 category: category,
                 title: title.text.trim(),
                 details: details.text.trim(),

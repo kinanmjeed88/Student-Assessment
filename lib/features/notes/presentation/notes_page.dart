@@ -21,6 +21,8 @@ class NotesPage extends ConsumerStatefulWidget {
 
 class _NotesPageState extends ConsumerState<NotesPage> {
   String _filter = 'all';
+  String _classUuid = 'all';
+  String _sectionUuid = 'all';
   final _search = TextEditingController();
 
   @override
@@ -47,12 +49,14 @@ class _NotesPageState extends ConsumerState<NotesPage> {
     final notes = snapshot.notes.where((note) {
       final student = snapshot.students.where((item) => item.uuid == note.studentUuid).firstOrNull;
       final matchesStudent = widget.studentUuid == null || note.studentUuid == widget.studentUuid;
+      final matchesClass = _classUuid == 'all' || student?.classUuid == _classUuid;
+      final matchesSection = _sectionUuid == 'all' || student?.sectionUuid == _sectionUuid;
       final matchesFilter = _filter == 'all' || note.category.name == _filter;
       final matchesQuery = query.isEmpty ||
           note.title.contains(query) ||
           note.details.contains(query) ||
           (student?.fullName.contains(query) ?? false);
-      return matchesStudent && matchesFilter && matchesQuery;
+      return matchesStudent && matchesClass && matchesSection && matchesFilter && matchesQuery;
     }).toList(growable: false);
 
     return Scaffold(
@@ -75,6 +79,26 @@ class _NotesPageState extends ConsumerState<NotesPage> {
                 prefixIcon: Icon(Icons.search),
                 hintText: 'ابحث في الملاحظات أو اسم الطالب',
               ),
+            ),
+            AppSpacing.compact,
+            DropdownButtonFormField<String>(
+              initialValue: _classUuid,
+              decoration: const InputDecoration(labelText: 'تصفية الصف'),
+              items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
+              onChanged: (value) => setState(() {
+                _classUuid = value ?? 'all';
+                if (_sectionUuid != 'all' && !snapshot.sections.any((section) => section.uuid == _sectionUuid && section.classUuid == _classUuid)) _sectionUuid = 'all';
+              }),
+            ),
+            AppSpacing.item,
+            DropdownButtonFormField<String>(
+              initialValue: _sectionUuid,
+              decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
+              items: [
+                const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
+                ...snapshot.sections.where((section) => _classUuid == 'all' || section.classUuid == _classUuid).map((section) => DropdownMenuItem(value: section.uuid, child: Text(section.name))),
+              ],
+              onChanged: (value) => setState(() => _sectionUuid = value ?? 'all'),
             ),
             AppSpacing.compact,
             Wrap(

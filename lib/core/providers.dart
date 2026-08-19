@@ -149,6 +149,11 @@ class AppController extends AsyncNotifier<AppSnapshot> {
   Future<void> createGradeField({required String subject, required String title, required double maxScore, required String term}) =>
       _mutate(() => _repository.createGradeField(subject: subject, title: title, maxScore: maxScore, term: term));
 
+  Future<void> updateGradeField({required String fieldUuid, required String subject, required String title, required double maxScore, required String term}) =>
+      _mutate(() => _repository.updateGradeField(fieldUuid: fieldUuid, subject: subject, title: title, maxScore: maxScore, term: term));
+
+  Future<void> deleteGradeField(String fieldUuid) => _mutate(() => _repository.deleteGradeField(fieldUuid));
+
   Future<void> saveGrade({required String studentUuid, required String fieldUuid, required double score, String notes = ''}) =>
       _mutate(() => _repository.saveGrade(studentUuid: studentUuid, fieldUuid: fieldUuid, score: score, notes: notes));
 
@@ -258,13 +263,18 @@ class AppController extends AsyncNotifier<AppSnapshot> {
 
   Future<void> updateBehavior({
     required String behaviorUuid,
+    required String studentUuid,
     required BehaviorCategory category,
     required String title,
     required String details,
     required BehaviorViolationType violationType,
     String actionTaken = '',
     String followUp = '',
-  }) => _mutate(() => _repository.updateBehavior(behaviorUuid: behaviorUuid, category: category, title: title, details: details, violationType: violationType, actionTaken: actionTaken, followUp: followUp));
+  }) async {
+    final previousSummary = _behaviorSummary(studentUuid);
+    await _mutate(() => _repository.updateBehavior(behaviorUuid: behaviorUuid, category: category, title: title, details: details, violationType: violationType, actionTaken: actionTaken, followUp: followUp));
+    await _notifyBehaviorAlert(studentUuid, previousSummary);
+  }
 
   Future<void> deleteBehavior(String behaviorUuid) => _mutate(() => _repository.deleteBehavior(behaviorUuid));
 

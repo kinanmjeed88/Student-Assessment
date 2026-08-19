@@ -79,7 +79,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
         onRefresh: () => ref.read(appControllerProvider.notifier).refresh(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
+            padding: AppSpacing.contentList,
           children: [
             AppResponsiveContent(
               child: Column(
@@ -109,8 +109,8 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                   if (students.isEmpty)
                     AppEmptyState(
                       icon: Icons.person_search_outlined,
-                      title: 'لا توجد نتائج',
-                      message: _searchController.text.trim().isEmpty ? 'أضف طالباً جديداً أو استورد قائمة الطلاب.' : 'جرّب تغيير عبارة البحث أو المرشحات.',
+                      title: 'لا يوجد طلاب',
+                      message: _searchController.text.trim().isEmpty ? 'أضف طالباً جديداً أو استورد قائمة الطلاب.' : 'جرّب تغيير عبارة البحث أو المرشحات الحالية.',
                       action: _searchController.text.trim().isEmpty ? FilledButton.icon(onPressed: () => _showStudentForm(snapshot), icon: const Icon(Icons.person_add_alt_1_outlined), label: const Text('إضافة طالب')) : null,
                     )
                   else
@@ -152,92 +152,93 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
     var status = student?.status ?? StudentStatus.active;
     final formKey = GlobalKey<FormState>();
 
-    await showDialog<void>(
+    await showAppFormSheet<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(student == null ? 'إضافة طالب' : 'تعديل ملف الطالب'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _RequiredField(controller: firstName, label: 'الاسم الأول'),
-                    const SizedBox(height: 12),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final compact = constraints.maxWidth < 420;
-                        final fields = [
-                          Expanded(child: TextFormField(controller: fatherName, decoration: const InputDecoration(labelText: 'اسم الأب'))),
-                          Expanded(child: _RequiredField(controller: lastName, label: 'اسم العائلة')),
-                        ];
-                        return compact ? Column(children: [fields[0], const SizedBox(height: 12), fields[1]]) : Row(children: [fields[0], const SizedBox(width: 12), fields[1]]);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(controller: number, decoration: const InputDecoration(labelText: 'رقم الطالب')),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<StudentGender>(
-                      initialValue: gender,
-                      decoration: const InputDecoration(labelText: 'الجنس'),
-                      items: const [DropdownMenuItem(value: StudentGender.male, child: Text('ذكر')), DropdownMenuItem(value: StudentGender.female, child: Text('أنثى'))],
-                      onChanged: (value) => setDialogState(() => gender = value ?? gender),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: classUuid,
-                      decoration: const InputDecoration(labelText: 'الصف'),
-                      items: snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(),
-                      onChanged: (value) => setDialogState(() {
-                        classUuid = value ?? classUuid;
-                        if (!snapshot.sections.any((section) => section.uuid == sectionUuid && section.classUuid == classUuid)) sectionUuid = '';
-                      }),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: sectionUuid.isEmpty ? null : sectionUuid,
-                      decoration: const InputDecoration(labelText: 'الشعبة (اختياري)'),
-                      items: snapshot.sections.where((item) => item.classUuid == classUuid).map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(),
-                      onChanged: (value) => setDialogState(() => sectionUuid = value ?? ''),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(controller: guardian, decoration: const InputDecoration(labelText: 'ولي الأمر')),
-                    const SizedBox(height: 12),
-                    TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'هاتف ولي الأمر')),
-                    if (student != null) ...[
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<StudentStatus>(
-                        initialValue: status,
-                        decoration: const InputDecoration(labelText: 'حالة الطالب'),
-                        items: const [DropdownMenuItem(value: StudentStatus.active, child: Text('نشط')), DropdownMenuItem(value: StudentStatus.transferred, child: Text('منقول')), DropdownMenuItem(value: StudentStatus.graduated, child: Text('متخرج')), DropdownMenuItem(value: StudentStatus.suspended, child: Text('موقوف'))],
-                        onChanged: (value) => setDialogState(() => status = value ?? status),
-                      ),
-                    ],
-                  ],
+      title: student == null ? 'إضافة طالب' : 'تعديل ملف الطالب',
+      subtitle: 'أدخل بيانات الطالب الأساسية واربطه بالصف والشعبة الصحيحة.',
+      child: StatefulBuilder(
+        builder: (context, setSheetState) {
+          final fatherField = TextFormField(controller: fatherName, decoration: const InputDecoration(labelText: 'اسم الأب'));
+          final lastNameField = _RequiredField(controller: lastName, label: 'اسم العائلة');
+          return Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _RequiredField(controller: firstName, label: 'الاسم الأول'),
+                AppSpacing.item,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 420) {
+                      return Column(children: [fatherField, AppSpacing.item, lastNameField]);
+                    }
+                    return Row(children: [Expanded(child: fatherField), const SizedBox(width: AppTokens.itemGap), Expanded(child: lastNameField)]);
+                  },
                 ),
-              ),
+                AppSpacing.item,
+                TextFormField(controller: number, decoration: const InputDecoration(labelText: 'رقم الطالب')),
+                AppSpacing.item,
+                DropdownButtonFormField<StudentGender>(
+                  initialValue: gender,
+                  decoration: const InputDecoration(labelText: 'الجنس'),
+                  items: const [DropdownMenuItem(value: StudentGender.male, child: Text('ذكر')), DropdownMenuItem(value: StudentGender.female, child: Text('أنثى'))],
+                  onChanged: (value) => setSheetState(() => gender = value ?? gender),
+                ),
+                AppSpacing.item,
+                DropdownButtonFormField<String>(
+                  initialValue: classUuid,
+                  decoration: const InputDecoration(labelText: 'الصف'),
+                  items: snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(),
+                  onChanged: (value) => setSheetState(() {
+                    classUuid = value ?? classUuid;
+                    if (!snapshot.sections.any((section) => section.uuid == sectionUuid && section.classUuid == classUuid)) sectionUuid = '';
+                  }),
+                ),
+                AppSpacing.item,
+                DropdownButtonFormField<String>(
+                  initialValue: sectionUuid.isEmpty ? null : sectionUuid,
+                  decoration: const InputDecoration(labelText: 'الشعبة (اختياري)'),
+                  items: [
+                    const DropdownMenuItem<String>(value: '', child: Text('بدون شعبة')),
+                    ...snapshot.sections.where((item) => item.classUuid == classUuid).map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))),
+                  ],
+                  onChanged: (value) => setSheetState(() => sectionUuid = value ?? ''),
+                ),
+                AppSpacing.item,
+                TextFormField(controller: guardian, decoration: const InputDecoration(labelText: 'ولي الأمر')),
+                AppSpacing.item,
+                TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'هاتف ولي الأمر')),
+                if (student != null) ...[
+                  AppSpacing.item,
+                  DropdownButtonFormField<StudentStatus>(
+                    initialValue: status,
+                    decoration: const InputDecoration(labelText: 'حالة الطالب'),
+                    items: const [DropdownMenuItem(value: StudentStatus.active, child: Text('نشط')), DropdownMenuItem(value: StudentStatus.transferred, child: Text('منقول')), DropdownMenuItem(value: StudentStatus.graduated, child: Text('متخرج')), DropdownMenuItem(value: StudentStatus.suspended, child: Text('موقوف'))],
+                    onChanged: (value) => setSheetState(() => status = value ?? status),
+                  ),
+                ],
+              ],
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
-            FilledButton(
-              onPressed: () async {
-                if (!(formKey.currentState?.validate() ?? false)) return;
-                final controller = ref.read(appControllerProvider.notifier);
-                if (student == null) {
-                  await controller.addStudent(firstName: firstName.text, fatherName: fatherName.text, lastName: lastName.text, studentNumber: number.text, classUuid: classUuid, sectionUuid: sectionUuid, gender: gender, guardianName: guardian.text, guardianPhone: phone.text);
-                } else {
-                  await controller.updateStudent(studentUuid: student.uuid, firstName: firstName.text, fatherName: fatherName.text, lastName: lastName.text, studentNumber: number.text, classUuid: classUuid, sectionUuid: sectionUuid, gender: gender, status: status, guardianName: guardian.text, guardianPhone: phone.text);
-                }
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
-              },
-              child: const Text('حفظ'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(
+          onPressed: () async {
+            if (!(formKey.currentState?.validate() ?? false)) return;
+            final controller = ref.read(appControllerProvider.notifier);
+            if (student == null) {
+              await controller.addStudent(firstName: firstName.text.trim(), fatherName: fatherName.text.trim(), lastName: lastName.text.trim(), studentNumber: number.text.trim(), classUuid: classUuid, sectionUuid: sectionUuid, gender: gender, guardianName: guardian.text.trim(), guardianPhone: phone.text.trim());
+            } else {
+              await controller.updateStudent(studentUuid: student.uuid, firstName: firstName.text.trim(), fatherName: fatherName.text.trim(), lastName: lastName.text.trim(), studentNumber: number.text.trim(), classUuid: classUuid, sectionUuid: sectionUuid, gender: gender, status: status, guardianName: guardian.text.trim(), guardianPhone: phone.text.trim());
+            }
+            if (context.mounted) Navigator.pop(context);
+          },
+          icon: const Icon(Icons.save_outlined),
+          label: const Text('حفظ'),
+        ),
+      ],
     );
     firstName.dispose();
     fatherName.dispose();
@@ -328,33 +329,34 @@ class _AttentionFilters extends StatelessWidget {
   Widget _choice(BuildContext context, {required String label, required String filterValue}) {
     final scheme = Theme.of(context).colorScheme;
     final selected = value == filterValue;
-    return Expanded(
-      child: ChoiceChip(
-        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-        selected: selected,
-        onSelected: (_) => onChanged(filterValue),
-        showCheckmark: false,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: selected ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-            ),
-        selectedColor: scheme.primaryContainer,
-        backgroundColor: scheme.surface,
-      ),
+    return ChoiceChip(
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      selected: selected,
+      onSelected: (_) => onChanged(filterValue),
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: selected ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+          ),
+      selectedColor: scheme.primaryContainer,
+      backgroundColor: scheme.surface,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _choice(context, label: 'الكل', filterValue: 'all'),
-        const SizedBox(width: 6),
-        _choice(context, label: 'تنبيهات السلوك', filterValue: 'behavior-alert'),
-        const SizedBox(width: 6),
-        _choice(context, label: 'غياب متكرر', filterValue: 'repeated-absence'),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _choice(context, label: 'الكل', filterValue: 'all'),
+          const SizedBox(width: AppTokens.compactGap / 2),
+          _choice(context, label: 'تنبيهات السلوك', filterValue: 'behavior-alert'),
+          const SizedBox(width: AppTokens.compactGap / 2),
+          _choice(context, label: 'غياب متكرر', filterValue: 'repeated-absence'),
+        ],
+      ),
     );
   }
 }

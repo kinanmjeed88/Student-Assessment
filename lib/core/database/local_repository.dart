@@ -349,6 +349,51 @@ class LocalRepository implements LocalStore {
   }
 
   @override
+  Future<void> updateGradeField({
+    required String fieldUuid,
+    required String subject,
+    required String title,
+    required double maxScore,
+    required String term,
+  }) async {
+    if (subject.trim().isEmpty || title.trim().isEmpty || maxScore <= 0) {
+      throw const FormatException('بيانات حقل الدرجة غير مكتملة.');
+    }
+    final db = await _db;
+    await db.writeTxn(() async {
+      final fields = await db.gradeFields.where().findAll();
+      final field = fields.where((item) => item.uuid == fieldUuid).firstOrNull;
+      if (field == null) throw const FormatException('حقل الدرجة غير موجود.');
+      field
+        ..subject = subject.trim()
+        ..title = title.trim()
+        ..maxScore = maxScore
+        ..term = term.trim().isEmpty ? 'الفصل الأول' : term.trim();
+      await db.gradeFields.put(field);
+      final grades = await db.grades.where().findAll();
+      for (final grade in grades.where((item) => item.fieldUuid == fieldUuid && item.score > maxScore)) {
+        grade.score = maxScore;
+        await db.grades.put(grade);
+      }
+    });
+  }
+
+  @override
+  Future<void> deleteGradeField(String fieldUuid) async {
+    final db = await _db;
+    await db.writeTxn(() async {
+      final fields = await db.gradeFields.where().findAll();
+      final field = fields.where((item) => item.uuid == fieldUuid).firstOrNull;
+      if (field == null) return;
+      final grades = await db.grades.where().findAll();
+      for (final grade in grades.where((item) => item.fieldUuid == fieldUuid)) {
+        await db.grades.delete(grade.id);
+      }
+      await db.gradeFields.delete(field.id);
+    });
+  }
+
+  @override
   Future<void> saveGrade({
     required String studentUuid,
     required String fieldUuid,
@@ -409,16 +454,10 @@ class LocalRepository implements LocalStore {
   Future<void> deleteGrade({required String studentUuid, required String fieldUuid}) async {
     final db = await _db;
     await db.writeTxn(() async {
-      final fields = await db.gradeFields.where().findAll();
       final grades = await db.grades.where().findAll();
       final grade = grades.where((item) => item.studentUuid == studentUuid && item.fieldUuid == fieldUuid).firstOrNull;
       if (grade == null) return;
       await db.grades.delete(grade.id);
-      final stillUsed = grades.any((item) => item.id != grade.id && item.fieldUuid == fieldUuid);
-      if (!stillUsed) {
-        final field = fields.where((item) => item.uuid == fieldUuid).firstOrNull;
-        if (field != null) await db.gradeFields.delete(field.id);
-      }
     });
   }
 

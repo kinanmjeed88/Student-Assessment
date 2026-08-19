@@ -259,36 +259,48 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     final formKey = GlobalKey<FormState>();
     var category = NoteCategory.academic;
     var needsFollowUp = false;
-    await showDialog<void>(
+    await showAppFormSheet<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('إضافة ملاحظة'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<NoteCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'), items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))], onChanged: (value) => setDialogState(() => category = value ?? category)),
-                _input(title, 'عنوان الملاحظة'),
-                _input(details, 'التفاصيل', maxLines: 4),
-                CheckboxListTile(value: needsFollowUp, onChanged: (value) => setDialogState(() => needsFollowUp = value ?? false), title: const Text('تحتاج إلى متابعة'), contentPadding: EdgeInsets.zero),
-              ],
-            ),
+      title: 'إضافة ملاحظة',
+      subtitle: 'سجّل الملاحظة وتصنيفها وحالة المتابعة في نموذج قابل للتمرير.',
+      child: StatefulBuilder(
+        builder: (context, setSheetState) => Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<NoteCategory>(
+                initialValue: category,
+                decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'),
+                items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))],
+                onChanged: (value) => setSheetState(() => category = value ?? category),
+              ),
+              AppSpacing.item,
+              _input(title, 'عنوان الملاحظة'),
+              AppSpacing.item,
+              _input(details, 'التفاصيل', maxLines: 4),
+              CheckboxListTile(
+                value: needsFollowUp,
+                onChanged: (value) => setSheetState(() => needsFollowUp = value ?? false),
+                title: const Text('تحتاج إلى متابعة'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
-            FilledButton(
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.pop(dialogContext);
-                await ref.read(appControllerProvider.notifier).addNote(studentUuid: student.uuid, category: category, title: title.text, details: details.text, needsFollowUp: needsFollowUp);
-              },
-              child: const Text('حفظ الملاحظة'),
-            ),
-          ],
         ),
       ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(
+          onPressed: () async {
+            if (!(formKey.currentState?.validate() ?? false)) return;
+            await ref.read(appControllerProvider.notifier).addNote(studentUuid: student.uuid, category: category, title: title.text.trim(), details: details.text.trim(), needsFollowUp: needsFollowUp);
+            if (context.mounted) Navigator.pop(context);
+          },
+          icon: const Icon(Icons.save_outlined),
+          label: const Text('حفظ الملاحظة'),
+        ),
+      ],
     );
     title.dispose();
     details.dispose();
@@ -444,7 +456,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-        FilledButton.icon(onPressed: () async { if (!(formKey.currentState?.validate() ?? false)) return; Navigator.pop(context); await ref.read(appControllerProvider.notifier).updateBehavior(behaviorUuid: record.uuid, category: category, title: title.text, details: details.text, violationType: category == BehaviorCategory.negative ? violation : BehaviorViolationType.none, actionTaken: action.text, followUp: followUp.text); }, icon: const Icon(Icons.save_outlined), label: const Text('حفظ التعديل')),
+        FilledButton.icon(onPressed: () async { if (!(formKey.currentState?.validate() ?? false)) return; Navigator.pop(context); await ref.read(appControllerProvider.notifier).updateBehavior(studentUuid: student.uuid, behaviorUuid: record.uuid, category: category, title: title.text, details: details.text, violationType: category == BehaviorCategory.negative ? violation : BehaviorViolationType.none, actionTaken: action.text, followUp: followUp.text); }, icon: const Icon(Icons.save_outlined), label: const Text('حفظ التعديل')),
       ],
     );
     title.dispose();

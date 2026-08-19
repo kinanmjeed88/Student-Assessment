@@ -95,6 +95,16 @@ abstract interface class LocalStore {
     required String term,
   });
 
+  Future<void> updateGradeField({
+    required String fieldUuid,
+    required String subject,
+    required String title,
+    required double maxScore,
+    required String term,
+  });
+
+  Future<void> deleteGradeField(String fieldUuid);
+
   Future<void> saveGrade({
     required String studentUuid,
     required String fieldUuid,

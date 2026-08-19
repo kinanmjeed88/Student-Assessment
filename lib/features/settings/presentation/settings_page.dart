@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
 import '../../../core/widgets/app_components.dart';
+import '../../../core/widgets/async_state_view.dart';
 import '../../dashboard/presentation/app_shell.dart';
 import '../../import/presentation/import_history_page.dart';
 import '../../import/presentation/import_students_page.dart';
@@ -347,7 +348,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bytes = await files.first.readAsBytes();
     try {
       await ref.read(appControllerProvider.notifier).restoreBackup(utf8.decode(bytes));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت استعادة النسخة الاحتياطية.')));
+      if (!mounted) return;
+      setState(() => _initialized = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت استعادة النسخة الاحتياطية.')));
     } on FormatException catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
     }

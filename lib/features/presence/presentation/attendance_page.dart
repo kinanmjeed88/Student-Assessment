@@ -16,6 +16,8 @@ class AttendancePage extends ConsumerStatefulWidget {
 
 class _AttendancePageState extends ConsumerState<AttendancePage> {
   DateTime _selectedDate = DateTime.now();
+  String _classUuid = 'all';
+  String _sectionUuid = 'all';
   final Map<String, AttendanceStatus> _draft = {};
 
   @override
@@ -27,7 +29,11 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
         loading: () => const SizedBox.shrink(),
         error: (_, __) => const SizedBox.shrink(),
         data: (snapshot) {
-          final students = snapshot.students;
+          final students = snapshot.students.where((student) {
+            final matchesClass = _classUuid == 'all' || student.classUuid == _classUuid;
+            final matchesSection = _sectionUuid == 'all' || student.sectionUuid == _sectionUuid;
+            return matchesClass && matchesSection;
+          }).toList(growable: false);
           return Scaffold(
             backgroundColor: Theme.of(context).colorScheme.surface,
             appBar: AppBar(
@@ -44,13 +50,37 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
               children: [
                 Padding(
                   padding: AppSpacing.contentList.copyWith(bottom: AppTokens.compactGap),
-                  child: Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.event_available),
-                      title: Text(_dateLabel(_selectedDate), style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: Text('${students.length} طالباً في القائمة'),
-                      trailing: TextButton(onPressed: _pickDate, child: const Text('تغيير')),
-                    ),
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: _classUuid,
+                        decoration: const InputDecoration(labelText: 'تصفية الصف'),
+                        items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
+                        onChanged: (value) => setState(() {
+                          _classUuid = value ?? 'all';
+                          if (_sectionUuid != 'all' && !snapshot.sections.any((section) => section.uuid == _sectionUuid && section.classUuid == _classUuid)) _sectionUuid = 'all';
+                        }),
+                      ),
+                      AppSpacing.item,
+                      DropdownButtonFormField<String>(
+                        initialValue: _sectionUuid,
+                        decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
+                        items: [
+                          const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
+                          ...snapshot.sections.where((section) => _classUuid == 'all' || section.classUuid == _classUuid).map((section) => DropdownMenuItem(value: section.uuid, child: Text(section.name))),
+                        ],
+                        onChanged: (value) => setState(() => _sectionUuid = value ?? 'all'),
+                      ),
+                      AppSpacing.item,
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.event_available),
+                          title: Text(_dateLabel(_selectedDate), style: const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text('${students.length} طالباً في القائمة'),
+                          trailing: TextButton(onPressed: _pickDate, child: const Text('تغيير')),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
