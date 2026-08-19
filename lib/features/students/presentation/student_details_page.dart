@@ -111,10 +111,10 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
         ],
         body: TabBarView(
           children: [
-            _TabBody(child: _GradesSection(snapshot: snapshot, grades: grades, studentUuid: student.uuid, onAdd: () => _addGrade(context))),
-            _TabBody(child: _AttendanceSection(records: attendance)),
-            _TabBody(child: _BehaviorSection(records: behaviors, summary: summary, onAdd: () => _addBehavior(context), onDelete: _deleteBehavior)),
-            _TabBody(child: _NotesSection(notes: notes, onAdd: () => _addNote(context), onDelete: _deleteNote)),
+            _TabBody(child: _GradesSection(snapshot: snapshot, grades: grades, studentUuid: student.uuid, onAdd: () => _addGrade(context), onEdit: (grade) => _editGrade(context, grade), onDelete: _deleteGrade)),
+            _TabBody(child: _AttendanceSection(records: attendance, onEdit: (record) => _editAttendance(context, record), onDelete: _deleteAttendance)),
+            _TabBody(child: _BehaviorSection(records: behaviors, summary: summary, onAdd: () => _addBehavior(context), onEdit: (record) => _editBehavior(context, record), onDelete: _deleteBehavior)),
+            _TabBody(child: _NotesSection(notes: notes, onAdd: () => _addNote(context), onEdit: (note) => _editNote(context, note), onDelete: _deleteNote)),
           ],
         ),
       ),
@@ -302,6 +302,190 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
   Future<void> _deleteNote(String uuid) async {
     if (!await _confirmDelete('حذف الملاحظة؟')) return;
     await ref.read(appControllerProvider.notifier).deleteNote(uuid);
+  }
+
+  Future<void> _deleteGrade(Grade grade) async {
+    if (!await _confirmDelete('حذف الدرجة؟')) return;
+    await ref.read(appControllerProvider.notifier).deleteGrade(studentUuid: student.uuid, fieldUuid: grade.fieldUuid);
+  }
+
+  Future<void> _deleteAttendance(AttendanceRecord record) async {
+    if (!await _confirmDelete('حذف سجل الحضور؟')) return;
+    await ref.read(appControllerProvider.notifier).deleteAttendance(studentUuid: student.uuid, date: record.date);
+  }
+
+  Future<void> _editGrade(BuildContext context, Grade grade) async {
+    final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
+    if (field == null) return;
+    final subject = TextEditingController(text: field.subject);
+    final title = TextEditingController(text: field.title);
+    final maxScore = TextEditingController(text: field.maxScore.toString());
+    final score = TextEditingController(text: grade.score.toString());
+    final notes = TextEditingController(text: grade.notes);
+    final formKey = GlobalKey<FormState>();
+    var term = field.term;
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'تعديل الدرجة',
+      subtitle: 'حدّث بيانات التقييم والدرجة ثم احفظ التغييرات.',
+      child: StatefulBuilder(
+        builder: (context, setState) => Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _input(subject, 'المادة'),
+              AppSpacing.item,
+              _input(title, 'اسم التقييم'),
+              AppSpacing.item,
+              LayoutBuilder(
+                builder: (context, constraints) => constraints.maxWidth < 420
+                    ? Column(children: [_input(maxScore, 'الدرجة العظمى', numeric: true), AppSpacing.item, _input(score, 'درجة الطالب', numeric: true)])
+                    : Row(children: [Expanded(child: _input(maxScore, 'الدرجة العظمى', numeric: true)), const SizedBox(width: 12), Expanded(child: _input(score, 'درجة الطالب', numeric: true))]),
+              ),
+              AppSpacing.item,
+              DropdownButtonFormField<String>(initialValue: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي'), items: const [DropdownMenuItem(value: 'الفصل الأول', child: Text('الفصل الأول')), DropdownMenuItem(value: 'الفصل الثاني', child: Text('الفصل الثاني'))], onChanged: (value) => setState(() => term = value ?? term)),
+              AppSpacing.item,
+              _input(notes, 'ملاحظات', maxLines: 3, required: false),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(
+          onPressed: () async {
+            if (!(formKey.currentState?.validate() ?? false)) return;
+            final max = double.tryParse(maxScore.text.trim());
+            final value = double.tryParse(score.text.trim());
+            if (max == null || value == null || value > max) return;
+            Navigator.pop(context);
+            await ref.read(appControllerProvider.notifier).updateGrade(studentUuid: student.uuid, fieldUuid: grade.fieldUuid, subject: subject.text, title: title.text, maxScore: max, term: term, score: value, notes: notes.text);
+          },
+          icon: const Icon(Icons.save_outlined),
+          label: const Text('حفظ التعديل'),
+        ),
+      ],
+    );
+    subject.dispose();
+    title.dispose();
+    maxScore.dispose();
+    score.dispose();
+    notes.dispose();
+  }
+
+  Future<void> _editAttendance(BuildContext context, AttendanceRecord record) async {
+    final reason = TextEditingController(text: record.reason);
+    final notes = TextEditingController(text: record.notes);
+    final formKey = GlobalKey<FormState>();
+    var status = record.status;
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'تعديل سجل الحضور',
+      subtitle: 'حدّث حالة الحضور وملاحظاتها.',
+      child: StatefulBuilder(
+        builder: (context, setState) => Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<AttendanceStatus>(initialValue: status, decoration: const InputDecoration(labelText: 'الحالة'), items: const [DropdownMenuItem(value: AttendanceStatus.present, child: Text('حاضر')), DropdownMenuItem(value: AttendanceStatus.absent, child: Text('غائب')), DropdownMenuItem(value: AttendanceStatus.excused, child: Text('معذور')), DropdownMenuItem(value: AttendanceStatus.late, child: Text('متأخر')), DropdownMenuItem(value: AttendanceStatus.leave, child: Text('إجازة'))], onChanged: (value) => setState(() => status = value ?? status)),
+              AppSpacing.item,
+              _input(reason, 'السبب', required: false),
+              AppSpacing.item,
+              _input(notes, 'ملاحظات', required: false, maxLines: 3),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(onPressed: () async { if (!(formKey.currentState?.validate() ?? false)) return; Navigator.pop(context); await ref.read(appControllerProvider.notifier).updateAttendance(studentUuid: student.uuid, date: record.date, status: status, reason: reason.text, notes: notes.text); }, icon: const Icon(Icons.save_outlined), label: const Text('حفظ التعديل')),
+      ],
+    );
+    reason.dispose();
+    notes.dispose();
+  }
+
+  Future<void> _editBehavior(BuildContext context, BehaviorRecord record) async {
+    final title = TextEditingController(text: record.title);
+    final details = TextEditingController(text: record.details);
+    final action = TextEditingController(text: record.actionTaken);
+    final followUp = TextEditingController(text: record.followUp);
+    final formKey = GlobalKey<FormState>();
+    var category = record.category;
+    var violation = record.violationType == BehaviorViolationType.none ? BehaviorViolationType.other : record.violationType;
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'تعديل سجل السلوك',
+      subtitle: 'حدّث التصنيف والتفاصيل والإجراء والمتابعة.',
+      child: StatefulBuilder(
+        builder: (context, setState) => Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<BehaviorCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف السلوك'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('مخالفة سلبية')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('إيجابي'))], onChanged: (value) => setState(() => category = value ?? category)),
+              AppSpacing.item,
+              if (category == BehaviorCategory.negative) ...[
+                DropdownButtonFormField<BehaviorViolationType>(initialValue: violation, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الحصة')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('سلوك جسيم')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (value) => setState(() => violation = value ?? violation)),
+                AppSpacing.item,
+              ],
+              _input(title, 'عنوان السجل'),
+              AppSpacing.item,
+              _input(details, 'تفاصيل السلوك', maxLines: 4),
+              AppSpacing.item,
+              _input(action, 'الإجراء المتخذ', required: false, maxLines: 2),
+              AppSpacing.item,
+              _input(followUp, 'المتابعة اللاحقة', required: false, maxLines: 2),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(onPressed: () async { if (!(formKey.currentState?.validate() ?? false)) return; Navigator.pop(context); await ref.read(appControllerProvider.notifier).updateBehavior(behaviorUuid: record.uuid, category: category, title: title.text, details: details.text, violationType: category == BehaviorCategory.negative ? violation : BehaviorViolationType.none, actionTaken: action.text, followUp: followUp.text); }, icon: const Icon(Icons.save_outlined), label: const Text('حفظ التعديل')),
+      ],
+    );
+    title.dispose();
+    details.dispose();
+    action.dispose();
+    followUp.dispose();
+  }
+
+  Future<void> _editNote(BuildContext context, StudentNote note) async {
+    final title = TextEditingController(text: note.title);
+    final details = TextEditingController(text: note.details);
+    final formKey = GlobalKey<FormState>();
+    var category = note.category;
+    var needsFollowUp = note.needsFollowUp;
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'تعديل الملاحظة',
+      subtitle: 'حدّث تصنيف الملاحظة ومحتواها.',
+      child: StatefulBuilder(
+        builder: (context, setState) => Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<NoteCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'), items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))], onChanged: (value) => setState(() => category = value ?? category)),
+              AppSpacing.item,
+              _input(title, 'عنوان الملاحظة'),
+              AppSpacing.item,
+              _input(details, 'التفاصيل', maxLines: 4),
+              CheckboxListTile(value: needsFollowUp, onChanged: (value) => setState(() => needsFollowUp = value ?? false), title: const Text('تحتاج إلى متابعة'), contentPadding: EdgeInsets.zero),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(onPressed: () async { if (!(formKey.currentState?.validate() ?? false)) return; Navigator.pop(context); await ref.read(appControllerProvider.notifier).updateNote(noteUuid: note.uuid, category: category, title: title.text, details: details.text, needsFollowUp: needsFollowUp); }, icon: const Icon(Icons.save_outlined), label: const Text('حفظ التعديل')),
+      ],
+    );
+    title.dispose();
+    details.dispose();
   }
 
   Future<bool> _confirmDelete(String title) async => await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: Text(title), content: const Text('لا يمكن التراجع عن هذه العملية.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف'))])) ?? false;
@@ -523,12 +707,14 @@ class _Metric extends StatelessWidget {
 }
 
 class _GradesSection extends StatelessWidget {
-  const _GradesSection({required this.snapshot, required this.grades, required this.studentUuid, required this.onAdd});
+  const _GradesSection({required this.snapshot, required this.grades, required this.studentUuid, required this.onAdd, required this.onEdit, required this.onDelete});
 
   final AppSnapshot snapshot;
   final List<Grade> grades;
   final String studentUuid;
   final VoidCallback onAdd;
+  final Future<void> Function(Grade grade) onEdit;
+  final Future<void> Function(Grade grade) onDelete;
 
   @override
   Widget build(BuildContext context) => _SectionCard(
@@ -549,7 +735,17 @@ class _GradesSection extends StatelessWidget {
                     leading: CircleAvatar(backgroundColor: scoreColor.withValues(alpha: 0.12), foregroundColor: scoreColor, child: Text('${(ratio * 100).round()}')),
                     title: Text('${field.subject} — ${field.title}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                     subtitle: Text('${field.term} · ${grade.notes.isEmpty ? 'بدون ملاحظات' : grade.notes}', maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: Text('${grade.score}/${field.maxScore}', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scoreColor, fontWeight: FontWeight.w900)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${grade.score}/${field.maxScore}', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scoreColor, fontWeight: FontWeight.w900)),
+                        PopupMenuButton<String>(
+                          tooltip: 'إجراءات الدرجة',
+                          onSelected: (value) => value == 'edit' ? onEdit(grade) : onDelete(grade),
+                          itemBuilder: (context) => const [PopupMenuItem(value: 'edit', child: Text('تعديل')), PopupMenuItem(value: 'delete', child: Text('حذف'))],
+                        ),
+                      ],
+                    ),
                   );
                 }).toList(),
               ),
@@ -557,9 +753,11 @@ class _GradesSection extends StatelessWidget {
 }
 
 class _AttendanceSection extends StatelessWidget {
-  const _AttendanceSection({required this.records});
+  const _AttendanceSection({required this.records, required this.onEdit, required this.onDelete});
 
   final List<AttendanceRecord> records;
+  final Future<void> Function(AttendanceRecord record) onEdit;
+  final Future<void> Function(AttendanceRecord record) onDelete;
 
   @override
   Widget build(BuildContext context) => _SectionCard(
@@ -576,7 +774,17 @@ class _AttendanceSection extends StatelessWidget {
                     leading: Icon(_attendanceIcon(record.status), color: _attendanceColor(context, record.status)),
                     title: Text(_date(record.date), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
                     subtitle: Text(record.reason.isEmpty ? label : '$label — ${record.reason}', maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: record.notes.isEmpty ? null : const Icon(Icons.notes_outlined, size: 18),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (record.notes.isNotEmpty) const Icon(Icons.notes_outlined, size: 18),
+                        PopupMenuButton<String>(
+                          tooltip: 'إجراءات الحضور',
+                          onSelected: (value) => value == 'edit' ? onEdit(record) : onDelete(record),
+                          itemBuilder: (context) => const [PopupMenuItem(value: 'edit', child: Text('تعديل')), PopupMenuItem(value: 'delete', child: Text('حذف'))],
+                        ),
+                      ],
+                    ),
                   );
                 }).toList(),
               ),
@@ -584,11 +792,12 @@ class _AttendanceSection extends StatelessWidget {
 }
 
 class _BehaviorSection extends StatelessWidget {
-  const _BehaviorSection({required this.records, required this.summary, required this.onAdd, required this.onDelete});
+  const _BehaviorSection({required this.records, required this.summary, required this.onAdd, required this.onEdit, required this.onDelete});
 
   final List<BehaviorRecord> records;
   final BehaviorSummary summary;
   final VoidCallback onAdd;
+  final Future<void> Function(BehaviorRecord record) onEdit;
   final Future<void> Function(String uuid) onDelete;
 
   @override
@@ -618,7 +827,17 @@ class _BehaviorSection extends StatelessWidget {
                   leading: Icon(_behaviorIcon(record.category), color: _behaviorColor(context, record.category)),
                   title: Text(record.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                   subtitle: Text('${record.details}\n${_date(record.date)}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                  trailing: Text(record.penaltyPoints == 0 ? 'إيجابي' : '-${record.penaltyPoints.toStringAsFixed(0)}', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: record.penaltyPoints == 0 ? scheme.tertiary : scheme.error, fontWeight: FontWeight.w900)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(record.penaltyPoints == 0 ? 'إيجابي' : '-${record.penaltyPoints.toStringAsFixed(0)}', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: record.penaltyPoints == 0 ? scheme.tertiary : scheme.error, fontWeight: FontWeight.w900)),
+                      PopupMenuButton<String>(
+                        tooltip: 'إجراءات السلوك',
+                        onSelected: (value) => value == 'edit' ? onEdit(record) : onDelete(record.uuid),
+                        itemBuilder: (context) => const [PopupMenuItem(value: 'edit', child: Text('تعديل')), PopupMenuItem(value: 'delete', child: Text('حذف'))],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -631,10 +850,11 @@ class _BehaviorSection extends StatelessWidget {
 }
 
 class _NotesSection extends StatelessWidget {
-  const _NotesSection({required this.notes, required this.onAdd, required this.onDelete});
+  const _NotesSection({required this.notes, required this.onAdd, required this.onEdit, required this.onDelete});
 
   final List<StudentNote> notes;
   final VoidCallback onAdd;
+  final Future<void> Function(StudentNote note) onEdit;
   final Future<void> Function(String uuid) onDelete;
 
   @override
@@ -661,7 +881,17 @@ class _NotesSection extends StatelessWidget {
                           leading: Icon(Icons.note_alt_outlined, color: Theme.of(context).colorScheme.primary),
                           title: Text(note.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                           subtitle: Text('${note.details}\n${_date(note.date)}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                          trailing: note.needsFollowUp ? Icon(Icons.flag_outlined, color: Theme.of(context).colorScheme.tertiary) : null,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (note.needsFollowUp) Icon(Icons.flag_outlined, color: Theme.of(context).colorScheme.tertiary),
+                              PopupMenuButton<String>(
+                                tooltip: 'إجراءات الملاحظة',
+                                onSelected: (value) => value == 'edit' ? onEdit(note) : onDelete(note.uuid),
+                                itemBuilder: (context) => const [PopupMenuItem(value: 'edit', child: Text('تعديل')), PopupMenuItem(value: 'delete', child: Text('حذف'))],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     )

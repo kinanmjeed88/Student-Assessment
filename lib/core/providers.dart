@@ -130,11 +130,36 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     String notes = '',
   }) => _mutate(() => _repository.setAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
 
+  Future<void> updateAttendance({
+    required String studentUuid,
+    required DateTime date,
+    required AttendanceStatus status,
+    String reason = '',
+    String notes = '',
+  }) => _mutate(() => _repository.updateAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+
+  Future<void> deleteAttendance({required String studentUuid, required DateTime date}) =>
+      _mutate(() => _repository.deleteAttendance(studentUuid: studentUuid, date: date));
+
   Future<void> createGradeField({required String subject, required String title, required double maxScore, required String term}) =>
       _mutate(() => _repository.createGradeField(subject: subject, title: title, maxScore: maxScore, term: term));
 
   Future<void> saveGrade({required String studentUuid, required String fieldUuid, required double score, String notes = ''}) =>
       _mutate(() => _repository.saveGrade(studentUuid: studentUuid, fieldUuid: fieldUuid, score: score, notes: notes));
+
+  Future<void> updateGrade({
+    required String studentUuid,
+    required String fieldUuid,
+    required String subject,
+    required String title,
+    required double maxScore,
+    required String term,
+    required double score,
+    String notes = '',
+  }) => _mutate(() => _repository.updateGrade(studentUuid: studentUuid, fieldUuid: fieldUuid, subject: subject, title: title, maxScore: maxScore, term: term, score: score, notes: notes));
+
+  Future<void> deleteGrade({required String studentUuid, required String fieldUuid}) =>
+      _mutate(() => _repository.deleteGrade(studentUuid: studentUuid, fieldUuid: fieldUuid));
 
   Future<void> createGradeEntry({
     required String studentUuid,
@@ -174,6 +199,16 @@ class AppController extends AsyncNotifier<AppSnapshot> {
         date: date ?? DateTime.now(),
       ));
 
+  Future<void> updateBehavior({
+    required String behaviorUuid,
+    required BehaviorCategory category,
+    required String title,
+    required String details,
+    required BehaviorViolationType violationType,
+    String actionTaken = '',
+    String followUp = '',
+  }) => _mutate(() => _repository.updateBehavior(behaviorUuid: behaviorUuid, category: category, title: title, details: details, violationType: violationType, actionTaken: actionTaken, followUp: followUp));
+
   Future<void> deleteBehavior(String behaviorUuid) => _mutate(() => _repository.deleteBehavior(behaviorUuid));
 
   Future<void> addNote({
@@ -191,6 +226,15 @@ class AppController extends AsyncNotifier<AppSnapshot> {
         needsFollowUp: needsFollowUp,
         followUpDate: followUpDate,
       ));
+
+  Future<void> updateNote({
+    required String noteUuid,
+    required NoteCategory category,
+    required String title,
+    required String details,
+    bool needsFollowUp = false,
+    DateTime? followUpDate,
+  }) => _mutate(() => _repository.updateNote(noteUuid: noteUuid, category: category, title: title, details: details, needsFollowUp: needsFollowUp, followUpDate: followUpDate));
 
   Future<void> deleteNote(String noteUuid) => _mutate(() => _repository.deleteNote(noteUuid));
 

@@ -76,6 +76,16 @@ abstract interface class LocalStore {
     String notes,
   });
 
+  Future<void> updateAttendance({
+    required String studentUuid,
+    required DateTime date,
+    required AttendanceStatus status,
+    String reason,
+    String notes,
+  });
+
+  Future<void> deleteAttendance({required String studentUuid, required DateTime date});
+
   Future<GradeField> createGradeField({
     required String subject,
     required String title,
@@ -89,6 +99,19 @@ abstract interface class LocalStore {
     required double score,
     String notes,
   });
+
+  Future<void> updateGrade({
+    required String studentUuid,
+    required String fieldUuid,
+    required String subject,
+    required String title,
+    required double maxScore,
+    required String term,
+    required double score,
+    String notes,
+  });
+
+  Future<void> deleteGrade({required String studentUuid, required String fieldUuid});
 
   Future<void> createGradeEntry({
     required String studentUuid,
@@ -111,10 +134,29 @@ abstract interface class LocalStore {
     DateTime date,
   });
 
+  Future<void> updateBehavior({
+    required String behaviorUuid,
+    required BehaviorCategory category,
+    required String title,
+    required String details,
+    required BehaviorViolationType violationType,
+    String actionTaken,
+    String followUp,
+  });
+
   Future<void> deleteBehavior(String behaviorUuid);
 
   Future<StudentNote> createNote({
     required String studentUuid,
+    required NoteCategory category,
+    required String title,
+    required String details,
+    bool needsFollowUp,
+    DateTime? followUpDate,
+  });
+
+  Future<void> updateNote({
+    required String noteUuid,
     required NoteCategory category,
     required String title,
     required String details,

@@ -281,6 +281,32 @@ class LocalRepository implements LocalStore {
   }
 
   @override
+  Future<void> updateAttendance({
+    required String studentUuid,
+    required DateTime date,
+    required AttendanceStatus status,
+    String reason = '',
+    String notes = '',
+  }) => setAttendance(
+        studentUuid: studentUuid,
+        date: date,
+        status: status,
+        reason: reason,
+        notes: notes,
+      );
+
+  @override
+  Future<void> deleteAttendance({required String studentUuid, required DateTime date}) async {
+    final db = await _db;
+    final normalized = _day(date);
+    await db.writeTxn(() async {
+      final records = await db.attendanceRecords.where().findAll();
+      final record = records.where((item) => item.studentUuid == studentUuid && _sameDay(item.date, normalized)).firstOrNull;
+      if (record != null) await db.attendanceRecords.delete(record.id);
+    });
+  }
+
+  @override
   Future<GradeField> createGradeField({
     required String subject,
     required String title,
@@ -321,6 +347,57 @@ class LocalRepository implements LocalStore {
         ..notes = notes.trim()
         ..createdAt = existing?.createdAt ?? DateTime.now();
       await db.grades.put(grade);
+    });
+  }
+
+  @override
+  Future<void> updateGrade({
+    required String studentUuid,
+    required String fieldUuid,
+    required String subject,
+    required String title,
+    required double maxScore,
+    required String term,
+    required double score,
+    String notes = '',
+  }) async {
+    if (subject.trim().isEmpty || title.trim().isEmpty || maxScore <= 0 || score < 0 || score > maxScore) {
+      throw const FormatException('بيانات الدرجة غير صحيحة.');
+    }
+    final db = await _db;
+    await db.writeTxn(() async {
+      final fields = await db.gradeFields.where().findAll();
+      final field = fields.where((item) => item.uuid == fieldUuid).firstOrNull;
+      final grades = await db.grades.where().findAll();
+      final grade = grades.where((item) => item.studentUuid == studentUuid && item.fieldUuid == fieldUuid).firstOrNull;
+      if (field == null || grade == null) throw const FormatException('الدرجة المطلوبة غير موجودة.');
+      field
+        ..subject = subject.trim()
+        ..title = title.trim()
+        ..maxScore = maxScore
+        ..term = term.trim().isEmpty ? 'الفصل الأول' : term.trim();
+      grade
+        ..score = score
+        ..notes = notes.trim();
+      await db.gradeFields.put(field);
+      await db.grades.put(grade);
+    });
+  }
+
+  @override
+  Future<void> deleteGrade({required String studentUuid, required String fieldUuid}) async {
+    final db = await _db;
+    await db.writeTxn(() async {
+      final fields = await db.gradeFields.where().findAll();
+      final grades = await db.grades.where().findAll();
+      final grade = grades.where((item) => item.studentUuid == studentUuid && item.fieldUuid == fieldUuid).firstOrNull;
+      if (grade == null) return;
+      await db.grades.delete(grade.id);
+      final stillUsed = grades.any((item) => item.id != grade.id && item.fieldUuid == fieldUuid);
+      if (!stillUsed) {
+        final field = fields.where((item) => item.uuid == fieldUuid).firstOrNull;
+        if (field != null) await db.gradeFields.delete(field.id);
+      }
     });
   }
 
@@ -387,6 +464,37 @@ class LocalRepository implements LocalStore {
   }
 
   @override
+  Future<void> updateBehavior({
+    required String behaviorUuid,
+    required BehaviorCategory category,
+    required String title,
+    required String details,
+    required BehaviorViolationType violationType,
+    String actionTaken = '',
+    String followUp = '',
+  }) async {
+    if (title.trim().isEmpty || details.trim().isEmpty) {
+      throw const FormatException('عنوان السلوك وتفاصيله حقول مطلوبة.');
+    }
+    final db = await _db;
+    await db.writeTxn(() async {
+      final records = await db.behaviorRecords.where().findAll();
+      final record = records.where((item) => item.uuid == behaviorUuid).firstOrNull;
+      if (record == null) throw const FormatException('سجل السلوك غير موجود.');
+      final settings = await db.appSettings.get(1) ?? AppSettings();
+      record
+        ..category = category
+        ..title = title.trim()
+        ..details = details.trim()
+        ..actionTaken = actionTaken.trim()
+        ..followUp = followUp.trim()
+        ..violationType = violationType
+        ..penaltyPoints = category == BehaviorCategory.negative ? settings.penalties.forType(violationType) : 0;
+      await db.behaviorRecords.put(record);
+    });
+  }
+
+  @override
   Future<void> deleteBehavior(String behaviorUuid) async {
     final db = await _db;
     final records = await db.behaviorRecords.where().findAll();
@@ -419,6 +527,33 @@ class LocalRepository implements LocalStore {
       ..date = DateTime.now();
     await db.writeTxn(() => db.studentNotes.put(note));
     return note;
+  }
+
+  @override
+  Future<void> updateNote({
+    required String noteUuid,
+    required NoteCategory category,
+    required String title,
+    required String details,
+    bool needsFollowUp = false,
+    DateTime? followUpDate,
+  }) async {
+    if (title.trim().isEmpty || details.trim().isEmpty) {
+      throw const FormatException('عنوان الملاحظة وتفاصيلها حقول مطلوبة.');
+    }
+    final db = await _db;
+    await db.writeTxn(() async {
+      final notes = await db.studentNotes.where().findAll();
+      final note = notes.where((item) => item.uuid == noteUuid).firstOrNull;
+      if (note == null) throw const FormatException('الملاحظة المطلوبة غير موجودة.');
+      note
+        ..category = category
+        ..title = title.trim()
+        ..details = details.trim()
+        ..needsFollowUp = needsFollowUp
+        ..followUpDate = followUpDate;
+      await db.studentNotes.put(note);
+    });
   }
 
   @override
