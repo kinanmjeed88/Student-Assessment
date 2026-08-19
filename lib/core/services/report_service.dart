@@ -352,26 +352,61 @@ class ReportService {
   }
 
   Future<pw.ThemeData> _arabicPdfTheme() async {
-    final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf'));
-    final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Bold.ttf'));
-    return pw.ThemeData.withFont(base: regular, bold: bold);
+    final arabicRegular = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf'),
+    );
+    final arabicBold = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSansArabic-Bold.ttf'),
+    );
+    final latinRegular = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'),
+    );
+    final latinBold = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSans-Bold.ttf'),
+    );
+    final symbols = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSansSymbols2-Regular.ttf'),
+    );
+
+    return pw.ThemeData.withFont(
+      base: arabicRegular,
+      bold: arabicBold,
+      fontFallback: [latinRegular, latinBold, symbols],
+    );
   }
 
-  Sheet _createSheet(Excel workbook, String name, String title, String subtitle, List<String> headers, List<double> widths) {
+  Sheet _createSheet(
+    Excel workbook,
+    String name,
+    String title,
+    String subtitle,
+    List<String> headers,
+    List<double> widths,
+  ) {
     final sheet = workbook[name];
     final lastColumn = headers.length - 1;
-    sheet.merge(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0), CellIndex.indexByColumnRow(columnIndex: lastColumn, rowIndex: 0));
-    sheet.merge(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1), CellIndex.indexByColumnRow(columnIndex: lastColumn, rowIndex: 1));
+    final rtlHeaders = headers.reversed.toList(growable: false);
+    final rtlWidths = widths.reversed.toList(growable: false);
+
+    sheet.merge(
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
+      CellIndex.indexByColumnRow(columnIndex: lastColumn, rowIndex: 0),
+    );
+    sheet.merge(
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1),
+      CellIndex.indexByColumnRow(columnIndex: lastColumn, rowIndex: 1),
+    );
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
       ..value = TextCellValue(title)
       ..cellStyle = _titleStyle;
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1))
       ..value = TextCellValue(subtitle)
       ..cellStyle = _subtitleStyle;
-    sheet.appendRow([for (final header in headers) _text(header)]);
-    for (var column = 0; column < headers.length; column++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 2)).cellStyle = _headerStyle;
-      sheet.setColumnWidth(column, widths[column]);
+    sheet.appendRow([for (final header in rtlHeaders) _text(header)]);
+    for (var column = 0; column < rtlHeaders.length; column++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 2))
+        .cellStyle = _headerStyle;
+      sheet.setColumnWidth(column, rtlWidths[column]);
     }
     sheet.setRowHeight(0, 28);
     sheet.setRowHeight(1, 22);
@@ -380,9 +415,11 @@ class ReportService {
   }
 
   void _appendRow(Sheet sheet, int row, List<CellValue?> values) {
-    sheet.appendRow(values);
-    for (var column = 0; column < values.length; column++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row)).cellStyle = _bodyStyle;
+    final rtlValues = values.reversed.toList(growable: false);
+    sheet.appendRow(rtlValues);
+    for (var column = 0; column < rtlValues.length; column++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row))
+        .cellStyle = _bodyStyle;
     }
     sheet.setRowHeight(row, 24);
   }
@@ -420,7 +457,7 @@ class ReportService {
   static final _titleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('1F4E78'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.white, fontSize: 16, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
   static final _subtitleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('D9EAF7'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.fromHexString('1F2937'), fontSize: 10, italic: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
   static final _headerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('2F75B5'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.white, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
-  static final _bodyStyle = CellStyle(fontColorHex: ExcelColor.fromHexString('1F2937'), verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
+  static final _bodyStyle = CellStyle(fontColorHex: ExcelColor.fromHexString('1F2937'), horizontalAlign: HorizontalAlign.Right, verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
   static final _footerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('EAF2F8'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.fromHexString('1F2937'), bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
 
   pw.Widget _pdfHeader(AppSettings settings, String title) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
@@ -436,22 +473,70 @@ class ReportService {
 
   pw.Widget _pdfSummaryCards(List<List<String>> values) => pw.Row(children: [for (var index = 0; index < values.length; index++) pw.Expanded(child: pw.Container(margin: const pw.EdgeInsets.all(3), padding: const pw.EdgeInsets.all(8), decoration: const pw.BoxDecoration(color: PdfColors.blue50), child: pw.Column(children: [pw.Text(values[index][0], style: const pw.TextStyle(fontSize: 9)), pw.SizedBox(height: 3), pw.Text(values[index][1], style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold))]))) ]);
 
-  pw.Widget _pdfInfoTable(List<List<String>> rows) => pw.Table(border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: .6), columnWidths: const {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(2)}, children: [for (final row in rows) pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(row[0], style: const pw.TextStyle(fontWeight: pw.FontWeight.bold))), pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(row[1]))])]);
-
-  pw.Widget _pdfTable({required List<String> headers, required List<List<String>> rows}) => pw.TableHelper.fromTextArray(
-        headers: headers,
-        data: rows.isEmpty
-            ? <List<dynamic>>[
-                [for (var index = 0; index < headers.length; index++) index == 0 ? 'لا توجد سجلات' : ''],
-              ]
-            : rows,
-        headerStyle: const pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-        headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-        cellStyle: const pw.TextStyle(fontSize: 8),
-        cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-        cellAlignment: pw.Alignment.centerRight,
-        border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: .5),
-        rowDecoration: const pw.BoxDecoration(color: PdfColors.white),
-        oddRowDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
+  pw.Widget _pdfInfoTable(List<List<String>> rows) => pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: .6),
+        columnWidths: const {
+          0: pw.FlexColumnWidth(2),
+          1: pw.FlexColumnWidth(1),
+        },
+        children: [
+          for (final row in rows)
+            pw.TableRow(
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(6),
+                  child: pw.Text(
+                    row[1],
+                    textDirection: pw.TextDirection.rtl,
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(6),
+                  child: pw.Text(
+                    row[0],
+                    style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    textDirection: pw.TextDirection.rtl,
+                  ),
+                ),
+              ],
+            ),
+        ],
       );
+
+  pw.Widget _pdfTable({
+    required List<String> headers,
+    required List<List<String>> rows,
+  }) {
+    final rtlHeaders = headers.reversed.toList(growable: false);
+    final rtlRows = rows.isEmpty
+        ? <List<dynamic>>[
+            [
+              for (var index = 0; index < headers.length; index++)
+                index == headers.length - 1 ? 'لا توجد سجلات' : '',
+            ],
+          ]
+        : [
+            for (final row in rows) row.reversed.toList(growable: false),
+          ];
+
+    return pw.TableHelper.fromTextArray(
+      headers: rtlHeaders,
+      data: rtlRows,
+      tableDirection: pw.TextDirection.rtl,
+      headerDirection: pw.TextDirection.rtl,
+      headerStyle: const pw.TextStyle(
+        fontSize: 8,
+        fontWeight: pw.FontWeight.bold,
+        color: PdfColors.white,
+      ),
+      headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+      cellStyle: const pw.TextStyle(fontSize: 8),
+      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+      cellAlignment: pw.Alignment.centerRight,
+      headerAlignment: pw.Alignment.center,
+      border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: .5),
+      rowDecoration: const pw.BoxDecoration(color: PdfColors.white),
+      oddRowDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
+    );
+  }
 }
