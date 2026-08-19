@@ -84,7 +84,7 @@ class ReportService {
       final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
       final student = _student(snapshot, grade.studentUuid);
       if (field == null || student == null) continue;
-      final percentage = field.maxScore <= 0 ? 0 : grade.score / field.maxScore * 100;
+      final percentage = field.maxScore <= 0 ? 0.0 : grade.score / field.maxScore * 100.0;
       _appendRow(sheet, row++, [
         _text(student.fullName),
         _text(student.studentNumber),
@@ -227,7 +227,7 @@ class ReportService {
     for (final grade in snapshot.gradesFor(studentUuid)) {
       final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
       if (field == null) continue;
-      final percentage = field.maxScore <= 0 ? 0 : grade.score / field.maxScore * 100;
+      final percentage = field.maxScore <= 0 ? 0.0 : grade.score / field.maxScore * 100.0;
       _appendRow(grades, gradeRow++, [_text(field.subject), _text(field.title), _text(field.term), _number(grade.score), _number(field.maxScore), _number(percentage), _text(_gradeLabel(percentage)), _text(grade.notes)]);
     }
     _addFooter(grades, gradeRow, 'عدد التقييمات', '${gradeRow - 3}');
@@ -328,7 +328,7 @@ class ReportService {
           _pdfTable(headers: const ['المادة', 'التقييم', 'الدرجة', 'الحد الأقصى', 'النسبة', 'التقدير'], rows: snapshot.gradesFor(studentUuid).map((grade) {
             final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
             if (field == null) return <String>[];
-            final percentage = field.maxScore <= 0 ? 0 : grade.score / field.maxScore * 100;
+            final percentage = field.maxScore <= 0 ? 0.0 : grade.score / field.maxScore * 100.0;
             return [field.subject, field.title, grade.score.toStringAsFixed(1), field.maxScore.toStringAsFixed(1), '${percentage.toStringAsFixed(1)}%', _gradeLabel(percentage)];
           }).where((row) => row.isNotEmpty).toList()),
           pw.SizedBox(height: 18),
@@ -402,7 +402,6 @@ class ReportService {
 
   BehaviorSummary _behaviorSummary(AppSnapshot snapshot, String studentUuid) => calculateBehaviorSummary(records: snapshot.behaviorsFor(studentUuid), settings: snapshot.settings);
   Student? _student(AppSnapshot snapshot, String uuid) => snapshot.students.where((item) => item.uuid == uuid).firstOrNull;
-  String _studentName(AppSnapshot snapshot, String uuid) => _student(snapshot, uuid)?.fullName ?? uuid;
   String _className(AppSnapshot snapshot, String uuid) => snapshot.classes.where((item) => item.uuid == uuid).firstOrNull?.name ?? '';
   String _sectionName(AppSnapshot snapshot, String uuid) => snapshot.sections.where((item) => item.uuid == uuid).firstOrNull?.name ?? '';
   String _date(DateTime value) => '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
@@ -439,7 +438,11 @@ class ReportService {
 
   pw.Widget _pdfTable({required List<String> headers, required List<List<String>> rows}) => pw.TableHelper.fromTextArray(
         headers: headers,
-        data: rows.isEmpty ? [for (var index = 0; index < headers.length; index++) index == 0 ? 'لا توجد سجلات' : ''] : rows,
+        data: rows.isEmpty
+            ? <List<dynamic>>[
+                [for (var index = 0; index < headers.length; index++) index == 0 ? 'لا توجد سجلات' : ''],
+              ]
+            : rows,
         headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
         headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
         cellStyle: const pw.TextStyle(fontSize: 8),
