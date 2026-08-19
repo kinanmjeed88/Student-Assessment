@@ -205,12 +205,13 @@ class AppResponsiveContent extends StatelessWidget {
 }
 
 class AppMetricTile extends StatelessWidget {
-  const AppMetricTile({required this.label, required this.value, required this.icon, this.tone = AppStatusTone.neutral, super.key});
+  const AppMetricTile({required this.label, required this.value, required this.icon, this.tone = AppStatusTone.neutral, this.compact = false, super.key});
 
   final String label;
   final String value;
   final IconData icon;
   final AppStatusTone tone;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -221,16 +222,26 @@ class AppMetricTile extends StatelessWidget {
       AppStatusTone.error => (scheme.errorContainer, scheme.onErrorContainer),
       AppStatusTone.neutral => (scheme.secondaryContainer, scheme.onSecondaryContainer),
     };
+    final textTheme = Theme.of(context).textTheme;
     return AppSurfaceCard(
-      padding: const EdgeInsets.all(AppTokens.cardPadding),
+      padding: EdgeInsets.all(compact ? AppTokens.compactGap : AppTokens.cardPadding),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          CircleAvatar(radius: 18, backgroundColor: background, foregroundColor: foreground, child: Icon(icon, size: 19)),
-          const SizedBox(height: 8),
-          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+          CircleAvatar(
+            radius: compact ? 14 : 18,
+            backgroundColor: background,
+            foregroundColor: foreground,
+            child: Icon(icon, size: compact ? 16 : 19),
+          ),
+          SizedBox(height: compact ? 4 : 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: (compact ? textTheme.titleMedium : textTheme.titleLarge)?.copyWith(fontWeight: FontWeight.w900)),
+          ),
           const SizedBox(height: 2),
-          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text(label, maxLines: compact ? 2 : 2, overflow: TextOverflow.ellipsis, style: (compact ? textTheme.labelSmall : textTheme.labelMedium)?.copyWith(fontWeight: FontWeight.w700)),
         ],
       ),
     );

@@ -315,45 +315,40 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 560
-            ? 3
-            : constraints.maxWidth >= 320
-                ? 2
-                : 1;
-        final gap = AppTokens.compactGap;
-        final tileWidth = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - (gap * (columns - 1))) / columns;
-        final tiles = [
-          AppMetricTile(
+    final gap = AppTokens.compactGap;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: AppMetricTile(
+            compact: true,
             label: 'إجمالي الطلاب',
             value: '$totalStudents',
             icon: Icons.groups_outlined,
             tone: AppStatusTone.neutral,
           ),
-          AppMetricTile(
+        ),
+        SizedBox(width: gap),
+        Expanded(
+          child: AppMetricTile(
+            compact: true,
             label: 'تنبيهات السلوك',
             value: '$alerts',
             icon: Icons.rule_folder_outlined,
             tone: alerts > 0 ? AppStatusTone.warning : AppStatusTone.neutral,
           ),
-          AppMetricTile(
+        ),
+        SizedBox(width: gap),
+        Expanded(
+          child: AppMetricTile(
+            compact: true,
             label: 'غياب اليوم',
             value: '$absentToday',
             icon: Icons.event_busy_outlined,
             tone: absentToday > 0 ? AppStatusTone.warning : AppStatusTone.success,
           ),
-        ];
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final tile in tiles) SizedBox(width: tileWidth, child: tile),
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 }

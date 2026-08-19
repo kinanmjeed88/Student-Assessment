@@ -8,6 +8,7 @@ import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/report_service.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../dashboard/presentation/app_shell.dart';
 
 class ReportsPage extends ConsumerWidget {
@@ -113,24 +114,26 @@ class _SummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth < 420 ? 1 : 2;
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: columns,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: columns == 1 ? 4.4 : 1.55,
-          children: [
-            _SummaryTile(label: 'الطلاب', value: '${snapshot.students.length}', icon: Icons.groups_outlined),
-            _SummaryTile(label: 'الحضور اليوم', value: '${snapshot.todayAttendance.length}', icon: Icons.fact_check_outlined),
-            _SummaryTile(label: 'سجلات السلوك', value: '${snapshot.behaviors.length}', icon: Icons.rule_folder_outlined),
-            _SummaryTile(label: 'تنبيهات', value: '$alerts', icon: Icons.warning_amber_outlined),
-          ],
-        );
-      },
+    final gap = AppTokens.compactGap;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _SummaryTile(label: 'الطلاب', value: '${snapshot.students.length}', icon: Icons.groups_outlined),
+        ),
+        SizedBox(width: gap),
+        Expanded(
+          child: _SummaryTile(label: 'الحضور اليوم', value: '${snapshot.todayAttendance.length}', icon: Icons.fact_check_outlined),
+        ),
+        SizedBox(width: gap),
+        Expanded(
+          child: _SummaryTile(label: 'السلوك', value: '${snapshot.behaviors.length}', icon: Icons.rule_folder_outlined),
+        ),
+        SizedBox(width: gap),
+        Expanded(
+          child: _SummaryTile(label: 'تنبيهات', value: '$alerts', icon: Icons.warning_amber_outlined),
+        ),
+      ],
     );
   }
 }
@@ -146,12 +149,23 @@ class _SummaryTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
+        padding: const EdgeInsets.all(AppTokens.compactGap),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.primary, child: Icon(icon)),
-            const SizedBox(width: 10),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)), Text(label)]),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: scheme.primaryContainer,
+              foregroundColor: scheme.onPrimaryContainer,
+              child: Icon(icon, size: 17),
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(value, maxLines: 1, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+            ),
+            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
           ],
         ),
       ),

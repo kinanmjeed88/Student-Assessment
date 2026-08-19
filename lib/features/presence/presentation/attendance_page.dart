@@ -49,12 +49,12 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
             body: Column(
               children: [
                 Padding(
-                  padding: AppSpacing.contentList.copyWith(bottom: AppTokens.compactGap),
+                  padding: AppSpacing.contentList.copyWith(top: AppTokens.compactGap, bottom: AppTokens.compactGap),
                   child: Column(
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: _classUuid,
-                        decoration: const InputDecoration(labelText: 'تصفية الصف'),
+                        decoration: const InputDecoration(labelText: 'تصفية الصف', floatingLabelBehavior: FloatingLabelBehavior.always),
                         items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
                         onChanged: (value) => setState(() {
                           _classUuid = value ?? 'all';
@@ -64,7 +64,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                       AppSpacing.item,
                       DropdownButtonFormField<String>(
                         initialValue: _sectionUuid,
-                        decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
+                        decoration: const InputDecoration(labelText: 'تصفية الشعبة', floatingLabelBehavior: FloatingLabelBehavior.always),
                         items: [
                           const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
                           ...snapshot.sections.where((section) => _classUuid == 'all' || section.classUuid == _classUuid).map((section) => DropdownMenuItem(value: section.uuid, child: Text(section.name))),
