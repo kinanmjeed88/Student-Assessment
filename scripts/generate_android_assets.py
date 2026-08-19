@@ -15,7 +15,9 @@ sizes = {
 for folder, size in sizes.items():
     target = root / 'android' / 'app' / 'src' / 'main' / 'res' / folder
     target.mkdir(parents=True, exist_ok=True)
-    image.resize((size, size), Image.Resampling.LANCZOS).save(target / 'ic_launcher.png', optimize=True)
+    legacy_icon = image.resize((size, size), Image.Resampling.LANCZOS)
+    legacy_icon.save(target / 'ic_launcher.png', optimize=True)
+    legacy_icon.save(target / 'ic_launcher_round.png', optimize=True)
 
 splash = root / 'android' / 'app' / 'src' / 'main' / 'res' / 'drawable-nodpi'
 splash.mkdir(parents=True, exist_ok=True)
