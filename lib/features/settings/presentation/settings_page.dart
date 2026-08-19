@@ -103,7 +103,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             AppSpacing.item,
                             _field(_stageController, 'المرحلة الدراسية', Icons.account_tree_outlined),
                             const SizedBox(height: 18),
-                            Align(alignment: AlignmentDirectional.centerStart, child: FilledButton.icon(onPressed: _saving ? null : _save, icon: _saving ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined), label: const Text('حفظ البيانات'))),
+                            Align(alignment: AlignmentDirectional.centerStart, child: FilledButton.icon(onPressed: _saving ? null : _saveInstitutionSettings, icon: _saving ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined), label: const Text('حفظ بيانات المؤسسة'))),
                           ],
                         ),
                       ),
@@ -182,6 +182,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             ),
                             const SizedBox(height: 14),
                             Text('تُطبّق هذه القيم تلقائياً عند تسجيل مخالفة جديدة، بينما تبقى السجلات السابقة محفوظة بنقاطها المسجلة.', style: Theme.of(context).textTheme.bodySmall),
+                            const SizedBox(height: 18),
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: FilledButton.icon(
+                                onPressed: _saving ? null : _saveBehaviorSettings,
+                                icon: _saving
+                                    ? const SizedBox.square(
+                                        dimension: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.save_outlined),
+                                label: const Text('حفظ نقاط السلوك'),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -238,7 +252,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   ListTile _actionTile(BuildContext context, IconData icon, String title, String subtitle, VoidCallback onTap) => ListTile(leading: Icon(icon, color: Theme.of(context).colorScheme.primary), title: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)), subtitle: Text(subtitle), trailing: Icon(Icons.arrow_back_ios_new, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant), onTap: onTap);
 
-  Future<void> _save() async {
+  Future<void> _saveInstitutionSettings() async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(appControllerProvider.notifier).saveSettings(
+            schoolName: _schoolController.text,
+            teacherName: _teacherController.text,
+            academicYear: _yearController.text,
+            stage: _stageController.text,
+            institutionLineAnimated: _institutionLineAnimated,
+            institutionLineSpeed: _institutionLineSpeed,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ بيانات المؤسسة بنجاح.')));
+    } on FormatException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveBehaviorSettings() async {
     final values = [
       _warningController,
       _dismissalController,
