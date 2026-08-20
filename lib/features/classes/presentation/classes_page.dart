@@ -378,11 +378,11 @@ class _ClassCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Flexible(
-                          child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, prominent: true),
+                          child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, large: true),
                         ),
                         const SizedBox(width: AppTokens.tightGap),
                         Flexible(
-                          child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, prominent: true),
+                          child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, large: true),
                         ),
                       ],
                     ),

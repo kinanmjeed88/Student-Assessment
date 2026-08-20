@@ -105,13 +105,13 @@ class AppSurfaceCard extends StatelessWidget {
 }
 
 class AppStatusPill extends StatelessWidget {
-  const AppStatusPill({required this.label, required this.icon, this.tone = AppStatusTone.neutral, this.compact = false, this.prominent = false, super.key});
+  const AppStatusPill({required this.label, required this.icon, this.tone = AppStatusTone.neutral, this.compact = false, this.large = false, super.key});
 
   final String label;
   final IconData icon;
   final AppStatusTone tone;
   final bool compact;
-  final bool prominent;
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +123,7 @@ class AppStatusPill extends StatelessWidget {
       AppStatusTone.neutral => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
     };
     return Container(
-      padding: prominent ? AppTokens.prominentPillPadding : compact ? AppTokens.compactPillPadding : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: large ? AppTokens.largePillPadding : compact ? AppTokens.compactPillPadding : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(10),
@@ -131,13 +131,13 @@ class AppStatusPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: prominent ? 18 : compact ? 15 : 16, color: foreground),
+          Icon(icon, size: large ? 18 : compact ? 15 : 16, color: foreground),
           SizedBox(width: compact ? AppTokens.tightGap : 6),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: (prominent ? Theme.of(context).textTheme.labelMedium : compact ? Theme.of(context).textTheme.labelSmall : Theme.of(context).textTheme.labelMedium)?.copyWith(color: foreground, fontWeight: FontWeight.w800),
+            style: (large ? Theme.of(context).textTheme.labelMedium : compact ? Theme.of(context).textTheme.labelSmall : Theme.of(context).textTheme.labelMedium)?.copyWith(color: foreground, fontWeight: FontWeight.w800),
           ),
         ],
       ),
