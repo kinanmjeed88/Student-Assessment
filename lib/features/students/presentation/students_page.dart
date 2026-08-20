@@ -393,8 +393,8 @@ class _StudentCard extends StatelessWidget {
       child: ListTile(
         dense: true,
         minVerticalPadding: 4,
-        onTap: onTap,
         contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
+        onTap: onTap,
         title: Row(
           children: [
             Expanded(
