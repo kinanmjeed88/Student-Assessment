@@ -395,22 +395,35 @@ class _StudentCard extends StatelessWidget {
         minVerticalPadding: 4,
         onTap: onTap,
         contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              student.fullName,
-              softWrap: true,
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            Expanded(
+              child: Text(
+                student.fullName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
             ),
-            Text(
-              className,
-              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+            const SizedBox(width: AppTokens.tightGap),
+            Flexible(
+              fit: FlexFit.loose,
+              child: Text(
+                className,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
             ),
-            Text(
-              sectionName,
-              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+            const SizedBox(width: AppTokens.tightGap),
+            Flexible(
+              fit: FlexFit.loose,
+              child: Text(
+                sectionName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
             ),
           ],
         ),

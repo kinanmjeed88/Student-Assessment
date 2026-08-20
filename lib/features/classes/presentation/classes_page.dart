@@ -350,7 +350,8 @@ class _ClassCard extends StatelessWidget {
             builder: (context, _) {
               return Row(
                 children: [
-                  Expanded(
+                  Flexible(
+                    fit: FlexFit.loose,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,15 +374,17 @@ class _ClassCard extends StatelessWidget {
                   ),
                   const SizedBox(width: AppTokens.tightGap),
                   Flexible(
-                    flex: 5,
+                    fit: FlexFit.loose,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Flexible(
+                          fit: FlexFit.loose,
                           child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, large: true),
                         ),
                         const SizedBox(width: AppTokens.tightGap),
                         Flexible(
+                          fit: FlexFit.loose,
                           child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, large: true),
                         ),
                       ],
