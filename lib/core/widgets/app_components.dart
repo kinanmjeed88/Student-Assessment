@@ -105,11 +105,12 @@ class AppSurfaceCard extends StatelessWidget {
 }
 
 class AppStatusPill extends StatelessWidget {
-  const AppStatusPill({required this.label, required this.icon, this.tone = AppStatusTone.neutral, super.key});
+  const AppStatusPill({required this.label, required this.icon, this.tone = AppStatusTone.neutral, this.compact = false, super.key});
 
   final String label;
   final IconData icon;
   final AppStatusTone tone;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +122,7 @@ class AppStatusPill extends StatelessWidget {
       AppStatusTone.neutral => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: compact ? AppTokens.compactPillPadding : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(10),
@@ -129,9 +130,14 @@ class AppStatusPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: foreground),
-          const SizedBox(width: 6),
-          Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w800)),
+          Icon(icon, size: compact ? 15 : 16, color: foreground),
+          SizedBox(width: compact ? AppTokens.tightGap : 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: (compact ? Theme.of(context).textTheme.labelSmall : Theme.of(context).textTheme.labelMedium)?.copyWith(color: foreground, fontWeight: FontWeight.w800),
+          ),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../dashboard/presentation/app_shell.dart';
 
@@ -342,71 +343,77 @@ class _ClassCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTokens.largeRadius),
         child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 14, 12),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    if (stage.trim().isNotEmpty)
-                      Text(
-                        stage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelSmall,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                flex: 2,
-                child: Align(
-                  alignment: AlignmentDirectional.center,
-                  child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                flex: 2,
-                child: Align(
-                  alignment: AlignmentDirectional.center,
-                  child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success),
-                ),
-              ),
-              IconButton(
-                onPressed: onAddSection,
-                tooltip: 'إضافة شعبة',
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                icon: const Icon(Icons.add_circle_outline),
-              ),
-              PopupMenuButton<String>(
-                tooltip: 'إجراءات الصف',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                onSelected: (value) {
-                  if (value == 'edit') onEdit();
-                  if (value == 'delete') onDelete();
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('تعديل الصف')),
-                  PopupMenuItem(value: 'delete', child: Text('حذف الصف')),
+          padding: const EdgeInsetsDirectional.fromSTEB(10, 10, 12, 10),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < AppBreakpoints.medium;
+              final badges = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, compact: true),
+                  const SizedBox(width: AppTokens.tightGap),
+                  AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, compact: true),
                 ],
-              ),
-            ],
+              );
+              return Row(
+                children: [
+                  Expanded(
+                    flex: isCompact ? 4 : 5,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        if (stage.trim().isNotEmpty)
+                          Text(
+                            stage,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.labelSmall,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.tightGap),
+                  Flexible(
+                    flex: isCompact ? 4 : 5,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.center,
+                      child: badges,
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.tightGap),
+                  IconButton(
+                    onPressed: onAddSection,
+                    tooltip: 'إضافة شعبة',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: AppTokens.minTouchTarget, minHeight: AppTokens.minTouchTarget),
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'إجراءات الصف',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: AppTokens.minTouchTarget, minHeight: AppTokens.minTouchTarget),
+                    onSelected: (value) {
+                      if (value == 'edit') onEdit();
+                      if (value == 'delete') onDelete();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('تعديل الصف')),
+                      PopupMenuItem(value: 'delete', child: Text('حذف الصف')),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),

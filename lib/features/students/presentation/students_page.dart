@@ -394,21 +394,17 @@ class _StudentCard extends StatelessWidget {
     return Card(
       child: ListTile(
         dense: true,
+        minVerticalPadding: 4,
         onTap: onTap,
         contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
-        title: Text(
-          student.fullName,
-          maxLines: 2,
-          overflow: TextOverflow.visible,
-          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsetsDirectional.only(top: 2),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerEnd,
           child: Text(
-            secondary,
+            '${student.fullName} • $secondary',
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+            softWrap: false,
+            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
         ),
         trailing: PopupMenuButton<String>(

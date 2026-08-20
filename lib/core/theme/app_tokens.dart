@@ -8,10 +8,12 @@ abstract final class AppTokens {
 
   static const sectionGap = 24.0;
   static const compactGap = 12.0;
+  static const tightGap = 4.0;
   static const itemGap = 10.0;
   static const fieldGap = 12.0;
   static const cardPadding = 16.0;
   static const denseCardPadding = 12.0;
+  static const compactPillPadding = EdgeInsets.symmetric(horizontal: 8, vertical: 5);
 
   static const smallRadius = 12.0;
   static const mediumRadius = 16.0;
