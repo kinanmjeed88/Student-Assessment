@@ -340,6 +340,54 @@ class _ClassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final metadata = Wrap(
+      alignment: WrapAlignment.start,
+      spacing: AppTokens.tightGap,
+      runSpacing: AppTokens.tightGap,
+      children: [
+        AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, large: true),
+        AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, large: true),
+      ],
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: onAddSection,
+          tooltip: 'إضافة شعبة',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: AppTokens.minTouchTarget, minHeight: AppTokens.minTouchTarget),
+          icon: const Icon(Icons.add_circle_outline),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'إجراءات الصف',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: AppTokens.minTouchTarget, minHeight: AppTokens.minTouchTarget),
+          onSelected: (value) {
+            if (value == 'edit') onEdit();
+            if (value == 'delete') onDelete();
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('تعديل الصف')),
+            PopupMenuItem(value: 'delete', child: Text('حذف الصف')),
+          ],
+        ),
+      ],
+    );
+    final title = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          name,
+          softWrap: true,
+          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        if (stage.trim().isNotEmpty)
+          Text(stage, softWrap: true, style: textTheme.labelSmall),
+      ],
+    );
+
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -347,70 +395,33 @@ class _ClassCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(10, 10, 12, 10),
           child: LayoutBuilder(
-            builder: (context, _) {
-              return Row(
-                children: [
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+            builder: (context, constraints) {
+              final useStackedLayout = constraints.maxWidth < 520;
+              if (useStackedLayout) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        if (stage.trim().isNotEmpty)
-                          Text(
-                            stage,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.labelSmall,
-                          ),
+                        Expanded(child: title),
+                        actions,
                       ],
                     ),
-                  ),
+                    const SizedBox(height: AppTokens.tightGap),
+                    Align(alignment: AlignmentDirectional.centerStart, child: metadata),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: title),
                   const SizedBox(width: AppTokens.tightGap),
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          fit: FlexFit.loose,
-                          child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, large: true),
-                        ),
-                        const SizedBox(width: AppTokens.tightGap),
-                        Flexible(
-                          fit: FlexFit.loose,
-                          child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, large: true),
-                        ),
-                      ],
-                    ),
-                  ),
+                  Flexible(child: metadata),
                   const SizedBox(width: AppTokens.tightGap),
-                  IconButton(
-                    onPressed: onAddSection,
-                    tooltip: 'إضافة شعبة',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: AppTokens.minTouchTarget, minHeight: AppTokens.minTouchTarget),
-                    icon: const Icon(Icons.add_circle_outline),
-                  ),
-                  PopupMenuButton<String>(
-                    tooltip: 'إجراءات الصف',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: AppTokens.minTouchTarget, minHeight: AppTokens.minTouchTarget),
-                    onSelected: (value) {
-                      if (value == 'edit') onEdit();
-                      if (value == 'delete') onDelete();
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('تعديل الصف')),
-                      PopupMenuItem(value: 'delete', child: Text('حذف الصف')),
-                    ],
-                  ),
+                  actions,
                 ],
               );
             },
