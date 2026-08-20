@@ -386,10 +386,8 @@ class _StudentCard extends StatelessWidget {
     final schoolClass = snapshot.classes.where((item) => item.uuid == student.classUuid).firstOrNull;
     final section = snapshot.sections.where((item) => item.uuid == student.sectionUuid).firstOrNull;
     final textTheme = Theme.of(context).textTheme;
-    final secondary = [
-      schoolClass?.name ?? 'صف غير محدد',
-      if (section != null) section.name,
-    ].join(' • ');
+    final className = schoolClass?.name ?? 'صف غير محدد';
+    final sectionName = section?.name ?? 'شعبة غير محددة';
 
     return Card(
       child: ListTile(
@@ -397,29 +395,22 @@ class _StudentCard extends StatelessWidget {
         minVerticalPadding: 4,
         onTap: onTap,
         contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
-        title: Row(
-          textDirection: TextDirection.rtl,
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 6,
-              child: Text(
-                student.fullName,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-              ),
+            Text(
+              student.fullName,
+              softWrap: true,
+              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
-            const SizedBox(width: AppTokens.tightGap),
-            Flexible(
-              flex: 4,
-              child: Text(
-                secondary,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
-              ),
+            Text(
+              className,
+              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            Text(
+              sectionName,
+              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
           ],
         ),
