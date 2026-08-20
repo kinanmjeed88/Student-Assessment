@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
@@ -228,7 +230,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           children: [
                             _actionTile(context, Icons.notifications_active_outlined, 'صلاحيات التنبيهات', 'تهيئة إشعارات Android عند الحاجة', _requestNotificationPermission),
                             const Divider(height: 1),
-                            const ListTile(leading: Icon(Icons.offline_bolt_outlined), title: Text('وضع العمل المحلي'), subtitle: Text('البيانات محفوظة في Isar ولا يتطلب التطبيق اتصالاً بالشبكة.')),
+                            _actionTile(context, Icons.person_outline, 'حول مطور التطبيق', 'معلومات المطور ووسائل التواصل', () => _showDeveloperInfo(context)),
                           ],
                         ),
                       ),
@@ -334,6 +336,68 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  Future<void> _showDeveloperInfo(BuildContext context) async {
+    const links = <_SocialLink>[
+      _SocialLink('Telegram', FontAwesomeIcons.telegram, 'https://t.me/techtouch7'),
+      _SocialLink('YouTube', FontAwesomeIcons.youtube, 'https://youtube.com/@kinanmajeed?si=I2yuzJT2rRnEHLVg'),
+      _SocialLink('Instagram', FontAwesomeIcons.instagram, 'https://www.instagram.com/techtouch0'),
+      _SocialLink('Facebook', FontAwesomeIcons.facebook, 'https://www.facebook.com/share/1EsapVHA6W/'),
+      _SocialLink('TikTok', FontAwesomeIcons.tiktok, 'https://www.tiktok.com/@techtouch6'),
+    ];
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final scheme = Theme.of(dialogContext).colorScheme;
+        final textTheme = Theme.of(dialogContext).textTheme;
+        return AlertDialog(
+          title: const Text('حول مطور التطبيق'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('المطور', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: scheme.primary)),
+              const SizedBox(height: 6),
+              Text('كنان الصائغ', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text('Kinan Al-Sayegh', style: textTheme.bodyMedium),
+              const SizedBox(height: 12),
+              Text('التطبيق حالياً مجاني - نسخة تجريبية', style: textTheme.bodyMedium),
+              const SizedBox(height: 16),
+              Text('للتواصل', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (final link in links)
+                    IconButton(
+                      tooltip: link.label,
+                      onPressed: () => _openSocialLink(dialogContext, link.url),
+                      icon: FaIcon(link.icon, size: 20),
+                      color: scheme.primary,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق')),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _openSocialLink(BuildContext context, String value) async {
+    final uri = Uri.parse(value);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر فتح الرابط.')));
+    }
+  }
+
   Future<void> _requestNotificationPermission() async {
     final granted = await ref.read(notificationServiceProvider).requestPermissions();
     if (!mounted) return;
@@ -361,4 +425,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final path = await FilePicker.saveFile(dialogTitle: 'حفظ النسخة الاحتياطية', fileName: 'student-record-backup.json', bytes: Uint8List.fromList(utf8.encode(json)));
     if (mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تصدير النسخة الاحتياطية.')));
   }
+}
+
+
+class _SocialLink {
+  const _SocialLink(this.label, this.icon, this.url);
+
+  final String label;
+  final IconData icon;
+  final String url;
 }
