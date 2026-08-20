@@ -375,28 +375,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final iconButtonSize = ((constraints.maxWidth - 10) / links.length).clamp(40.0, 52.0).toDouble();
-                    return Transform.translate(
-                      offset: const Offset(-8, 0),
+                    return Center(
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                        for (final link in links)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: IconButton(
-                              tooltip: link.label,
-                              onPressed: () => _openSocialLink(dialogContext, link.url),
-                              icon: Icon(link.icon, size: 25),
-                              style: IconButton.styleFrom(
-                                minimumSize: Size.square(iconButtonSize),
-                                maximumSize: Size.square(iconButtonSize),
-                                padding: EdgeInsets.zero,
-                                foregroundColor: scheme.primary,
-                                backgroundColor: scheme.primaryContainer,
-                                shape: const CircleBorder(),
+                          for (final link in links)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              child: IconButton(
+                                tooltip: link.label,
+                                onPressed: () => _openSocialLink(dialogContext, link.url),
+                                icon: Icon(link.icon, size: 25),
+                                style: IconButton.styleFrom(
+                                  minimumSize: Size.square(iconButtonSize),
+                                  maximumSize: Size.square(iconButtonSize),
+                                  padding: EdgeInsets.zero,
+                                  foregroundColor: scheme.primary,
+                                  backgroundColor: scheme.primaryContainer,
+                                  shape: const CircleBorder(),
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     );
