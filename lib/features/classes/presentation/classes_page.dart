@@ -347,20 +347,10 @@ class _ClassCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(10, 10, 12, 10),
           child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < AppBreakpoints.medium;
-              final badges = Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, compact: true),
-                  const SizedBox(width: AppTokens.tightGap),
-                  AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, compact: true),
-                ],
-              );
+            builder: (context, _) {
               return Row(
                 children: [
                   Expanded(
-                    flex: isCompact ? 4 : 5,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,11 +373,18 @@ class _ClassCard extends StatelessWidget {
                   ),
                   const SizedBox(width: AppTokens.tightGap),
                   Flexible(
-                    flex: isCompact ? 4 : 5,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: AlignmentDirectional.center,
-                      child: badges,
+                    flex: 5,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: AppStatusPill(label: '$studentCount طالب', icon: Icons.groups_outlined, prominent: true),
+                        ),
+                        const SizedBox(width: AppTokens.tightGap),
+                        Flexible(
+                          child: AppStatusPill(label: '$sectionCount شعبة', icon: Icons.view_list_outlined, tone: AppStatusTone.success, prominent: true),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: AppTokens.tightGap),

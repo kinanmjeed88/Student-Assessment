@@ -14,6 +14,7 @@ abstract final class AppTokens {
   static const cardPadding = 16.0;
   static const denseCardPadding = 12.0;
   static const compactPillPadding = EdgeInsets.symmetric(horizontal: 8, vertical: 5);
+  static const prominentPillPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
 
   static const smallRadius = 12.0;
   static const mediumRadius = 16.0;
