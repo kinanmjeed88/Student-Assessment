@@ -374,10 +374,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 const SizedBox(height: 14),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final iconButtonSize = ((constraints.maxWidth - 10) / links.length).clamp(40.0, 52.0).toDouble();
-                    return Center(
+                    final iconButtonSize = ((constraints.maxWidth - (links.length * 8)) / links.length).clamp(36.0, 48.0).toDouble();
+                    return SizedBox(
+                      width: double.infinity,
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           for (final link in links)
                             Padding(
