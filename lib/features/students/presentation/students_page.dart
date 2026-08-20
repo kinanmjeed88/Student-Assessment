@@ -396,49 +396,50 @@ class _StudentCard extends StatelessWidget {
         contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
         onTap: onTap,
         title: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Text(
                 student.fullName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                softWrap: true,
                 style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
             ),
-            const SizedBox(width: AppTokens.tightGap),
-            Flexible(
-              fit: FlexFit.loose,
-              child: Text(
-                className,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
-              ),
-            ),
-            const SizedBox(width: AppTokens.tightGap),
-            Flexible(
-              fit: FlexFit.loose,
-              child: Text(
-                sectionName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
-              ),
+            const SizedBox(width: AppTokens.itemGap),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  className,
+                  softWrap: true,
+                  style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(width: AppTokens.tightGap),
+                Text(
+                  sectionName,
+                  softWrap: true,
+                  style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ],
             ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          tooltip: 'إجراءات الطالب',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-          onSelected: (value) {
-            if (value == 'edit') onEdit();
-            if (value == 'delete') onDelete();
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('تعديل الملف')),
-            PopupMenuItem(value: 'delete', child: Text('حذف الطالب')),
-          ],
+        trailing: Padding(
+          padding: const EdgeInsetsDirectional.only(start: AppTokens.tightGap),
+          child: PopupMenuButton<String>(
+            tooltip: 'إجراءات الطالب',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            onSelected: (value) {
+              if (value == 'edit') onEdit();
+              if (value == 'delete') onDelete();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('تعديل الملف')),
+              PopupMenuItem(value: 'delete', child: Text('حذف الطالب')),
+            ],
+          ),
         ),
       ),
     );
