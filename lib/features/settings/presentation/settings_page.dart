@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:simple_icons/simple_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/isar_models.dart';
@@ -337,11 +338,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _showDeveloperInfo(BuildContext context) async {
     const links = <_SocialLink>[
-      _SocialLink('Telegram', Icons.send_outlined, 'https://t.me/techtouch7'),
-      _SocialLink('YouTube', Icons.play_circle_outline, 'https://youtube.com/@kinanmajeed?si=I2yuzJT2rRnEHLVg'),
-      _SocialLink('Instagram', Icons.camera_alt_outlined, 'https://www.instagram.com/techtouch0'),
-      _SocialLink('Facebook', Icons.groups_outlined, 'https://www.facebook.com/share/1EsapVHA6W/'),
-      _SocialLink('TikTok', Icons.music_note_outlined, 'https://www.tiktok.com/@techtouch6'),
+      _SocialLink('Telegram', SimpleIcons.telegram, 'https://t.me/techtouch7'),
+      _SocialLink('YouTube', SimpleIcons.youtube, 'https://youtube.com/@kinanmajeed?si=I2yuzJT2rRnEHLVg'),
+      _SocialLink('Instagram', SimpleIcons.instagram, 'https://www.instagram.com/techtouch0'),
+      _SocialLink('Facebook', SimpleIcons.facebook, 'https://www.facebook.com/share/1EsapVHA6W/'),
+      _SocialLink('TikTok', SimpleIcons.tiktok, 'https://www.tiktok.com/@techtouch6'),
     ];
 
     await showDialog<void>(
@@ -350,37 +351,58 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         final scheme = Theme.of(dialogContext).colorScheme;
         final textTheme = Theme.of(dialogContext).textTheme;
         return AlertDialog(
-          title: const Text('حول مطور التطبيق'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('المطور', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: scheme.primary)),
-              const SizedBox(height: 6),
-              Text('كنان الصائغ', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 2),
-              Text('Kinan Al-Sayegh', style: textTheme.bodyMedium),
-              const SizedBox(height: 12),
-              Text('التطبيق حالياً مجاني - نسخة تجريبية', style: textTheme.bodyMedium),
-              const SizedBox(height: 16),
-              Text('للتواصل', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (final link in links)
-                    IconButton(
-                      tooltip: link.label,
-                      onPressed: () => _openSocialLink(dialogContext, link.url),
-                      icon: Icon(link.icon, size: 22),
-                      color: scheme.primary,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                    ),
-                ],
-              ),
-            ],
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          titlePadding: const EdgeInsets.fromLTRB(28, 26, 28, 0),
+          contentPadding: const EdgeInsets.fromLTRB(28, 20, 28, 10),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
+          title: const Center(child: Text('حول مطور التطبيق')),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Center(child: Text('المطور', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: scheme.primary))),
+                const SizedBox(height: 10),
+                Center(child: Text('كنان الصائغ', style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900))),
+                const SizedBox(height: 4),
+                Center(child: Text('Kinan Al-Sayegh', style: textTheme.titleMedium)),
+                const SizedBox(height: 18),
+                Center(child: Text('التطبيق حالياً مجاني - نسخة تجريبية', style: textTheme.bodyLarge)),
+                const SizedBox(height: 24),
+                Center(child: Text('للتواصل', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+                const SizedBox(height: 14),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final iconButtonSize = ((constraints.maxWidth - 10) / links.length).clamp(40.0, 52.0).toDouble();
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        for (final link in links)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: IconButton(
+                              tooltip: link.label,
+                              onPressed: () => _openSocialLink(dialogContext, link.url),
+                              icon: Icon(link.icon, size: 25),
+                              style: IconButton.styleFrom(
+                                minimumSize: Size.square(iconButtonSize),
+                                maximumSize: Size.square(iconButtonSize),
+                                padding: EdgeInsets.zero,
+                                foregroundColor: scheme.primary,
+                                backgroundColor: scheme.primaryContainer,
+                                shape: const CircleBorder(),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
+          actionsAlignment: MainAxisAlignment.center,
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق')),
           ],
