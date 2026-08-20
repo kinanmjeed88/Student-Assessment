@@ -375,15 +375,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final iconButtonSize = ((constraints.maxWidth - (links.length * 8)) / links.length).clamp(36.0, 48.0).toDouble();
-                    return SizedBox(
-                      width: double.infinity,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          for (final link in links)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2),
-                              child: IconButton(
+                    return Transform.translate(
+                      offset: const Offset(-16, 0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (final link in links)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                child: IconButton(
                                 tooltip: link.label,
                                 onPressed: () => _openSocialLink(dialogContext, link.url),
                                 icon: Icon(link.icon, size: 25),
@@ -395,9 +397,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   backgroundColor: scheme.primaryContainer,
                                   shape: const CircleBorder(),
                                 ),
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
