@@ -375,9 +375,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final iconButtonSize = ((constraints.maxWidth - 10) / links.length).clamp(40.0, 52.0).toDouble();
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                    return Transform.translate(
+                      offset: const Offset(-8, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                         for (final link in links)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -395,7 +397,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ),
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     );
                   },
                 ),
