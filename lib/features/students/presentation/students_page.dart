@@ -381,6 +381,14 @@ class _StudentCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
+  String get _displayName {
+    final nameParts = [student.firstName, student.fatherName, student.lastName]
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    return nameParts.isEmpty ? student.fullName : nameParts.join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final schoolClass = snapshot.classes.where((item) => item.uuid == student.classUuid).firstOrNull;
@@ -390,42 +398,55 @@ class _StudentCard extends StatelessWidget {
     final sectionName = section?.name ?? 'شعبة غير محددة';
 
     return Card(
-      child: ListTile(
-        dense: true,
-        minVerticalPadding: 4,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
-        contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 2, 8, 2),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              student.fullName,
-              softWrap: true,
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            Text(
-              className,
-              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            Text(
-              sectionName,
-              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          tooltip: 'إجراءات الطالب',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-          onSelected: (value) {
-            if (value == 'edit') onEdit();
-            if (value == 'delete') onDelete();
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('تعديل الملف')),
-            PopupMenuItem(value: 'delete', child: Text('حذف الطالب')),
-          ],
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _displayName,
+                      softWrap: true,
+                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'الصف: $className',
+                      softWrap: true,
+                      style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'الشعبة: $sectionName',
+                      softWrap: true,
+                      style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              PopupMenuButton<String>(
+                tooltip: 'إجراءات الطالب',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                onSelected: (value) {
+                  if (value == 'edit') onEdit();
+                  if (value == 'delete') onDelete();
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('تعديل الملف')),
+                  PopupMenuItem(value: 'delete', child: Text('حذف الطالب')),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
