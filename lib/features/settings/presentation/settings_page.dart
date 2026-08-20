@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/isar_models.dart';
@@ -338,11 +337,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _showDeveloperInfo(BuildContext context) async {
     const links = <_SocialLink>[
-      _SocialLink('Telegram', FontAwesomeIcons.telegram, 'https://t.me/techtouch7'),
-      _SocialLink('YouTube', FontAwesomeIcons.youtube, 'https://youtube.com/@kinanmajeed?si=I2yuzJT2rRnEHLVg'),
-      _SocialLink('Instagram', FontAwesomeIcons.instagram, 'https://www.instagram.com/techtouch0'),
-      _SocialLink('Facebook', FontAwesomeIcons.facebook, 'https://www.facebook.com/share/1EsapVHA6W/'),
-      _SocialLink('TikTok', FontAwesomeIcons.tiktok, 'https://www.tiktok.com/@techtouch6'),
+      _SocialLink('Telegram', Icons.send_outlined, 'https://t.me/techtouch7'),
+      _SocialLink('YouTube', Icons.play_circle_outline, 'https://youtube.com/@kinanmajeed?si=I2yuzJT2rRnEHLVg'),
+      _SocialLink('Instagram', Icons.camera_alt_outlined, 'https://www.instagram.com/techtouch0'),
+      _SocialLink('Facebook', Icons.groups_outlined, 'https://www.facebook.com/share/1EsapVHA6W/'),
+      _SocialLink('TikTok', Icons.music_note_outlined, 'https://www.tiktok.com/@techtouch6'),
     ];
 
     await showDialog<void>(
@@ -373,7 +372,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     IconButton(
                       tooltip: link.label,
                       onPressed: () => _openSocialLink(dialogContext, link.url),
-                      icon: FaIcon(link.icon, size: 20),
+                      icon: Icon(link.icon, size: 22),
                       color: scheme.primary,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
