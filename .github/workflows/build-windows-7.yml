@@ -37,7 +37,7 @@ concurrency:
 jobs:
   build-windows-7:
     name: Analyze and build Windows 7 release
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 45
 
     steps:
