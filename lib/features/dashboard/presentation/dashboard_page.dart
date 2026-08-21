@@ -384,7 +384,7 @@ class _QuickActions extends StatelessWidget {
               SizedBox(
                 width: width,
                 child: Card(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: Theme.of(context).colorScheme.surfaceVariant,
                   child: ListTile(
                     onTap: () => onOpen(action.page),
                     contentPadding: const EdgeInsetsDirectional.fromSTEB(16, 8, 12, 8),
@@ -471,7 +471,7 @@ Future<void> _showBehaviorNotifications(
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Card(
-                            color: scheme.surfaceContainerHighest,
+                            color: scheme.surfaceVariant,
                             child: ListTile(
                               onTap: () {
                                 Navigator.of(sheetContext).pop();
@@ -528,7 +528,7 @@ class _StudentListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
-      color: scheme.surfaceContainerHighest,
+      color: scheme.surfaceVariant,
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsetsDirectional.fromSTEB(16, 6, 12, 6),

@@ -1,14 +1,12 @@
 import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:file_picker/file_picker.dart';
+import '../../../core/services/file_storage_service.dart';
 
 class BackupService {
   Future<String?> saveJson(String json) async {
-    return FilePicker.saveFile(
+    return const FileStorageService().saveBytes(
       dialogTitle: 'حفظ النسخة الاحتياطية',
       fileName: 'almoktaber-backup.json',
-      bytes: Uint8List.fromList(utf8.encode(json)),
-    ).then((uri) => uri?.toFilePath());
+      bytes: utf8.encode(json),
+    );
   }
 }

@@ -82,7 +82,7 @@ class _NotesPageState extends ConsumerState<NotesPage> {
             ),
             AppSpacing.compact,
             DropdownButtonFormField<String>(
-              initialValue: _classUuid,
+              value: _classUuid,
               decoration: const InputDecoration(labelText: 'تصفية الصف'),
               items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
               onChanged: (value) => setState(() {
@@ -92,7 +92,7 @@ class _NotesPageState extends ConsumerState<NotesPage> {
             ),
             AppSpacing.item,
             DropdownButtonFormField<String>(
-              initialValue: _sectionUuid,
+              value: _sectionUuid,
               decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
               items: [
                 const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
@@ -170,7 +170,7 @@ class _NotesPageState extends ConsumerState<NotesPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                initialValue: studentUuid,
+                value: studentUuid,
                 decoration: const InputDecoration(labelText: 'الطالب'),
                 items: snapshot.students
                     .map(
@@ -186,7 +186,7 @@ class _NotesPageState extends ConsumerState<NotesPage> {
               ),
               AppSpacing.item,
               DropdownButtonFormField<NoteCategory>(
-                initialValue: category,
+                value: category,
                 decoration: const InputDecoration(labelText: 'نوع الملاحظة'),
                 items: const [
                   DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')),

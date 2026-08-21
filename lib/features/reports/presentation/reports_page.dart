@@ -1,12 +1,10 @@
-import 'dart:typed_data';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/file_storage_service.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../dashboard/presentation/app_shell.dart';
@@ -86,7 +84,11 @@ class ReportsPage extends ConsumerWidget {
   Future<void> _export(BuildContext context, List<int> bytes, String filename) async {
     try {
       if (bytes.isEmpty) throw const FormatException('تعذر إنشاء التقرير لأن الملف الناتج فارغ.');
-      final path = await FilePicker.saveFile(dialogTitle: 'حفظ التقرير', fileName: filename, bytes: Uint8List.fromList(bytes));
+      final path = await const FileStorageService().saveBytes(
+        dialogTitle: 'حفظ التقرير',
+        fileName: filename,
+        bytes: bytes,
+      );
       if (!context.mounted) return;
       if (path == null) {
         _showMessage(context, 'تم إلغاء حفظ الملف.');

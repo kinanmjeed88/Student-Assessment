@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +5,7 @@ import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/file_storage_service.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/utils/iterable_extensions.dart';
 import '../../../core/widgets/app_components.dart';
@@ -165,7 +163,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
                 },
               ),
               AppSpacing.item,
-              DropdownButtonFormField<String>(initialValue: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي'), items: const [DropdownMenuItem(value: 'الفصل الأول', child: Text('الفصل الأول')), DropdownMenuItem(value: 'الفصل الثاني', child: Text('الفصل الثاني'))], onChanged: (value) => setState(() => term = value ?? term)),
+              DropdownButtonFormField<String>(value: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي'), items: const [DropdownMenuItem(value: 'الفصل الأول', child: Text('الفصل الأول')), DropdownMenuItem(value: 'الفصل الثاني', child: Text('الفصل الثاني'))], onChanged: (value) => setState(() => term = value ?? term)),
               AppSpacing.item,
               _input(notes, 'ملاحظات', maxLines: 3, required: false),
             ],
@@ -217,10 +215,10 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DropdownButtonFormField<BehaviorCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف السلوك'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('مخالفة سلبية')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('إيجابي'))], onChanged: (value) => setState(() => category = value ?? category)),
+              DropdownButtonFormField<BehaviorCategory>(value: category, decoration: const InputDecoration(labelText: 'تصنيف السلوك'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('مخالفة سلبية')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('إيجابي'))], onChanged: (value) => setState(() => category = value ?? category)),
               AppSpacing.item,
               if (category == BehaviorCategory.negative) ...[
-                DropdownButtonFormField<BehaviorViolationType>(initialValue: violation, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الحصة')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('سلوك جسيم')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (value) => setState(() => violation = value ?? violation)),
+                DropdownButtonFormField<BehaviorViolationType>(value: violation, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الحصة')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('سلوك جسيم')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (value) => setState(() => violation = value ?? violation)),
                 AppSpacing.item,
               ],
               _input(title, 'عنوان السجل'),
@@ -270,7 +268,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<NoteCategory>(
-                initialValue: category,
+                value: category,
                 decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'),
                 items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))],
                 onChanged: (value) => setSheetState(() => category = value ?? category),
@@ -356,7 +354,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
                     : Row(children: [Expanded(child: _input(maxScore, 'الدرجة العظمى', numeric: true)), const SizedBox(width: 12), Expanded(child: _input(score, 'درجة الطالب', numeric: true))]),
               ),
               AppSpacing.item,
-              DropdownButtonFormField<String>(initialValue: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي'), items: const [DropdownMenuItem(value: 'الفصل الأول', child: Text('الفصل الأول')), DropdownMenuItem(value: 'الفصل الثاني', child: Text('الفصل الثاني'))], onChanged: (value) => setState(() => term = value ?? term)),
+              DropdownButtonFormField<String>(value: term, decoration: const InputDecoration(labelText: 'الفصل الدراسي'), items: const [DropdownMenuItem(value: 'الفصل الأول', child: Text('الفصل الأول')), DropdownMenuItem(value: 'الفصل الثاني', child: Text('الفصل الثاني'))], onChanged: (value) => setState(() => term = value ?? term)),
               AppSpacing.item,
               _input(notes, 'ملاحظات', maxLines: 3, required: false),
             ],
@@ -401,7 +399,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DropdownButtonFormField<AttendanceStatus>(initialValue: status, decoration: const InputDecoration(labelText: 'الحالة'), items: const [DropdownMenuItem(value: AttendanceStatus.present, child: Text('حاضر')), DropdownMenuItem(value: AttendanceStatus.absent, child: Text('غائب')), DropdownMenuItem(value: AttendanceStatus.excused, child: Text('معذور')), DropdownMenuItem(value: AttendanceStatus.late, child: Text('متأخر')), DropdownMenuItem(value: AttendanceStatus.leave, child: Text('إجازة'))], onChanged: (value) => setState(() => status = value ?? status)),
+              DropdownButtonFormField<AttendanceStatus>(value: status, decoration: const InputDecoration(labelText: 'الحالة'), items: const [DropdownMenuItem(value: AttendanceStatus.present, child: Text('حاضر')), DropdownMenuItem(value: AttendanceStatus.absent, child: Text('غائب')), DropdownMenuItem(value: AttendanceStatus.excused, child: Text('معذور')), DropdownMenuItem(value: AttendanceStatus.late, child: Text('متأخر')), DropdownMenuItem(value: AttendanceStatus.leave, child: Text('إجازة'))], onChanged: (value) => setState(() => status = value ?? status)),
               AppSpacing.item,
               _input(reason, 'السبب', required: false),
               AppSpacing.item,
@@ -437,10 +435,10 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DropdownButtonFormField<BehaviorCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف السلوك'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('مخالفة سلبية')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('إيجابي'))], onChanged: (value) => setState(() => category = value ?? category)),
+              DropdownButtonFormField<BehaviorCategory>(value: category, decoration: const InputDecoration(labelText: 'تصنيف السلوك'), items: const [DropdownMenuItem(value: BehaviorCategory.negative, child: Text('مخالفة سلبية')), DropdownMenuItem(value: BehaviorCategory.followup, child: Text('متابعة')), DropdownMenuItem(value: BehaviorCategory.positive, child: Text('إيجابي'))], onChanged: (value) => setState(() => category = value ?? category)),
               AppSpacing.item,
               if (category == BehaviorCategory.negative) ...[
-                DropdownButtonFormField<BehaviorViolationType>(initialValue: violation, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الحصة')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('سلوك جسيم')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (value) => setState(() => violation = value ?? violation)),
+                DropdownButtonFormField<BehaviorViolationType>(value: violation, decoration: const InputDecoration(labelText: 'نوع المخالفة'), items: const [DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')), DropdownMenuItem(value: BehaviorViolationType.lessonDisruption, child: Text('تشويش الحصة')), DropdownMenuItem(value: BehaviorViolationType.seriousMisconduct, child: Text('سلوك جسيم')), DropdownMenuItem(value: BehaviorViolationType.other, child: Text('أخرى'))], onChanged: (value) => setState(() => violation = value ?? violation)),
                 AppSpacing.item,
               ],
               _input(title, 'عنوان السجل'),
@@ -481,7 +479,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DropdownButtonFormField<NoteCategory>(initialValue: category, decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'), items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))], onChanged: (value) => setState(() => category = value ?? category)),
+              DropdownButtonFormField<NoteCategory>(value: category, decoration: const InputDecoration(labelText: 'تصنيف الملاحظة'), items: const [DropdownMenuItem(value: NoteCategory.academic, child: Text('أكاديمية')), DropdownMenuItem(value: NoteCategory.health, child: Text('صحية')), DropdownMenuItem(value: NoteCategory.educational, child: Text('تربوية')), DropdownMenuItem(value: NoteCategory.attendance, child: Text('حضور')), DropdownMenuItem(value: NoteCategory.other, child: Text('أخرى'))], onChanged: (value) => setState(() => category = value ?? category)),
               AppSpacing.item,
               _input(title, 'عنوان الملاحظة'),
               AppSpacing.item,
@@ -522,7 +520,11 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
 
   Future<void> _saveExport(BuildContext context, {required List<int> bytes, required String fileName, required String dialogTitle}) async {
     if (bytes.isEmpty) throw const FormatException('تعذر إنشاء الملف لأن الملف الناتج فارغ.');
-    final path = await FilePicker.saveFile(dialogTitle: dialogTitle, fileName: fileName, bytes: Uint8List.fromList(bytes));
+    final path = await const FileStorageService().saveBytes(
+      dialogTitle: dialogTitle,
+      fileName: fileName,
+      bytes: bytes,
+    );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(path == null ? 'تم إلغاء حفظ الملف.' : 'تم حفظ الملف بنجاح.')));
   }
@@ -554,12 +556,12 @@ class _ProfileHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final statusTone = student.status == StudentStatus.active ? AppStatusTone.success : AppStatusTone.warning;
-    final alertColor = summary.dismissed ? scheme.errorContainer : summary.warning ? scheme.tertiaryContainer : scheme.surfaceContainerHighest;
+    final alertColor = summary.dismissed ? scheme.errorContainer : summary.warning ? scheme.tertiaryContainer : scheme.surfaceVariant;
     final buttonStyle = ButtonStyle(
-      backgroundColor: WidgetStatePropertyAll(scheme.primaryContainer),
-      foregroundColor: WidgetStatePropertyAll(scheme.onPrimaryContainer),
-      elevation: const WidgetStatePropertyAll(0),
-      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+      backgroundColor: MaterialStatePropertyAll(scheme.primaryContainer),
+      foregroundColor: MaterialStatePropertyAll(scheme.onPrimaryContainer),
+      elevation: const MaterialStatePropertyAll(0),
+      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
     );
 
     return Column(
@@ -761,7 +763,7 @@ class _GradesSection extends StatelessWidget {
                   return ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(backgroundColor: scoreColor.withValues(alpha: 0.12), foregroundColor: scoreColor, child: Text('${(ratio * 100).round()}')),
+                    leading: CircleAvatar(backgroundColor: scoreColor.withOpacity(0.12), foregroundColor: scoreColor, child: Text('${(ratio * 100).round()}')),
                     title: Text('${field.subject} — ${field.title}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                     subtitle: Text('${field.term} · ${grade.notes.isEmpty ? 'بدون ملاحظات' : grade.notes}', maxLines: 1, overflow: TextOverflow.ellipsis),
                     trailing: Row(
@@ -970,5 +972,5 @@ IconData _attendanceIcon(AttendanceStatus status) => switch (status) { Attendanc
 String _attendanceLabel(AttendanceStatus status) => switch (status) { AttendanceStatus.present => 'حاضر', AttendanceStatus.absent => 'غائب', AttendanceStatus.excused => 'معذور', AttendanceStatus.late => 'متأخر', AttendanceStatus.leave => 'إجازة' };
 Color _attendanceColor(BuildContext context, AttendanceStatus status) => switch (status) { AttendanceStatus.present => Theme.of(context).colorScheme.tertiary, AttendanceStatus.absent => Theme.of(context).colorScheme.error, AttendanceStatus.excused => Theme.of(context).colorScheme.secondary, AttendanceStatus.late => Theme.of(context).colorScheme.tertiary, AttendanceStatus.leave => Theme.of(context).colorScheme.primary };
 IconData _behaviorIcon(BehaviorCategory category) => switch (category) { BehaviorCategory.positive => Icons.thumb_up_alt_outlined, BehaviorCategory.negative => Icons.warning_amber_outlined, BehaviorCategory.followup => Icons.follow_the_signs_outlined };
-Color _behaviorColor(BuildContext context, BehaviorCategory category) => switch (category) { BehaviorCategory.positive => Theme.of(context).colorScheme.tertiary, BehaviorCategory.negative => Theme.of(context).colorScheme.error, BehaviorCategory.followup => Color.alphaBlend(Theme.of(context).colorScheme.error.withValues(alpha: 0.45), Theme.of(context).colorScheme.surface) };
+Color _behaviorColor(BuildContext context, BehaviorCategory category) => switch (category) { BehaviorCategory.positive => Theme.of(context).colorScheme.tertiary, BehaviorCategory.negative => Theme.of(context).colorScheme.error, BehaviorCategory.followup => Color.alphaBlend(Theme.of(context).colorScheme.error.withOpacity(0.45), Theme.of(context).colorScheme.surface) };
 String _date(DateTime value) => '${value.year}/${value.month.toString().padLeft(2, '0')}/${value.day.toString().padLeft(2, '0')}';

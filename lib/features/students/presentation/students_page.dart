@@ -180,14 +180,14 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                 TextFormField(controller: number, decoration: const InputDecoration(labelText: 'رقم الطالب')),
                 AppSpacing.item,
                 DropdownButtonFormField<StudentGender>(
-                  initialValue: gender,
+                  value: gender,
                   decoration: const InputDecoration(labelText: 'الجنس'),
                   items: const [DropdownMenuItem(value: StudentGender.male, child: Text('ذكر')), DropdownMenuItem(value: StudentGender.female, child: Text('أنثى'))],
                   onChanged: (value) => setSheetState(() => gender = value ?? gender),
                 ),
                 AppSpacing.item,
                 DropdownButtonFormField<String>(
-                  initialValue: classUuid,
+                  value: classUuid,
                   decoration: const InputDecoration(labelText: 'الصف'),
                   items: snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name))).toList(),
                   onChanged: (value) => setSheetState(() {
@@ -197,7 +197,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                 ),
                 AppSpacing.item,
                 DropdownButtonFormField<String>(
-                  initialValue: sectionUuid.isEmpty ? null : sectionUuid,
+                  value: sectionUuid.isEmpty ? null : sectionUuid,
                   decoration: const InputDecoration(labelText: 'الشعبة (اختياري)'),
                   items: [
                     const DropdownMenuItem<String>(value: '', child: Text('بدون شعبة')),
@@ -212,7 +212,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                 if (student != null) ...[
                   AppSpacing.item,
                   DropdownButtonFormField<StudentStatus>(
-                    initialValue: status,
+                    value: status,
                     decoration: const InputDecoration(labelText: 'حالة الطالب'),
                     items: const [DropdownMenuItem(value: StudentStatus.active, child: Text('نشط')), DropdownMenuItem(value: StudentStatus.transferred, child: Text('منقول')), DropdownMenuItem(value: StudentStatus.graduated, child: Text('متخرج')), DropdownMenuItem(value: StudentStatus.suspended, child: Text('موقوف'))],
                     onChanged: (value) => setSheetState(() => status = value ?? status),
@@ -273,7 +273,7 @@ class _FilterPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
-      color: scheme.surfaceContainerHighest,
+      color: scheme.surfaceVariant,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -290,7 +290,7 @@ class _FilterPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              initialValue: classFilter,
+              value: classFilter,
               isDense: true,
               decoration: const InputDecoration(labelText: 'تصفية حسب الصف', isDense: true),
               items: [
@@ -301,7 +301,7 @@ class _FilterPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              initialValue: sectionFilter,
+              value: sectionFilter,
               isDense: true,
               decoration: const InputDecoration(labelText: 'تصفية حسب الشعبة', isDense: true),
               items: [

@@ -55,7 +55,7 @@ class _GradesPageState extends ConsumerState<GradesPage> {
               Row(
                 children: [
                   Expanded(
-                    child: DropdownButtonFormField<String>(initialValue: selectedField?.uuid, decoration: const InputDecoration(labelText: 'حقل التقييم'), items: snapshot.gradeFields.map((item) => DropdownMenuItem(value: item.uuid, child: Text('${item.subject} — ${item.title} (${item.maxScore})'))).toList(), onChanged: (value) => setState(() => _fieldUuid = value)),
+                    child: DropdownButtonFormField<String>(value: selectedField?.uuid, decoration: const InputDecoration(labelText: 'حقل التقييم'), items: snapshot.gradeFields.map((item) => DropdownMenuItem(value: item.uuid, child: Text('${item.subject} — ${item.title} (${item.maxScore})'))).toList(), onChanged: (value) => setState(() => _fieldUuid = value)),
                   ),
                   IconButton(onPressed: selectedField == null ? null : () => _showFieldForm(field: selectedField), tooltip: 'تعديل حقل التقييم', icon: const Icon(Icons.edit_outlined)),
                   IconButton(onPressed: selectedField == null ? null : () => _deleteField(selectedField), tooltip: 'حذف حقل التقييم', icon: const Icon(Icons.delete_outline)),
@@ -63,7 +63,7 @@ class _GradesPageState extends ConsumerState<GradesPage> {
               ),
               AppSpacing.item,
               DropdownButtonFormField<String>(
-                initialValue: _classUuid,
+                value: _classUuid,
                 decoration: const InputDecoration(labelText: 'تصفية الصف'),
                 items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
                 onChanged: (value) => setState(() {
@@ -73,7 +73,7 @@ class _GradesPageState extends ConsumerState<GradesPage> {
               ),
               AppSpacing.item,
               DropdownButtonFormField<String>(
-                initialValue: _sectionUuid,
+                value: _sectionUuid,
                 decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
                 items: [
                   const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),

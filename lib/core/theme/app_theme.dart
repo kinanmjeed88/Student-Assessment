@@ -33,7 +33,7 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: scheme.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -49,7 +49,7 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest,
+        fillColor: scheme.surfaceVariant,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -114,7 +114,7 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surface,
         indicatorColor: scheme.primaryContainer,
-        labelTextStyle: WidgetStatePropertyAll(
+        labelTextStyle: MaterialStatePropertyAll(
           textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
@@ -127,7 +127,7 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
-      tabBarTheme: TabBarThemeData(
+      tabBarTheme: TabBarTheme(
         labelColor: scheme.primary,
         unselectedLabelColor: scheme.onSurfaceVariant,
         indicatorColor: scheme.primary,
@@ -136,7 +136,7 @@ abstract final class AppTheme {
         unselectedLabelStyle: textTheme.labelLarge,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: scheme.surfaceContainerHighest,
+        backgroundColor: scheme.surfaceVariant,
         selectedColor: scheme.primaryContainer,
         side: BorderSide(color: scheme.outlineVariant),
         labelStyle: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -148,7 +148,7 @@ abstract final class AppTheme {
         contentTextStyle: textTheme.bodyMedium?.copyWith(color: scheme.onInverseSurface),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      dialogTheme: DialogThemeData(
+      dialogTheme: DialogTheme(
         backgroundColor: scheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),

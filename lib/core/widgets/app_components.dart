@@ -120,7 +120,7 @@ class AppStatusPill extends StatelessWidget {
       AppStatusTone.success => (scheme.primaryContainer, scheme.onPrimaryContainer),
       AppStatusTone.warning => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
       AppStatusTone.error => (scheme.errorContainer, scheme.onErrorContainer),
-      AppStatusTone.neutral => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+      AppStatusTone.neutral => (scheme.surfaceVariant, scheme.onSurfaceVariant),
     };
     return Container(
       padding: large ? AppTokens.largePillPadding : compact ? AppTokens.compactPillPadding : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

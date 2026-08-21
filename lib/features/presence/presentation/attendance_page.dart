@@ -53,7 +53,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                   child: Column(
                     children: [
                       DropdownButtonFormField<String>(
-                        initialValue: _classUuid,
+                        value: _classUuid,
                         decoration: const InputDecoration(labelText: 'تصفية الصف', floatingLabelBehavior: FloatingLabelBehavior.always),
                         items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
                         onChanged: (value) => setState(() {
@@ -63,7 +63,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                       ),
                       AppSpacing.item,
                       DropdownButtonFormField<String>(
-                        initialValue: _sectionUuid,
+                        value: _sectionUuid,
                         decoration: const InputDecoration(labelText: 'تصفية الشعبة', floatingLabelBehavior: FloatingLabelBehavior.always),
                         items: [
                           const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),

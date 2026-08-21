@@ -1,0 +1,96 @@
+name: Windows 7 build
+
+on:
+  push:
+    branches:
+      - feat/windows-7-support
+    paths:
+      - '**/*.dart'
+      - 'assets/**'
+      - 'lib/**'
+      - 'windows/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'analysis_options.yaml'
+      - '.github/workflows/build-windows-7.yml'
+  pull_request:
+    branches:
+      - feat/windows-7-support
+    paths:
+      - '**/*.dart'
+      - 'assets/**'
+      - 'lib/**'
+      - 'windows/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'analysis_options.yaml'
+      - '.github/workflows/build-windows-7.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-7-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows-7:
+    name: Analyze and build Windows 7 release
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter 3.12
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.12.0-1.1.pre'
+          cache: true
+
+      - name: Verify Flutter toolchain
+        shell: pwsh
+        run: flutter --version
+
+      - name: Install Dart dependencies
+        shell: pwsh
+        run: flutter pub get
+
+      - name: Verify Windows 7 platform files
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'windows/CMakeLists.txt')) { throw 'Missing Windows platform files' }
+          if (Test-Path 'android') { throw 'Android platform must not be included in the Windows 7 branch' }
+          if (Test-Path 'msix.yaml') { throw 'MSIX packaging is intentionally disabled for Windows 7' }
+
+      - name: Run static checks
+        shell: pwsh
+        run: |
+          if (Test-Path 'scripts/static_check.sh') {
+            bash scripts/static_check.sh
+          }
+
+      - name: Analyze Dart code
+        shell: pwsh
+        run: flutter analyze
+
+      - name: Build Windows release
+        shell: pwsh
+        run: flutter build windows --release
+
+      - name: Package Windows 7 release
+        shell: pwsh
+        run: |
+          $source = 'build/windows/x64/runner/Release'
+          if (-not (Test-Path $source)) { throw "Build output not found: $source" }
+          Compress-Archive -Path "$source/*" -DestinationPath 'student-assessment-windows-7.zip' -Force
+
+      - name: Upload Windows 7 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-assessment-windows-7-${{ github.run_number }}
+          path: student-assessment-windows-7.zip
+          if-no-files-found: error
+          retention-days: 30

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/notifications/notification_service.dart';
@@ -13,7 +12,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final notificationService =
-      NotificationService(FlutterLocalNotificationsPlugin());
+      NotificationService();
   final navigatorKey = GlobalKey<NavigatorState>();
   String? pendingPayload;
 

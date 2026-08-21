@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-import 'package:excel_plus/excel_plus.dart';
+import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:xml/xml.dart';
+
+import 'file_storage_service.dart';
 
 class ImportedStudentsFile {
   const ImportedStudentsFile({required this.filename, required this.names, required this.format});
@@ -16,13 +18,13 @@ class ImportedStudentsFile {
 
 class ImportExportService {
   Future<ImportedStudentsFile?> pickStudentsFile() async {
-    final picked = await FilePicker.pickFile(
+    final picked = await const FileStorageService().pickFile(
       type: FileType.custom,
       allowedExtensions: ['xlsx', 'xls', 'csv', 'txt', 'docx'],
     );
     if (picked == null) return null;
 
-    final Uint8List bytes = await picked.readAsBytes();
+    final Uint8List bytes = picked.bytes;
     if (bytes.isEmpty) throw const FormatException('تعذر قراءة الملف المحدد.');
 
     final extension = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : '';
@@ -76,8 +78,7 @@ class ImportExportService {
     }
     if (documentFile == null) throw const FormatException('ملف Word لا يحتوي على مستند صالح.');
 
-    final documentBytes = documentFile.readBytes();
-    if (documentBytes == null) throw const FormatException('تعذر قراءة محتوى ملف Word.');
+    final documentBytes = documentFile.content as List<int>;
     final xml = XmlDocument.parse(utf8.decode(documentBytes, allowMalformed: true));
     return xml.descendants
         .whereType<XmlElement>()

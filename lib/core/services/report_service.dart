@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:excel_plus/excel_plus.dart';
+import 'package:excel/excel.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -281,7 +281,7 @@ class ReportService {
             ['التنبيهات', '$alerts'],
           ]),
           pw.SizedBox(height: 18),
-          pw.Text('قائمة الطلاب', style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text('قائمة الطلاب', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
           _pdfTable(
             headers: const ['الطالب', 'الرقم', 'الصف', 'الشعبة', 'الحالة', 'النقاط', 'المتابعة'],
@@ -311,7 +311,7 @@ class ReportService {
         header: (_) => _pdfHeader(snapshot.settings, 'ملف الطالب'),
         footer: (context) => _pdfFooter(context),
         build: (_) => [
-          pw.Text(student.fullName, style: const pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+          pw.Text(student.fullName, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 10),
           _pdfInfoTable([
             ['رقم الطالب', student.studentNumber],
@@ -325,7 +325,7 @@ class ReportService {
             ['حالة المتابعة', behavior.label],
           ]),
           pw.SizedBox(height: 18),
-          pw.Text('الدرجات والتقييمات', style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text('الدرجات والتقييمات', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
           _pdfTable(headers: const ['المادة', 'التقييم', 'الدرجة', 'الحد الأقصى', 'النسبة', 'التقدير'], rows: snapshot.gradesFor(studentUuid).map((grade) {
             final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
@@ -334,15 +334,15 @@ class ReportService {
             return [field.subject, field.title, grade.score.toStringAsFixed(1), field.maxScore.toStringAsFixed(1), '${percentage.toStringAsFixed(1)}%', _gradeLabel(percentage)];
           }).where((row) => row.isNotEmpty).toList()),
           pw.SizedBox(height: 18),
-          pw.Text('الحضور', style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text('الحضور', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
           _pdfTable(headers: const ['التاريخ', 'الحالة', 'السبب', 'ملاحظات'], rows: snapshot.attendanceFor(studentUuid).map((record) => [_date(record.date), _attendanceLabel(record.status), record.reason, record.notes]).toList()),
           pw.SizedBox(height: 18),
-          pw.Text('السلوك والمتابعة', style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text('السلوك والمتابعة', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
           _pdfTable(headers: const ['التصنيف', 'العنوان', 'النقاط', 'التاريخ', 'الإجراء', 'المتابعة'], rows: snapshot.behaviorsFor(studentUuid).map((record) => [_behaviorCategoryLabel(record.category), record.title, record.penaltyPoints.toStringAsFixed(1), _date(record.date), record.actionTaken, record.followUp]).toList()),
           pw.SizedBox(height: 18),
-          pw.Text('الملاحظات', style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text('الملاحظات', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
           _pdfTable(headers: const ['التصنيف', 'العنوان', 'التفاصيل', 'المتابعة', 'التاريخ'], rows: snapshot.notesFor(studentUuid).map((note) => [_noteCategoryLabel(note.category), note.title, note.details, note.needsFollowUp ? 'نعم' : 'لا', _date(note.date)]).toList()),
         ],
@@ -454,24 +454,24 @@ class ReportService {
   String _importFormatLabel(StudentImportFormat value) => switch (value) { StudentImportFormat.excel => 'Excel', StudentImportFormat.word => 'Word', StudentImportFormat.text => 'نص' };
   String _gradeLabel(double percentage) => percentage >= 90 ? 'ممتاز' : percentage >= 80 ? 'جيد جداً' : percentage >= 70 ? 'جيد' : percentage >= 50 ? 'مقبول' : 'يحتاج متابعة';
 
-  static final _titleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('1F4E78'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.white, fontSize: 16, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
-  static final _subtitleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('D9EAF7'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.fromHexString('1F2937'), fontSize: 10, italic: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
-  static final _headerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('2F75B5'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.white, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
+  static final _titleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('1F4E78'), fontColorHex: ExcelColor.white, fontSize: 16, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
+  static final _subtitleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('D9EAF7'), fontColorHex: ExcelColor.fromHexString('1F2937'), fontSize: 10, italic: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
+  static final _headerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('2F75B5'), fontColorHex: ExcelColor.white, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
   static final _bodyStyle = CellStyle(fontColorHex: ExcelColor.fromHexString('1F2937'), horizontalAlign: HorizontalAlign.Right, verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
-  static final _footerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('EAF2F8'), fillPattern: FillPatternType.solid, fontColorHex: ExcelColor.fromHexString('1F2937'), bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
+  static final _footerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('EAF2F8'), fontColorHex: ExcelColor.fromHexString('1F2937'), bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
 
   pw.Widget _pdfHeader(AppSettings settings, String title) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-        pw.Text(settings.schoolName.isEmpty ? 'سجل الطالب' : settings.schoolName, style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-        if (settings.teacherName.isNotEmpty) pw.Text(settings.teacherName, style: const pw.TextStyle(fontSize: 10)),
+        pw.Text(settings.schoolName.isEmpty ? 'سجل الطالب' : settings.schoolName, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        if (settings.teacherName.isNotEmpty) pw.Text(settings.teacherName, style: pw.TextStyle(fontSize: 10)),
         pw.SizedBox(height: 4),
         pw.Divider(color: PdfColors.blueGrey300),
-        pw.Text(title, style: const pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
       ]);
 
-  pw.Widget _pdfFooter(pw.Context context) => pw.Align(alignment: pw.Alignment.center, child: pw.Text('صفحة ${context.pageNumber} من ${context.pagesCount}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)));
+  pw.Widget _pdfFooter(pw.Context context) => pw.Align(alignment: pw.Alignment.center, child: pw.Text('صفحة ${context.pageNumber} من ${context.pagesCount}', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)));
 
-  pw.Widget _pdfSummaryCards(List<List<String>> values) => pw.Row(children: [for (var index = 0; index < values.length; index++) pw.Expanded(child: pw.Container(margin: const pw.EdgeInsets.all(3), padding: const pw.EdgeInsets.all(8), decoration: const pw.BoxDecoration(color: PdfColors.blue50), child: pw.Column(children: [pw.Text(values[index][0], style: const pw.TextStyle(fontSize: 9)), pw.SizedBox(height: 3), pw.Text(values[index][1], style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold))]))) ]);
+  pw.Widget _pdfSummaryCards(List<List<String>> values) => pw.Row(children: [for (var index = 0; index < values.length; index++) pw.Expanded(child: pw.Container(margin: const pw.EdgeInsets.all(3), padding: const pw.EdgeInsets.all(8), decoration: const pw.BoxDecoration(color: PdfColors.blue50), child: pw.Column(children: [pw.Text(values[index][0], style: pw.TextStyle(fontSize: 9)), pw.SizedBox(height: 3), pw.Text(values[index][1], style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold))]))) ]);
 
   pw.Widget _pdfInfoTable(List<List<String>> rows) => pw.Table(
         border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: .6),
@@ -494,7 +494,7 @@ class ReportService {
                   padding: const pw.EdgeInsets.all(6),
                   child: pw.Text(
                     row[0],
-                    style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     textDirection: pw.TextDirection.rtl,
                   ),
                 ),
@@ -524,13 +524,13 @@ class ReportService {
       data: rtlRows,
       tableDirection: pw.TextDirection.rtl,
       headerDirection: pw.TextDirection.rtl,
-      headerStyle: const pw.TextStyle(
+      headerStyle: pw.TextStyle(
         fontSize: 8,
         fontWeight: pw.FontWeight.bold,
         color: PdfColors.white,
       ),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-      cellStyle: const pw.TextStyle(fontSize: 8),
+      cellStyle: pw.TextStyle(fontSize: 8),
       cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 5),
       cellAlignment: pw.Alignment.centerRight,
       headerAlignment: pw.Alignment.center,

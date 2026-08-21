@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +6,7 @@ import 'package:simple_icons/simple_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/isar_models.dart';
+import '../../../core/services/file_storage_service.dart';
 import '../../../core/providers.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/async_state_view.dart';
@@ -434,9 +433,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _restoreBackup() async {
     final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('استعادة النسخة؟'), content: const Text('سيتم حذف البيانات المحلية الحالية واستبدالها بمحتوى الملف.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('متابعة'))]));
     if (confirmed != true) return;
-    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
-    if (files.isEmpty) return;
-    final bytes = await files.first.readAsBytes();
+    final file = await const FileStorageService().pickFile(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    if (file == null) return;
+    final bytes = file.bytes;
     try {
       await ref.read(appControllerProvider.notifier).restoreBackup(utf8.decode(bytes));
       if (!mounted) return;
@@ -449,7 +451,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _exportBackup() async {
     final json = await ref.read(localRepositoryProvider).exportBackupJson();
-    final path = await FilePicker.saveFile(dialogTitle: 'حفظ النسخة الاحتياطية', fileName: 'student-record-backup.json', bytes: Uint8List.fromList(utf8.encode(json)));
+    final path = await const FileStorageService().saveBytes(
+      dialogTitle: 'حفظ النسخة الاحتياطية',
+      fileName: 'student-record-backup.json',
+      bytes: utf8.encode(json),
+      allowedExtensions: ['json'],
+    );
     if (mounted && path != null) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تصدير النسخة الاحتياطية.')));
   }
 }

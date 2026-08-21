@@ -82,7 +82,7 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
             ),
             AppSpacing.compact,
             DropdownButtonFormField<String>(
-              initialValue: _classUuid,
+              value: _classUuid,
               decoration: const InputDecoration(labelText: 'تصفية الصف'),
               items: [const DropdownMenuItem(value: 'all', child: Text('كل الصفوف')), ...snapshot.classes.map((item) => DropdownMenuItem(value: item.uuid, child: Text(item.name)))],
               onChanged: (value) => setState(() {
@@ -92,7 +92,7 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
             ),
             AppSpacing.item,
             DropdownButtonFormField<String>(
-              initialValue: _sectionUuid,
+              value: _sectionUuid,
               decoration: const InputDecoration(labelText: 'تصفية الشعبة'),
               items: [
                 const DropdownMenuItem(value: 'all', child: Text('كل الشعب')),
@@ -173,7 +173,7 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                initialValue: studentUuid,
+                value: studentUuid,
                 decoration: const InputDecoration(labelText: 'الطالب'),
                 items: snapshot.students
                     .map(
@@ -189,7 +189,7 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
               ),
               AppSpacing.item,
               DropdownButtonFormField<BehaviorCategory>(
-                initialValue: category,
+                value: category,
                 decoration: const InputDecoration(labelText: 'التصنيف'),
                 items: const [
                   DropdownMenuItem(value: BehaviorCategory.negative, child: Text('سلوك سلبي')),
@@ -201,7 +201,7 @@ class _BehaviorPageState extends ConsumerState<BehaviorPage> {
               if (category == BehaviorCategory.negative) ...[
                 AppSpacing.item,
                 DropdownButtonFormField<BehaviorViolationType>(
-                  initialValue: type,
+                  value: type,
                   decoration: const InputDecoration(labelText: 'نوع المخالفة'),
                   items: const [
                     DropdownMenuItem(value: BehaviorViolationType.absence, child: Text('غياب')),
