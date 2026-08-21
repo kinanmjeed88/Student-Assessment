@@ -1,9 +1,9 @@
-name: سجل الطالب للوندوز ١٠ و ١١ - بناء Windows 10 و 11
+name: سجل-الطالب-للوندوز-١٠-و-١١ - بناء Windows 10 و 11
 
 on:
   push:
     branches:
-      - 'سجل الطالب للوندوز ١٠ و ١١'
+      - 'سجل-الطالب-للوندوز-١٠-و-١١'
     paths:
       - '**/*.dart'
       - 'assets/**'
@@ -17,7 +17,7 @@ on:
       - '.github/workflows/build-windows-10-11.yml'
   pull_request:
     branches:
-      - 'سجل الطالب للوندوز ١٠ و ١١'
+      - 'سجل-الطالب-للوندوز-١٠-و-١١'
     paths:
       - '**/*.dart'
       - 'assets/**'
@@ -101,7 +101,7 @@ jobs:
       - name: Upload Windows 10 and 11 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: سجل الطالب للوندوز ١٠ و ١١-${{ github.run_number }}
+          name: سجل-الطالب-للوندوز-١٠-و-١١-${{ github.run_number }}
           path: student-assessment-windows-10-11.zip
           if-no-files-found: error
           retention-days: 30
