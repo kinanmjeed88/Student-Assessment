@@ -1,0 +1,107 @@
+name: سجل الطالب للوندوز ١٠ و ١١ - بناء Windows 10 و 11
+
+on:
+  push:
+    branches:
+      - 'سجل الطالب للوندوز ١٠ و ١١'
+    paths:
+      - '**/*.dart'
+      - 'assets/**'
+      - 'lib/**'
+      - 'windows/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'analysis_options.yaml'
+      - 'scripts/**'
+      - '.github/workflows/build-windows-10-11.yml'
+  pull_request:
+    branches:
+      - 'سجل الطالب للوندوز ١٠ و ١١'
+    paths:
+      - '**/*.dart'
+      - 'assets/**'
+      - 'lib/**'
+      - 'windows/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'analysis_options.yaml'
+      - 'scripts/**'
+      - '.github/workflows/build-windows-10-11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: سجل-الطالب-للوندوز-١٠-و-١١-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows-10-11:
+    name: Analyze, test and build Windows 10/11 release
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: stable
+          cache: true
+
+      - name: Verify Flutter toolchain
+        shell: pwsh
+        run: flutter --version
+
+      - name: Install Dart dependencies
+        shell: pwsh
+        run: flutter pub get
+
+      - name: Generate Isar code
+        shell: pwsh
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run static checks
+        shell: pwsh
+        run: ./scripts/static_check.sh
+
+      - name: Analyze Dart code
+        shell: pwsh
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        shell: pwsh
+        run: flutter test
+
+      - name: Build Windows release
+        shell: pwsh
+        run: flutter build windows --release
+
+      - name: Verify Windows release
+        shell: pwsh
+        run: |
+          $release = 'build/windows/x64/runner/Release'
+          if (-not (Test-Path "$release/almoktaber.exe")) { throw 'Missing almoktaber.exe' }
+          if (-not (Test-Path "$release/flutter_windows.dll")) { throw 'Missing flutter_windows.dll' }
+          if (-not (Test-Path "$release/data/app.so")) { throw 'Missing data/app.so' }
+          if (-not (Test-Path "$release/data/flutter_assets/assets/images/splash_icon.png")) { throw 'Missing shared application image' }
+
+      - name: Package Windows 10 and 11 release
+        shell: pwsh
+        run: |
+          $release = 'build/windows/x64/runner/Release'
+          Compress-Archive -Path "$release/*" -DestinationPath 'student-assessment-windows-10-11.zip' -Force
+
+      - name: Upload Windows 10 and 11 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: سجل الطالب للوندوز ١٠ و ١١-${{ github.run_number }}
+          path: student-assessment-windows-10-11.zip
+          if-no-files-found: error
+          retention-days: 30

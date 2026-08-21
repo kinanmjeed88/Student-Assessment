@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feat/windows-10-11-notifications
     paths:
       - '**/*.dart'
       - 'android/**'
