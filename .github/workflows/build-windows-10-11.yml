@@ -105,3 +105,5 @@ jobs:
           path: student-assessment-windows-10-11.zip
           if-no-files-found: error
           retention-days: 30
+
+# هذا Workflow مرتبط مباشرة بفرع سجل-الطالب-للوندوز-١٠-و-١١ فقط.
