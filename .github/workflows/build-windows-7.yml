@@ -12,6 +12,7 @@ on:
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - 'analysis_options.yaml'
+      - 'windows/compat/**'
       - '.github/workflows/build-windows-7.yml'
   pull_request:
     branches:
@@ -24,6 +25,7 @@ on:
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - 'analysis_options.yaml'
+      - 'windows/compat/**'
       - '.github/workflows/build-windows-7.yml'
   workflow_dispatch:
 
@@ -83,6 +85,13 @@ jobs:
         shell: pwsh
         run: flutter build windows --release
 
+      - name: Add Windows 7 API compatibility shim
+        shell: pwsh
+        run: |
+          $source = 'windows/compat/api-ms-win-core-synch-l1-2-0.dll'
+          if (-not (Test-Path $source)) { throw "Missing Windows 7 synchronization shim: $source" }
+          Copy-Item $source 'build/windows/runner/Release/api-ms-win-core-synch-l1-2-0.dll' -Force
+
       - name: Package Windows 7 release
         shell: pwsh
         run: |
@@ -92,6 +101,7 @@ jobs:
           )
           $source = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $source) { throw "Build output not found. Checked: $($candidates -join ', ')" }
+          if (-not (Test-Path "$source/api-ms-win-core-synch-l1-2-0.dll")) { throw 'Windows 7 synchronization shim was not packaged' }
           Compress-Archive -Path "$source/*" -DestinationPath 'student-assessment-windows-7.zip' -Force
 
       - name: Upload Windows 7 artifact
