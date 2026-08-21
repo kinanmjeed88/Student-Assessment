@@ -66,11 +66,13 @@ jobs:
           if (Test-Path 'android') { throw 'Android platform must not be included in the Windows 7 branch' }
           if (Test-Path 'msix.yaml') { throw 'MSIX packaging is intentionally disabled for Windows 7' }
 
-      - name: Run static checks
+      - name: Run Windows 7 branch checks
         shell: pwsh
         run: |
-          if (Test-Path 'scripts/static_check.sh') {
-            bash scripts/static_check.sh
+          $forbidden = @('excel_plus', 'surfaceContainerHighest', 'WidgetStatePropertyAll', 'withValues(', 'FillPatternType')
+          foreach ($term in $forbidden) {
+            $matches = Get-ChildItem -Path lib -Recurse -Filter '*.dart' | Select-String -SimpleMatch $term
+            if ($matches) { throw "Unsupported API found: $term" }
           }
 
       - name: Analyze Dart code
