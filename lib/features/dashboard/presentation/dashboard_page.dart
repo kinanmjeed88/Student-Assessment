@@ -157,6 +157,17 @@ class _DashboardHeader extends StatelessWidget {
       children: [
         Row(
           children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.asset(
+                'assets/images/splash_icon.png',
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+                semanticLabel: 'شعار سجل الطالب',
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'سجل الطالب',
