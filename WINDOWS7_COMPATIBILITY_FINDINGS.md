@@ -70,3 +70,9 @@ The hosted `isar_community 3.3.1` package declares a broad SDK constraint but it
 ## Final CI verification
 
 GitHub Actions run `32498306117` completed successfully on commit `59346445c05d67800c0cdac4eb4a7b30de7bdc82`: https://github.com/kinanmjeed88/Student-Assessment/actions/runs/32498306117. The run passed dependency installation, Windows 7 branch checks, Dart analysis, `flutter build windows --release`, packaging, and artifact upload. The artifact is `student-assessment-windows-7-8`; its ZIP was downloaded and passed `unzip -t` validation locally. The generated Flutter 3.12 output is packaged from `build/windows/runner/Release`.
+
+## Fix for Windows 7 SP1 x64 launch rejection
+
+The user's system information confirms Windows 7 Ultimate SP1 x64, so the earlier rejection was not an x86/x64 mismatch. PE inspection identified that `libisar.dll` imported `WaitOnAddress`, `WakeByAddressAll`, and `WakeByAddressSingle` from `api-ms-win-core-synch-l1-2-0.dll`; Microsoft documents these APIs as requiring Windows 8 or later. The Windows 7 branch now packages an x64 compatibility shim named `api-ms-win-core-synch-l1-2-0.dll` next to `almoktaber.exe` and `libisar.dll`. The shim implements the required address-wait functions using Windows 7 condition variables and exports the required symbols.
+
+GitHub Actions run `32502191095` passed all checks, analysis, Windows release build, shim packaging, ZIP creation, and artifact upload: https://github.com/kinanmjeed88/Student-Assessment/actions/runs/32502191095. The updated artifact is `student-assessment-windows-7-9`.
