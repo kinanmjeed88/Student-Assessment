@@ -13,6 +13,7 @@ on:
       - 'pubspec.lock'
       - 'analysis_options.yaml'
       - 'windows/compat/**'
+      - 'third_party/**'
       - '.github/workflows/build-windows-7.yml'
   pull_request:
     branches:
@@ -26,6 +27,7 @@ on:
       - 'pubspec.lock'
       - 'analysis_options.yaml'
       - 'windows/compat/**'
+      - 'third_party/**'
       - '.github/workflows/build-windows-7.yml'
   workflow_dispatch:
 
@@ -85,12 +87,17 @@ jobs:
         shell: pwsh
         run: flutter build windows --release
 
-      - name: Add Windows 7 API compatibility shim
+      - name: Add Windows 7 API compatibility shims
         shell: pwsh
         run: |
-          $source = 'windows/compat/api-ms-win-core-synch-l1-2-0.dll'
-          if (-not (Test-Path $source)) { throw "Missing Windows 7 synchronization shim: $source" }
-          Copy-Item $source 'build/windows/runner/Release/api-ms-win-core-synch-l1-2-0.dll' -Force
+          $release = 'build/windows/runner/Release'
+          $syncShim = 'windows/compat/api-ms-win-core-synch-l1-2-0.dll'
+          $bcryptShim = 'windows/compat/win7-bcrypt-shim.dll'
+          foreach ($source in @($syncShim, $bcryptShim)) {
+            if (-not (Test-Path $source)) { throw "Missing Windows 7 compatibility shim: $source" }
+            Copy-Item $source $release -Force
+          }
+          if (-not (Test-Path "$release/libisar.dll")) { throw 'libisar.dll was not copied into the Windows release' }
 
       - name: Package Windows 7 release
         shell: pwsh
@@ -101,7 +108,9 @@ jobs:
           )
           $source = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $source) { throw "Build output not found. Checked: $($candidates -join ', ')" }
-          if (-not (Test-Path "$source/api-ms-win-core-synch-l1-2-0.dll")) { throw 'Windows 7 synchronization shim was not packaged' }
+          foreach ($required in @('api-ms-win-core-synch-l1-2-0.dll', 'win7-bcrypt-shim.dll', 'libisar.dll')) {
+            if (-not (Test-Path "$source/$required")) { throw "Required Windows 7 file was not packaged: $required" }
+          }
           Compress-Archive -Path "$source/*" -DestinationPath 'student-assessment-windows-7.zip' -Force
 
       - name: Upload Windows 7 artifact
