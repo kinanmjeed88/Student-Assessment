@@ -21,6 +21,13 @@ class NotificationService {
     importance: Importance.max,
   );
 
+  static const _windowsInitializationSettings =
+      WindowsInitializationSettings(
+    appName: 'سجل الطالب',
+    appUserModelId: 'AlMoktaber.StudentRecord',
+    guid: '7e2c3b7a-3d2c-4e0d-a3d9-0d2c5d2a6b31',
+  );
+
   void Function(String? payload)? onNotificationTap;
 
   static int behaviorNotificationId(String studentUuid) {
@@ -38,9 +45,10 @@ class NotificationService {
     const settings = InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(),
+      windows: _windowsInitializationSettings,
     );
     await _plugin.initialize(
-      settings,
+      settings: settings,
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
 
@@ -81,12 +89,16 @@ class NotificationService {
         playSound: true,
         enableVibration: true,
       ),
+      windows: const WindowsNotificationDetails(
+        duration: WindowsNotificationDuration.long,
+        scenario: WindowsNotificationScenario.reminder,
+      ),
     );
     await _plugin.show(
-      behaviorNotificationId(studentUuid),
-      title,
-      body,
-      details,
+      id: behaviorNotificationId(studentUuid),
+      title: title,
+      body: body,
+      notificationDetails: details,
       payload: 'student:$studentUuid',
     );
   }
@@ -105,19 +117,22 @@ class NotificationService {
         importance: Importance.high,
         priority: Priority.high,
       ),
+      windows: const WindowsNotificationDetails(
+        duration: WindowsNotificationDuration.long,
+        scenario: WindowsNotificationScenario.reminder,
+      ),
     );
     await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(scheduledAt, tz.local),
-      details,
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(scheduledAt, tz.local),
+      notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
-  Future<void> cancel(int id) => _plugin.cancel(id);
+  Future<void> cancel(int id) => _plugin.cancel(id: id);
 
   Future<void> cancelAll() => _plugin.cancelAll();
 

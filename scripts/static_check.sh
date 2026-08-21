@@ -21,8 +21,8 @@ if ! grep -q '^  isar_community:' pubspec.yaml || ! grep -q '^  isar_community_f
   echo 'Isar dependencies are missing.'
   fail=1
 fi
-if ! grep -q '^  flutter_local_notifications: 17.2.4' pubspec.yaml; then
-  echo 'Pinned flutter_local_notifications 17.2.4 is missing.'
+if ! grep -q '^  flutter_local_notifications: 22.3.0' pubspec.yaml; then
+  echo 'Pinned flutter_local_notifications 22.3.0 is missing.'
   fail=1
 fi
 if ! grep -q "applicationId 'com.almoktaber'" android/app/build.gradle || ! grep -q "namespace 'com.almoktaber'" android/app/build.gradle; then
