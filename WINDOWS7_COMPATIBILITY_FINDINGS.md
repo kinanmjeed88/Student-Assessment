@@ -58,3 +58,11 @@ Local validation completed with Flutter 3.12 analysis: no errors were reported; 
 | Database | `isar_community 3.3.1` and `isar_community_flutter_libs 3.3.1` |
 | Notifications | Disabled through a no-op service |
 | Packaging | ZIP of the Windows release directory; no MSIX |
+
+## CI runner note
+
+GitHub officially retired the `windows-2019` hosted runner on 2025-06-30 and recommends `windows-2022` or `windows-2025` instead: https://github.blog/changelog/2025-04-15-upcoming-breaking-changes-and-releases-for-github-actions/ and https://github.com/actions/runner-images/issues/12045. The workflow therefore uses `windows-2022`; `windows-latest` was not suitable for Flutter 3.12 because the current latest image exposed a newer Visual Studio installation that Flutter 3.12 could not select.
+
+## Isar workaround for Dart 3.1
+
+The hosted `isar_community 3.3.1` package declares a broad SDK constraint but its native Dart implementation uses `Pointer + offset`, which is not available to the Dart 3.1 toolchain. This Windows 7 branch vendors the package under `third_party/isar_community` and replaces only those pointer-offset expressions with `Pointer.elementAt`, while retaining the official `isar_community_flutter_libs 3.3.1` Windows native DLL through a local path package. The application API and generated schemas remain unchanged.
