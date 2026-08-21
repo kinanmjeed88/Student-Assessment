@@ -1,9 +1,9 @@
-name: Windows 7 build
+name: سجل الطالب للوندوز ٧ - بناء Windows 7
 
 on:
   push:
     branches:
-      - feat/windows-7-support
+      - 'سجل الطالب للوندوز ٧'
     paths:
       - '**/*.dart'
       - 'assets/**'
@@ -17,7 +17,7 @@ on:
       - '.github/workflows/build-windows-7.yml'
   pull_request:
     branches:
-      - feat/windows-7-support
+      - 'سجل الطالب للوندوز ٧'
     paths:
       - '**/*.dart'
       - 'assets/**'
@@ -35,7 +35,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-7-${{ github.ref }}
+  group: سجل-الطالب-للوندوز-٧-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -116,7 +116,7 @@ jobs:
       - name: Upload Windows 7 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: student-assessment-windows-7-${{ github.run_number }}
+          name: سجل الطالب للوندوز ٧-${{ github.run_number }}
           path: student-assessment-windows-7.zip
           if-no-files-found: error
           retention-days: 30
