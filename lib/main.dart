@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/providers.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/app_scroll_behavior.dart';
 import 'features/dashboard/presentation/app_shell.dart';
 import 'features/students/presentation/student_details_page.dart';
 
@@ -62,6 +64,9 @@ class AlMoktaberApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'سجل الطالب',
       theme: AppTheme.light(),
+      scrollBehavior: defaultTargetPlatform == TargetPlatform.windows
+          ? const AppScrollBehavior()
+          : null,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],
       localizationsDelegates: const [
