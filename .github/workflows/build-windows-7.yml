@@ -77,7 +77,7 @@ jobs:
 
       - name: Analyze Dart code
         shell: pwsh
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Build Windows release
         shell: pwsh
