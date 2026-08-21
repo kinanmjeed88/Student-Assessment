@@ -7,6 +7,8 @@ on:
     paths:
       - '**/*.dart'
       - 'android/**'
+      - 'windows/**'
+      - 'WINDOWS_NOTIFICATIONS.md'
       - 'assets/**'
       - 'lib/**'
       - 'test/**'
@@ -21,6 +23,8 @@ on:
     paths:
       - '**/*.dart'
       - 'android/**'
+      - 'windows/**'
+      - 'WINDOWS_NOTIFICATIONS.md'
       - 'assets/**'
       - 'lib/**'
       - 'test/**'
@@ -152,3 +156,45 @@ jobs:
       - name: Clean signing files
         if: always()
         run: rm -f android/almoktaber-release.keystore android/key.properties
+
+  build-flutter-windows:
+    name: Analyze, test and Windows release build
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: stable
+          cache: true
+
+      - name: Verify Flutter toolchain
+        run: flutter --version
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      - name: Generate Isar code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run static analysis
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Upload Windows release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-record-windows-${{ github.run_number }}
+          path: build/windows/x64/runner/Release/**
+          if-no-files-found: error
+          retention-days: 30
