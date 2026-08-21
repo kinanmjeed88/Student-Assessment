@@ -66,3 +66,7 @@ GitHub officially retired the `windows-2019` hosted runner on 2025-06-30 and rec
 ## Isar workaround for Dart 3.1
 
 The hosted `isar_community 3.3.1` package declares a broad SDK constraint but its native Dart implementation uses `Pointer + offset`, which is not available to the Dart 3.1 toolchain. This Windows 7 branch vendors the package under `third_party/isar_community` and replaces only those pointer-offset expressions with `Pointer.elementAt`, while retaining the official `isar_community_flutter_libs 3.3.1` Windows native DLL through a local path package. The application API and generated schemas remain unchanged.
+
+## Final CI verification
+
+GitHub Actions run `32498306117` completed successfully on commit `59346445c05d67800c0cdac4eb4a7b30de7bdc82`: https://github.com/kinanmjeed88/Student-Assessment/actions/runs/32498306117. The run passed dependency installation, Windows 7 branch checks, Dart analysis, `flutter build windows --release`, packaging, and artifact upload. The artifact is `student-assessment-windows-7-8`; its ZIP was downloaded and passed `unzip -t` validation locally. The generated Flutter 3.12 output is packaged from `build/windows/runner/Release`.
