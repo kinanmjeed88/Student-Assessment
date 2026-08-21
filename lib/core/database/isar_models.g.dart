@@ -13,7 +13,7 @@ extension GetAppSettingsCollection on Isar {
   IsarCollection<AppSettings> get appSettings => this.collection();
 }
 
-const AppSettingsSchema = CollectionSchema(
+final AppSettingsSchema = CollectionSchema(
   name: r'AppSettings',
   id: -5633561779022347008,
   properties: {
@@ -1529,7 +1529,7 @@ extension GetSchoolClassCollection on Isar {
   IsarCollection<SchoolClass> get schoolClasses => this.collection();
 }
 
-const SchoolClassSchema = CollectionSchema(
+final SchoolClassSchema = CollectionSchema(
   name: r'SchoolClass',
   id: -7752351258327029191,
   properties: {
@@ -2875,7 +2875,7 @@ extension GetSectionCollection on Isar {
   IsarCollection<Section> get sections => this.collection();
 }
 
-const SectionSchema = CollectionSchema(
+final SectionSchema = CollectionSchema(
   name: r'Section',
   id: 7698308494449530003,
   properties: {
@@ -4079,7 +4079,7 @@ extension GetStudentCollection on Isar {
   IsarCollection<Student> get students => this.collection();
 }
 
-const StudentSchema = CollectionSchema(
+final StudentSchema = CollectionSchema(
   name: r'Student',
   id: -252783119861727542,
   properties: {
@@ -7047,7 +7047,7 @@ extension GetAttendanceRecordCollection on Isar {
   IsarCollection<AttendanceRecord> get attendanceRecords => this.collection();
 }
 
-const AttendanceRecordSchema = CollectionSchema(
+final AttendanceRecordSchema = CollectionSchema(
   name: r'AttendanceRecord',
   id: 3264724351450497341,
   properties: {
@@ -8510,7 +8510,7 @@ extension GetGradeFieldCollection on Isar {
   IsarCollection<GradeField> get gradeFields => this.collection();
 }
 
-const GradeFieldSchema = CollectionSchema(
+final GradeFieldSchema = CollectionSchema(
   name: r'GradeField',
   id: -5571061372671033279,
   properties: {
@@ -9873,7 +9873,7 @@ extension GetGradeCollection on Isar {
   IsarCollection<Grade> get grades => this.collection();
 }
 
-const GradeSchema = CollectionSchema(
+final GradeSchema = CollectionSchema(
   name: r'Grade',
   id: -5717027466259005798,
   properties: {
@@ -11171,7 +11171,7 @@ extension GetBehaviorRecordCollection on Isar {
   IsarCollection<BehaviorRecord> get behaviorRecords => this.collection();
 }
 
-const BehaviorRecordSchema = CollectionSchema(
+final BehaviorRecordSchema = CollectionSchema(
   name: r'BehaviorRecord',
   id: 3057964306232873393,
   properties: {
@@ -13232,7 +13232,7 @@ extension GetStudentNoteCollection on Isar {
   IsarCollection<StudentNote> get studentNotes => this.collection();
 }
 
-const StudentNoteSchema = CollectionSchema(
+final StudentNoteSchema = CollectionSchema(
   name: r'StudentNote',
   id: -3678221891096978829,
   properties: {
@@ -14851,7 +14851,7 @@ extension GetStudentImportRecordCollection on Isar {
       this.collection();
 }
 
-const StudentImportRecordSchema = CollectionSchema(
+final StudentImportRecordSchema = CollectionSchema(
   name: r'StudentImportRecord',
   id: -3371066753109957667,
   properties: {
@@ -16705,7 +16705,7 @@ extension StudentImportRecordQueryProperty
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
-const PenaltyRulesSchema = Schema(
+final PenaltyRulesSchema = Schema(
   name: r'PenaltyRules',
   id: -859883423286643136,
   properties: {
