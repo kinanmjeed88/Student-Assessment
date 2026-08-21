@@ -86,8 +86,12 @@ jobs:
       - name: Package Windows 7 release
         shell: pwsh
         run: |
-          $source = 'build/windows/x64/runner/Release'
-          if (-not (Test-Path $source)) { throw "Build output not found: $source" }
+          $candidates = @(
+            'build/windows/runner/Release',
+            'build/windows/x64/runner/Release'
+          )
+          $source = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $source) { throw "Build output not found. Checked: $($candidates -join ', ')" }
           Compress-Archive -Path "$source/*" -DestinationPath 'student-assessment-windows-7.zip' -Force
 
       - name: Upload Windows 7 artifact
