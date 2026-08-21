@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -6,6 +8,7 @@ class NotificationService {
   NotificationService(this._plugin);
 
   final FlutterLocalNotificationsPlugin _plugin;
+  bool _initialized = false;
 
   static const _channel = AndroidNotificationChannel(
     'almoktaber_follow_up',
@@ -21,8 +24,7 @@ class NotificationService {
     importance: Importance.max,
   );
 
-  static const _windowsInitializationSettings =
-      WindowsInitializationSettings(
+  static const _windowsInitializationSettings = WindowsInitializationSettings(
     appName: 'سجل الطالب',
     appUserModelId: 'AlMoktaber.StudentRecord',
     guid: '7e2c3b7a-3d2c-4e0d-a3d9-0d2c5d2a6b31',
@@ -39,35 +41,56 @@ class NotificationService {
   }
 
   Future<void> initialize() async {
-    tz.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Asia/Riyadh'));
+    try {
+      tz.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation('Asia/Riyadh'));
 
-    const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-      iOS: DarwinInitializationSettings(),
-      windows: _windowsInitializationSettings,
-    );
-    await _plugin.initialize(
-      settings: settings,
-      onDidReceiveNotificationResponse: _onNotificationResponse,
-    );
+      const settings = InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(),
+        windows: _windowsInitializationSettings,
+      );
+      await _plugin.initialize(
+        settings: settings,
+        onDidReceiveNotificationResponse: _onNotificationResponse,
+      );
 
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await android?.createNotificationChannel(_channel);
-    await android?.createNotificationChannel(_behaviorChannel);
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await android?.createNotificationChannel(_channel);
+      await android?.createNotificationChannel(_behaviorChannel);
+      _initialized = true;
+    } catch (error, stackTrace) {
+      // A Wine/Winlator environment may not expose the Windows Toast APIs.
+      // Notifications must never prevent the application UI from starting.
+      _initialized = false;
+      developer.log(
+        'Notification initialization failed; continuing without notifications.',
+        name: 'NotificationService',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<bool> requestNotificationPermission() async {
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    if (!_initialized) return false;
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     return await android?.requestNotificationsPermission() ?? true;
   }
 
   Future<bool> requestPermissions() async {
+    if (!_initialized) return false;
     final notifications = await requestNotificationPermission();
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.requestExactAlarmsPermission();
     return notifications;
   }
@@ -77,7 +100,7 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    if (!await requestNotificationPermission()) return;
+    if (!_initialized || !await requestNotificationPermission()) return;
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _behaviorChannel.id,
@@ -109,6 +132,7 @@ class NotificationService {
     required String body,
     required DateTime scheduledAt,
   }) async {
+    if (!_initialized) return;
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _channel.id,
@@ -132,9 +156,15 @@ class NotificationService {
     );
   }
 
-  Future<void> cancel(int id) => _plugin.cancel(id: id);
+  Future<void> cancel(int id) async {
+    if (!_initialized) return;
+    await _plugin.cancel(id: id);
+  }
 
-  Future<void> cancelAll() => _plugin.cancelAll();
+  Future<void> cancelAll() async {
+    if (!_initialized) return;
+    await _plugin.cancelAll();
+  }
 
   void _onNotificationResponse(NotificationResponse response) {
     onNotificationTap?.call(response.payload);
