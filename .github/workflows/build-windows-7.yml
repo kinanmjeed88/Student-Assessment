@@ -1,9 +1,9 @@
-name: سجل الطالب للوندوز ٧ - بناء Windows 7
+name: سجل-الطالب-للوندوز-٧ - بناء Windows 7
 
 on:
   push:
     branches:
-      - 'سجل الطالب للوندوز ٧'
+      - 'سجل-الطالب-للوندوز-٧'
     paths:
       - '**/*.dart'
       - 'assets/**'
@@ -17,7 +17,7 @@ on:
       - '.github/workflows/build-windows-7.yml'
   pull_request:
     branches:
-      - 'سجل الطالب للوندوز ٧'
+      - 'سجل-الطالب-للوندوز-٧'
     paths:
       - '**/*.dart'
       - 'assets/**'
@@ -116,7 +116,7 @@ jobs:
       - name: Upload Windows 7 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: سجل الطالب للوندوز ٧-${{ github.run_number }}
+          name: سجل-الطالب-للوندوز-٧-${{ github.run_number }}
           path: student-assessment-windows-7.zip
           if-no-files-found: error
           retention-days: 30
