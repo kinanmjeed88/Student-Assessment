@@ -3,3 +3,21 @@ EXPORTS
     WaitOnAddress
     WakeByAddressAll
     WakeByAddressSingle
+    CancelWaitableTimer=KERNEL32.CancelWaitableTimer
+    CreateEventW=KERNEL32.CreateEventW
+    EnterCriticalSection=KERNEL32.EnterCriticalSection
+    InitializeConditionVariable=KERNEL32.InitializeConditionVariable
+    InitializeCriticalSection=KERNEL32.InitializeCriticalSection
+    InitializeCriticalSectionEx=KERNEL32.InitializeCriticalSectionEx
+    LeaveCriticalSection=KERNEL32.LeaveCriticalSection
+    ResetEvent=KERNEL32.ResetEvent
+    SetEvent=KERNEL32.SetEvent
+    SetWaitableTimer=KERNEL32.SetWaitableTimer
+    Sleep=KERNEL32.Sleep
+    SleepConditionVariableCS=KERNEL32.SleepConditionVariableCS
+    TryEnterCriticalSection=KERNEL32.TryEnterCriticalSection
+    WakeAllConditionVariable=KERNEL32.WakeAllConditionVariable
+    ReleaseSemaphore=KERNEL32.ReleaseSemaphore
+    WaitForMultipleObjectsEx=KERNEL32.WaitForMultipleObjectsEx
+    WaitForSingleObject=KERNEL32.WaitForSingleObject
+    WaitForSingleObjectEx=KERNEL32.WaitForSingleObjectEx
