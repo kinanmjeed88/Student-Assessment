@@ -90,6 +90,7 @@ jobs:
           if (-not (Test-Path "$release/almoktaber.exe")) { throw 'Missing almoktaber.exe' }
           if (-not (Test-Path "$release/flutter_windows.dll")) { throw 'Missing flutter_windows.dll' }
           if (-not (Test-Path "$release/data/app.so")) { throw 'Missing data/app.so' }
+          if (-not (Test-Path 'windows/runner/resources/app_icon.ico')) { throw 'Missing application icon resource' }
           if (-not (Test-Path "$release/data/flutter_assets/assets/images/splash_icon.png")) { throw 'Missing shared application image' }
 
       - name: Package Windows 10 and 11 release
