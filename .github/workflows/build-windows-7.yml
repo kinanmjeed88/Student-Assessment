@@ -69,6 +69,7 @@ jobs:
           if (-not (Test-Path 'windows/CMakeLists.txt')) { throw 'Missing Windows platform files' }
           if (Test-Path 'android') { throw 'Android platform must not be included in the Windows 7 branch' }
           if (Test-Path 'msix.yaml') { throw 'MSIX packaging is intentionally disabled for Windows 7' }
+          if (-not (Test-Path 'windows/runner/resources/app_icon.ico')) { throw 'Missing application icon resource' }
 
       - name: Run Windows 7 branch checks
         shell: pwsh
