@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/attendance/attendance_summary.dart';
 import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
@@ -70,15 +71,14 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     final behaviors = snapshot.behaviorsFor(student.uuid)..sort((a, b) => b.date.compareTo(a.date));
     final notes = snapshot.notesFor(student.uuid)..sort((a, b) => b.date.compareTo(a.date));
     final summary = calculateBehaviorSummary(records: behaviors, settings: snapshot.settings);
-    final absentCount = attendance.where((item) => item.status == AttendanceStatus.absent).length;
+    final attendanceSummary = calculateAttendanceSummary(records: attendance, settings: snapshot.settings);
     final average = _average(snapshot, grades);
     final profileHeader = _ProfileHeader(
       student: student,
       schoolClass: schoolClass?.name,
       section: section?.name,
       summary: summary,
-      attendanceCount: attendance.where((item) => item.status == AttendanceStatus.present).length,
-      absentCount: absentCount,
+      attendance: attendanceSummary,
       average: average,
       onExportExcel: () => _exportExcel(context),
       onExportPdf: () => _exportPdf(context),
@@ -537,14 +537,13 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendanceCount, required this.absentCount, required this.average, required this.onExportExcel, required this.onExportPdf});
+  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendance, required this.average, required this.onExportExcel, required this.onExportPdf});
 
   final Student student;
   final String? schoolClass;
   final String? section;
   final BehaviorSummary summary;
-  final int attendanceCount;
-  final int absentCount;
+  final AttendanceSummary attendance;
   final double? average;
   final VoidCallback onExportExcel;
   final VoidCallback onExportPdf;
@@ -632,14 +631,44 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
         ),
+        if (attendance.hasAlert) ...[
+          const SizedBox(height: 10),
+          Card(
+            color: attendance.dismissed ? scheme.errorContainer : scheme.tertiaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(Icons.event_busy_outlined, color: attendance.dismissed ? scheme.error : scheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: Text(attendance.dismissed ? 'إشعار فصل بالغياب' : 'تنبيه غياب', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                            Text('الغياب ${attendance.absentCount} من ${attendance.dismissalThreshold}', style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text('${attendance.excusedCount} غياب بعذر  •  ${attendance.lateCount} تأخر  •  ${attendance.leaveCount} إجازة', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
         Row(
           children: [
             Expanded(child: _Metric(label: 'متوسط الدرجات', value: average == null ? '—' : '${average!.toStringAsFixed(0)}%', icon: Icons.grade_outlined)),
             const SizedBox(width: 8),
-            Expanded(child: _Metric(label: 'الغياب', value: '$absentCount', icon: Icons.event_busy_outlined)),
+            Expanded(child: _Metric(label: 'الغياب بدون عذر', value: '${attendance.absentCount}', icon: Icons.event_busy_outlined)),
             const SizedBox(width: 8),
-            Expanded(child: _Metric(label: 'الحضور', value: '$attendanceCount', icon: Icons.fact_check_outlined)),
+            Expanded(child: _Metric(label: 'الحضور', value: '${attendance.presentCount}', icon: Icons.fact_check_outlined)),
           ],
         ),
         const SizedBox(height: 10),

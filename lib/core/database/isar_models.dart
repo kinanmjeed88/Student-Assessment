@@ -58,6 +58,12 @@ class AppSettings {
   bool institutionLineAnimated = false;
   double institutionLineSpeed = 40;
 
+  /// عدد أيام الغياب بدون عذر الذي يبدأ عنده إشعار التنبيه.
+  int absenceWarningThreshold = AbsenceThresholds.defaultWarning;
+
+  /// عدد أيام الغياب بدون عذر الذي يُعد بلوغه حد فصل.
+  int absenceDismissalThreshold = AbsenceThresholds.defaultDismissal;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'schoolName': schoolName,
@@ -69,9 +75,58 @@ class AppSettings {
           'warningThreshold': warningThreshold,
           'penalties': penalties.toJson(),
         },
+        'attendance': {
+          'warningThreshold': absenceWarningThreshold,
+          'dismissalThreshold': absenceDismissalThreshold,
+        },
         'institutionLineAnimated': institutionLineAnimated,
         'institutionLineSpeed': institutionLineSpeed,
       };
+}
+
+/// الحدود الافتراضية لإشعارات الغياب بوحدة اليوم، مع أدوات التحقق والضبط.
+abstract final class AbsenceThresholds {
+  /// بداية إشعار التنبيه بالغياب.
+  static const int defaultWarning = 5;
+
+  /// بداية إشعار الفصل بالغياب.
+  static const int defaultDismissal = 10;
+
+  /// أصغر قيمة مقبولة لحدود الغياب بالأيام.
+  static const int minimum = 1;
+
+  /// حد التنبيه مع الرجوع إلى الافتراضي عند غياب القيمة في بيانات قديمة.
+  static int warningOf(AppSettings settings) =>
+      settings.absenceWarningThreshold >= minimum
+          ? settings.absenceWarningThreshold
+          : defaultWarning;
+
+  /// حد الفصل مع الرجوع إلى الافتراضي عند غياب القيمة في بيانات قديمة.
+  static int dismissalOf(AppSettings settings) =>
+      settings.absenceDismissalThreshold >= minimum
+          ? settings.absenceDismissalThreshold
+          : defaultDismissal;
+
+  /// يعيد ضبط حدود الغياب غير الصالحة أو المتعارضة.
+  ///
+  /// تُستخدم عند تحميل البيانات القديمة أو استعادتها من نسخة احتياطية، وتعيد
+  /// `true` عندما تُعدَّل القيم فعلياً حتى تُحفظ في قاعدة البيانات.
+  static bool normalize(AppSettings settings) {
+    var changed = false;
+    if (settings.absenceWarningThreshold < minimum) {
+      settings.absenceWarningThreshold = defaultWarning;
+      changed = true;
+    }
+    if (settings.absenceDismissalThreshold < minimum) {
+      settings.absenceDismissalThreshold = defaultDismissal;
+      changed = true;
+    }
+    if (settings.absenceWarningThreshold > settings.absenceDismissalThreshold) {
+      settings.absenceDismissalThreshold = settings.absenceWarningThreshold;
+      changed = true;
+    }
+    return changed;
+  }
 }
 
 @Collection(accessor: 'schoolClasses')

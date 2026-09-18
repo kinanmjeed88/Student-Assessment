@@ -17,46 +17,56 @@ const AppSettingsSchema = CollectionSchema(
   name: r'AppSettings',
   id: -5633561779022347008,
   properties: {
-    r'academicYear': PropertySchema(
+    r'absenceDismissalThreshold': PropertySchema(
       id: 0,
+      name: r'absenceDismissalThreshold',
+      type: IsarType.long,
+    ),
+    r'absenceWarningThreshold': PropertySchema(
+      id: 1,
+      name: r'absenceWarningThreshold',
+      type: IsarType.long,
+    ),
+    r'academicYear': PropertySchema(
+      id: 2,
       name: r'academicYear',
       type: IsarType.string,
     ),
     r'dismissalThreshold': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'dismissalThreshold',
       type: IsarType.double,
     ),
     r'institutionLineAnimated': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'institutionLineAnimated',
       type: IsarType.bool,
     ),
     r'institutionLineSpeed': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'institutionLineSpeed',
       type: IsarType.double,
     ),
     r'penalties': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'penalties',
       type: IsarType.object,
 
       target: r'PenaltyRules',
     ),
     r'schoolName': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'schoolName',
       type: IsarType.string,
     ),
-    r'stage': PropertySchema(id: 6, name: r'stage', type: IsarType.string),
+    r'stage': PropertySchema(id: 8, name: r'stage', type: IsarType.string),
     r'teacherName': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'teacherName',
       type: IsarType.string,
     ),
     r'warningThreshold': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'warningThreshold',
       type: IsarType.double,
     ),
@@ -103,20 +113,22 @@ void _appSettingsSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.academicYear);
-  writer.writeDouble(offsets[1], object.dismissalThreshold);
-  writer.writeBool(offsets[2], object.institutionLineAnimated);
-  writer.writeDouble(offsets[3], object.institutionLineSpeed);
+  writer.writeLong(offsets[0], object.absenceDismissalThreshold);
+  writer.writeLong(offsets[1], object.absenceWarningThreshold);
+  writer.writeString(offsets[2], object.academicYear);
+  writer.writeDouble(offsets[3], object.dismissalThreshold);
+  writer.writeBool(offsets[4], object.institutionLineAnimated);
+  writer.writeDouble(offsets[5], object.institutionLineSpeed);
   writer.writeObject<PenaltyRules>(
-    offsets[4],
+    offsets[6],
     allOffsets,
     PenaltyRulesSchema.serialize,
     object.penalties,
   );
-  writer.writeString(offsets[5], object.schoolName);
-  writer.writeString(offsets[6], object.stage);
-  writer.writeString(offsets[7], object.teacherName);
-  writer.writeDouble(offsets[8], object.warningThreshold);
+  writer.writeString(offsets[7], object.schoolName);
+  writer.writeString(offsets[8], object.stage);
+  writer.writeString(offsets[9], object.teacherName);
+  writer.writeDouble(offsets[10], object.warningThreshold);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -126,22 +138,24 @@ AppSettings _appSettingsDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = AppSettings();
-  object.academicYear = reader.readString(offsets[0]);
-  object.dismissalThreshold = reader.readDouble(offsets[1]);
+  object.absenceDismissalThreshold = reader.readLong(offsets[0]);
+  object.absenceWarningThreshold = reader.readLong(offsets[1]);
+  object.academicYear = reader.readString(offsets[2]);
+  object.dismissalThreshold = reader.readDouble(offsets[3]);
   object.id = id;
-  object.institutionLineAnimated = reader.readBool(offsets[2]);
-  object.institutionLineSpeed = reader.readDouble(offsets[3]);
+  object.institutionLineAnimated = reader.readBool(offsets[4]);
+  object.institutionLineSpeed = reader.readDouble(offsets[5]);
   object.penalties =
       reader.readObjectOrNull<PenaltyRules>(
-        offsets[4],
+        offsets[6],
         PenaltyRulesSchema.deserialize,
         allOffsets,
       ) ??
       PenaltyRules();
-  object.schoolName = reader.readString(offsets[5]);
-  object.stage = reader.readString(offsets[6]);
-  object.teacherName = reader.readString(offsets[7]);
-  object.warningThreshold = reader.readDouble(offsets[8]);
+  object.schoolName = reader.readString(offsets[7]);
+  object.stage = reader.readString(offsets[8]);
+  object.teacherName = reader.readString(offsets[9]);
+  object.warningThreshold = reader.readDouble(offsets[10]);
   return object;
 }
 
@@ -153,14 +167,18 @@ P _appSettingsDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 1:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 2:
-      return (reader.readBool(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 3:
       return (reader.readDouble(offset)) as P;
     case 4:
+      return (reader.readBool(offset)) as P;
+    case 5:
+      return (reader.readDouble(offset)) as P;
+    case 6:
       return (reader.readObjectOrNull<PenaltyRules>(
                 offset,
                 PenaltyRulesSchema.deserialize,
@@ -168,13 +186,13 @@ P _appSettingsDeserializeProp<P>(
               ) ??
               PenaltyRules())
           as P;
-    case 5:
-      return (reader.readString(offset)) as P;
-    case 6:
-      return (reader.readString(offset)) as P;
     case 7:
       return (reader.readString(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -281,6 +299,122 @@ extension AppSettingsQueryWhere
 
 extension AppSettingsQueryFilter
     on QueryBuilder<AppSettings, AppSettings, QFilterCondition> {
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceDismissalThresholdEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'absenceDismissalThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceDismissalThresholdGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'absenceDismissalThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceDismissalThresholdLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'absenceDismissalThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceDismissalThresholdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'absenceDismissalThreshold',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceWarningThresholdEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'absenceWarningThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceWarningThresholdGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'absenceWarningThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceWarningThresholdLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'absenceWarningThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceWarningThresholdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'absenceWarningThreshold',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
   academicYearEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1165,6 +1299,34 @@ extension AppSettingsQueryLinks
 
 extension AppSettingsQuerySortBy
     on QueryBuilder<AppSettings, AppSettings, QSortBy> {
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByAbsenceDismissalThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceDismissalThreshold', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByAbsenceDismissalThresholdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceDismissalThreshold', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByAbsenceWarningThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceWarningThreshold', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByAbsenceWarningThresholdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceWarningThreshold', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByAcademicYear() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'academicYear', Sort.asc);
@@ -1273,6 +1435,34 @@ extension AppSettingsQuerySortBy
 
 extension AppSettingsQuerySortThenBy
     on QueryBuilder<AppSettings, AppSettings, QSortThenBy> {
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByAbsenceDismissalThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceDismissalThreshold', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByAbsenceDismissalThresholdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceDismissalThreshold', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByAbsenceWarningThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceWarningThreshold', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByAbsenceWarningThresholdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceWarningThreshold', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByAcademicYear() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'academicYear', Sort.asc);
@@ -1393,6 +1583,20 @@ extension AppSettingsQuerySortThenBy
 
 extension AppSettingsQueryWhereDistinct
     on QueryBuilder<AppSettings, AppSettings, QDistinct> {
+  QueryBuilder<AppSettings, AppSettings, QDistinct>
+  distinctByAbsenceDismissalThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'absenceDismissalThreshold');
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QDistinct>
+  distinctByAbsenceWarningThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'absenceWarningThreshold');
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByAcademicYear({
     bool caseSensitive = true,
   }) {
@@ -1459,6 +1663,20 @@ extension AppSettingsQueryProperty
   QueryBuilder<AppSettings, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<AppSettings, int, QQueryOperations>
+  absenceDismissalThresholdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'absenceDismissalThreshold');
+    });
+  }
+
+  QueryBuilder<AppSettings, int, QQueryOperations>
+  absenceWarningThresholdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'absenceWarningThreshold');
     });
   }
 

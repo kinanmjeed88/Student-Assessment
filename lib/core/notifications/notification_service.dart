@@ -21,6 +21,13 @@ class NotificationService {
     importance: Importance.max,
   );
 
+  static const _absenceChannel = AndroidNotificationChannel(
+    'student_absence_alerts',
+    'إشعارات الغياب',
+    description: 'تنبيهات الطلاب الذين بلغوا حد الغياب المحدد في الإعدادات.',
+    importance: Importance.max,
+  );
+
   static const _windowsInitializationSettings =
       WindowsInitializationSettings(
     appName: 'سجل الطالب',
@@ -30,12 +37,23 @@ class NotificationService {
 
   void Function(String? payload)? onNotificationTap;
 
-  static int behaviorNotificationId(String studentUuid) {
+  /// معرّف ثابت لإشعار السلوك يعتمد على معرّف الطالب.
+  static int behaviorNotificationId(String studentUuid) =>
+      _studentNotificationId(studentUuid, 100000);
+
+  /// معرّف ثابت لإشعار الغياب يعتمد على معرّف الطالب.
+  ///
+  /// يختلف المجال عن إشعار السلوك حتى لا يستبدل إشعارُ غياب إشعارَ سلوك لنفس
+  /// الطالب، وحتى يمكن إلغاؤهما بشكل مستقل.
+  static int absenceNotificationId(String studentUuid) =>
+      _studentNotificationId(studentUuid, 200000);
+
+  static int _studentNotificationId(String studentUuid, int offset) {
     var hash = 17;
     for (final codeUnit in studentUuid.codeUnits) {
       hash = (hash * 31 + codeUnit) & 0x7fffffff;
     }
-    return 100000 + (hash % 100000000);
+    return offset + (hash % 100000000);
   }
 
   Future<void> initialize() async {
@@ -56,6 +74,7 @@ class NotificationService {
         AndroidFlutterLocalNotificationsPlugin>();
     await android?.createNotificationChannel(_channel);
     await android?.createNotificationChannel(_behaviorChannel);
+    await android?.createNotificationChannel(_absenceChannel);
   }
 
   Future<bool> requestNotificationPermission() async {
@@ -72,7 +91,37 @@ class NotificationService {
     return notifications;
   }
 
+  /// يعرض إشعاراً فورياً للطالب عند بلوغه حد التنبيه السلوكي أو حد الفصل.
   Future<void> showBehaviorAlert({
+    required String studentUuid,
+    required String title,
+    required String body,
+  }) =>
+      _showStudentAlert(
+        notificationId: behaviorNotificationId(studentUuid),
+        channel: _behaviorChannel,
+        studentUuid: studentUuid,
+        title: title,
+        body: body,
+      );
+
+  /// يعرض إشعاراً فورياً للطالب عند بلوغه حد التنبيه بالغياب أو حد الفصل.
+  Future<void> showAbsenceAlert({
+    required String studentUuid,
+    required String title,
+    required String body,
+  }) =>
+      _showStudentAlert(
+        notificationId: absenceNotificationId(studentUuid),
+        channel: _absenceChannel,
+        studentUuid: studentUuid,
+        title: title,
+        body: body,
+      );
+
+  Future<void> _showStudentAlert({
+    required int notificationId,
+    required AndroidNotificationChannel channel,
     required String studentUuid,
     required String title,
     required String body,
@@ -80,10 +129,10 @@ class NotificationService {
     if (!await requestNotificationPermission()) return;
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        _behaviorChannel.id,
-        _behaviorChannel.name,
-        channelDescription: _behaviorChannel.description,
-        importance: Importance.max,
+        channel.id,
+        channel.name,
+        channelDescription: channel.description,
+        importance: channel.importance,
         priority: Priority.high,
         category: AndroidNotificationCategory.reminder,
         playSound: true,
@@ -95,7 +144,7 @@ class NotificationService {
       ),
     );
     await _plugin.show(
-      id: behaviorNotificationId(studentUuid),
+      id: notificationId,
       title: title,
       body: body,
       notificationDetails: details,

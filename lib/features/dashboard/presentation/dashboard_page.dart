@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
+import '../../../core/notifications/student_alert.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_components.dart';
@@ -14,6 +14,7 @@ import '../../grades/presentation/grades_page.dart';
 import '../../import/presentation/import_history_page.dart';
 import '../../import/presentation/import_students_page.dart';
 import '../../notes/presentation/notes_page.dart';
+import '../../notifications/presentation/notifications_sheet.dart';
 import '../../presence/presentation/attendance_page.dart';
 import '../../reports/presentation/reports_page.dart';
 import '../../students/presentation/student_details_page.dart';
@@ -66,18 +67,7 @@ class _DashboardContent extends StatelessWidget {
     final absentToday = snapshot.todayAttendance
         .where((item) => item.status == AttendanceStatus.absent)
         .length;
-    final alerts = snapshot.students
-        .map(
-          (student) => _BehaviorNotification(
-            student: student,
-            summary: calculateBehaviorSummary(
-              records: snapshot.behaviorsFor(student.uuid),
-              settings: snapshot.settings,
-            ),
-          ),
-        )
-        .where((item) => item.summary.hasAlert)
-        .toList(growable: false);
+    final alerts = buildStudentAlerts(snapshot);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,7 +75,13 @@ class _DashboardContent extends StatelessWidget {
         _DashboardHeader(
           settings: snapshot.settings,
           alertCount: alerts.length,
-          onNotifications: () => _showBehaviorNotifications(context, alerts),
+          onNotifications: () => showStudentAlertsSheet(
+            context,
+            alerts: alerts,
+            onOpenStudent: (alert) => onOpen(
+              StudentDetailsPage(studentUuid: alert.student.uuid),
+            ),
+          ),
         ),
         AppSpacing.section,
         _StatsRow(
@@ -172,7 +168,7 @@ class _DashboardHeader extends StatelessWidget {
               count: alertCount,
               isLabelVisible: alertCount > 0,
               child: IconButton(
-                tooltip: 'الإشعارات السلوكية',
+                tooltip: 'الإشعارات',
                 onPressed: onNotifications,
                 icon: const Icon(Icons.notifications_none_outlined),
               ),
@@ -332,9 +328,9 @@ class _StatsRow extends StatelessWidget {
         Expanded(
           child: AppMetricTile(
             compact: true,
-            label: 'تنبيهات السلوك',
+            label: 'التنبيهات',
             value: '$alerts',
-            icon: Icons.rule_folder_outlined,
+            icon: Icons.notifications_active_outlined,
             tone: alerts > 0 ? AppStatusTone.warning : AppStatusTone.neutral,
           ),
         ),
@@ -420,102 +416,6 @@ class _Action {
   final String title;
   final IconData icon;
   final Widget page;
-}
-
-class _BehaviorNotification {
-  const _BehaviorNotification({required this.student, required this.summary});
-
-  final Student student;
-  final BehaviorSummary summary;
-}
-
-Future<void> _showBehaviorNotifications(
-  BuildContext context,
-  List<_BehaviorNotification> notifications,
-) async {
-  final scheme = Theme.of(context).colorScheme;
-  await showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    backgroundColor: scheme.surface,
-    builder: (sheetContext) {
-      return SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * .78,
-          ),
-          child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 20),
-            child: notifications.isEmpty
-                ? const AppEmptyState(
-                    icon: Icons.notifications_none_outlined,
-                    title: 'لا توجد تنبيهات سلوكية',
-                    message: 'ستظهر هنا أسماء الطلاب الذين يحتاجون إلى متابعة سلوكية.',
-                  )
-                : ListView(
-                    children: [
-                      Text(
-                        'الإشعارات السلوكية',
-                        style: Theme.of(sheetContext).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'طلاب يحتاجون إلى مراجعة سجلهم السلوكي.',
-                        style: Theme.of(sheetContext).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      for (final notification in notifications)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Card(
-                            color: scheme.surfaceContainerHighest,
-                            child: ListTile(
-                              onTap: () {
-                                Navigator.of(sheetContext).pop();
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => StudentDetailsPage(
-                                      studentUuid: notification.student.uuid,
-                                    ),
-                                  ),
-                                );
-                              },
-                              leading: CircleAvatar(
-                                backgroundColor: notification.summary.dismissed
-                                    ? scheme.errorContainer
-                                    : scheme.tertiaryContainer,
-                                foregroundColor: notification.summary.dismissed
-                                    ? scheme.onErrorContainer
-                                    : scheme.onTertiaryContainer,
-                                child: Text(
-                                  notification.student.firstName.isEmpty
-                                      ? '؟'
-                                      : notification.student.firstName.characters.first,
-                                ),
-                              ),
-                              title: Text(
-                                notification.student.fullName,
-                                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                              ),
-                              subtitle: Text(
-                                '${notification.summary.label} • الدرجة السلوكية ${notification.summary.totalPoints.toStringAsFixed(0)}',
-                              ),
-                              trailing: const Icon(Icons.arrow_back_ios_new, size: 16),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-          ),
-        ),
-      );
-    },
-  );
 }
 
 class _StudentListItem extends StatelessWidget {

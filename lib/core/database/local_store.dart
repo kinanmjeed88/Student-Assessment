@@ -65,6 +65,8 @@ abstract interface class LocalStore {
     required String stage,
     double? dismissalThreshold,
     double? warningThreshold,
+    int? absenceWarningThreshold,
+    int? absenceDismissalThreshold,
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,

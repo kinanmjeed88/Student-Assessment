@@ -21,7 +21,9 @@ class LocalRepository implements LocalStore {
   Future<AppSnapshot> loadSnapshot() async {
     final db = await _db;
     final settings = await db.appSettings.get(1) ?? AppSettings();
-    if (settings.id != 1) {
+    // تُحفظ الحدود الافتراضية للغياب مرة واحدة عند فتح بيانات أُنشئت قبل
+    // إضافة الحقلين الجديدين إلى مخطط قاعدة البيانات.
+    if (settings.id != 1 || AbsenceThresholds.normalize(settings)) {
       settings.id = 1;
       await db.writeTxn(() => db.appSettings.put(settings));
     }
@@ -238,6 +240,8 @@ class LocalRepository implements LocalStore {
     required String stage,
     double? dismissalThreshold,
     double? warningThreshold,
+    int? absenceWarningThreshold,
+    int? absenceDismissalThreshold,
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,
@@ -253,6 +257,21 @@ class LocalRepository implements LocalStore {
         ..stage = stage.trim();
       if (dismissalThreshold != null) settings.dismissalThreshold = dismissalThreshold;
       if (warningThreshold != null) settings.warningThreshold = warningThreshold;
+      if (absenceWarningThreshold != null) {
+        if (absenceWarningThreshold < AbsenceThresholds.minimum) {
+          throw const FormatException('حد تنبيه الغياب يجب أن يكون يوماً واحداً على الأقل.');
+        }
+        settings.absenceWarningThreshold = absenceWarningThreshold;
+      }
+      if (absenceDismissalThreshold != null) {
+        if (absenceDismissalThreshold < AbsenceThresholds.minimum) {
+          throw const FormatException('حد فصل الغياب يجب أن يكون يوماً واحداً على الأقل.');
+        }
+        settings.absenceDismissalThreshold = absenceDismissalThreshold;
+      }
+      if (settings.absenceWarningThreshold > settings.absenceDismissalThreshold) {
+        throw const FormatException('حد تنبيه الغياب يجب أن يكون أقل من أو مساوياً لحد الفصل.');
+      }
       if (penalties != null) {
         // تحديث خصائص الكائن المضمّن نفسه يضمن أن Isar يحفظ القيم الجديدة
         // بدلاً من الاحتفاظ بنسخة embedded قديمة عند استبدال المرجع بالكامل.
@@ -274,6 +293,7 @@ class LocalRepository implements LocalStore {
       if (settings.warningThreshold > settings.dismissalThreshold) {
         throw const FormatException('حد التنبيه يجب أن يكون أقل من حد الفصل.');
       }
+      AbsenceThresholds.normalize(settings);
       await db.appSettings.put(settings);
     });
   }
@@ -742,7 +762,7 @@ class LocalRepository implements LocalStore {
   Future<String> exportBackupJson() async {
     final db = await _db;
     final payload = <String, dynamic>{
-      'schemaVersion': 2,
+      'schemaVersion': 3,
       'exportedAt': DateTime.now().toIso8601String(),
       'settings': (await db.appSettings.get(1) ?? AppSettings()).toJson(),
       'classes': (await db.schoolClasses.where().findAll()).map((e) => e.toJson()).toList(),
@@ -763,7 +783,7 @@ class LocalRepository implements LocalStore {
     final decoded = jsonDecode(json);
     if (decoded is! Map<String, dynamic>) throw const FormatException('تنسيق النسخة الاحتياطية غير صالح.');
     final schemaVersion = (decoded['schemaVersion'] as num?)?.toInt() ?? 1;
-    if (schemaVersion > 2) throw FormatException('إصدار النسخة $schemaVersion غير مدعوم.');
+    if (schemaVersion > 3) throw FormatException('إصدار النسخة $schemaVersion غير مدعوم.');
     final db = await _db;
     await db.writeTxn(() async {
       await db.clear();
@@ -823,6 +843,16 @@ AppSettings _settingsFromJson(dynamic value) {
     final penalties = behavior['penalties'];
     settings.penalties = PenaltyRules.fromJson(penalties is Map ? Map<String, dynamic>.from(penalties) : null);
   }
+  final attendance = json['attendance'];
+  if (attendance is Map) {
+    settings.absenceWarningThreshold =
+        (attendance['warningThreshold'] as num?)?.toInt() ?? settings.absenceWarningThreshold;
+    settings.absenceDismissalThreshold =
+        (attendance['dismissalThreshold'] as num?)?.toInt() ?? settings.absenceDismissalThreshold;
+  }
+  // النسخ الاحتياطية الأقدم من الإصدار 3 لا تحتوي حدود الغياب، فتُضبط على
+  // الافتراضي بدلاً من تركها صفراً.
+  AbsenceThresholds.normalize(settings);
   return settings;
 }
 SchoolClass _classFromJson(Map<String, dynamic> json) => SchoolClass()..uuid = _string(json, 'id', _string(json, 'uuid', _uuid.v4()))..name = _string(json, 'name', 'فصل غير مسمى')..stage = _string(json, 'stage')..academicYear = _string(json, 'academicYear')..notes = _string(json, 'notes');

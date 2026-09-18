@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/attendance/attendance_summary.dart';
 import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
@@ -51,10 +52,10 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
       final matchesClass = _classFilter == 'all' || student.classUuid == _classFilter;
       final matchesSection = _sectionFilter == 'all' || student.sectionUuid == _sectionFilter;
       final summary = calculateBehaviorSummary(records: snapshot.behaviorsFor(student.uuid), settings: snapshot.settings);
-      final absences = snapshot.attendanceFor(student.uuid).where((item) => item.status == AttendanceStatus.absent).length;
+      final attendance = calculateAttendanceSummary(records: snapshot.attendanceFor(student.uuid), settings: snapshot.settings);
       final matchesAttention = switch (_attentionFilter) {
         'behavior-alert' => summary.hasAlert,
-        'repeated-absence' => absences >= 2,
+        'absence-alert' => attendance.hasAlert,
         _ => true,
       };
       return matchesQuery && matchesClass && matchesSection && matchesAttention;
@@ -355,7 +356,7 @@ class _AttentionFilters extends StatelessWidget {
           const SizedBox(width: AppTokens.compactGap / 2),
           _choice(context, label: 'تنبيهات السلوك', filterValue: 'behavior-alert'),
           const SizedBox(width: AppTokens.compactGap / 2),
-          _choice(context, label: 'غياب متكرر', filterValue: 'repeated-absence'),
+          _choice(context, label: 'تنبيهات الغياب', filterValue: 'absence-alert'),
         ],
       ),
     );
