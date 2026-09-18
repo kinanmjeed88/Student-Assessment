@@ -34,6 +34,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _disruptionPointsController = TextEditingController();
   final _seriousMisconductPointsController = TextEditingController();
   final _otherPointsController = TextEditingController();
+  final _absenceThresholdController = TextEditingController();
   bool _institutionLineAnimated = false;
   double _institutionLineSpeed = 40;
   bool _initialized = false;
@@ -51,6 +52,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _disruptionPointsController.dispose();
     _seriousMisconductPointsController.dispose();
     _otherPointsController.dispose();
+    _absenceThresholdController.dispose();
     super.dispose();
   }
 
@@ -74,6 +76,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _disruptionPointsController.text = _number(snapshot.settings.penalties.lessonDisruption);
             _seriousMisconductPointsController.text = _number(snapshot.settings.penalties.seriousMisconduct);
             _otherPointsController.text = _number(snapshot.settings.penalties.other);
+            _absenceThresholdController.text = snapshot.settings.absenceThreshold.toString();
             _institutionLineAnimated = snapshot.settings.institutionLineAnimated;
             _institutionLineSpeed = snapshot.settings.institutionLineSpeed.clamp(10, 200).toDouble();
             _initialized = true;
@@ -203,6 +206,36 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ),
                       AppSpacing.section,
+                      const AppSectionHeader(title: 'حد الغياب', subtitle: 'حدد عدد أيام الغياب التي عند وصولها أو تجاوزها يتم تنبيهك وإضافة الطالب إلى الإشعارات.'),
+                      AppSpacing.compact,
+                      AppSurfaceCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _numberField(_absenceThresholdController, 'حد الفصل للغياب'),
+                            const SizedBox(height: 8),
+                            Text(
+                              'عندما يصل عدد أيام غياب الطالب إلى هذا الحد أو يتجاوزه سيظهر في زر الإشعارات بالرئيسية وسيأتيك إشعار نظام عند أول تجاوز.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 18),
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: FilledButton.icon(
+                                onPressed: _saving ? null : _saveAbsenceThreshold,
+                                icon: _saving
+                                    ? const SizedBox.square(
+                                        dimension: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.save_outlined),
+                                label: const Text('حفظ حد الغياب'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AppSpacing.section,
                       const AppSectionHeader(title: 'إدارة البيانات', subtitle: 'استورد وسلّم التقارير والنسخ الاحتياطية بأمان.'),
                       AppSpacing.compact,
                       AppSurfaceCard(
@@ -247,7 +280,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   TextField _field(TextEditingController controller, String label, IconData icon) => TextField(controller: controller, decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)));
 
-  TextField _numberField(TextEditingController controller, String label) => TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: label, suffixText: 'نقطة'));
+  TextField _numberField(TextEditingController controller, String label) {
+    final isAbsence = label.contains('غياب') || label.contains('الغياب');
+    return TextField(
+      controller: controller,
+      keyboardType: isAbsence
+          ? const TextInputType.numberWithOptions(decimal: false)
+          : const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: isAbsence ? 'يوم' : 'نقطة',
+      ),
+    );
+  }
 
   String _number(double value) => value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
 
@@ -314,6 +359,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الإعدادات بنجاح.')));
+    } on FormatException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveAbsenceThreshold() async {
+    final raw = _absenceThresholdController.text.trim().replaceAll(',', '.');
+    final value = int.tryParse(raw);
+    if (value == null || value <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل عدداً صحيحاً أكبر من صفر لحد الغياب.')));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(appControllerProvider.notifier).saveSettings(
+            schoolName: _schoolController.text,
+            teacherName: _teacherController.text,
+            academicYear: _yearController.text,
+            stage: _stageController.text,
+            absenceThreshold: value,
+            institutionLineAnimated: _institutionLineAnimated,
+            institutionLineSpeed: _institutionLineSpeed,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ حد الغياب بنجاح.')));
     } on FormatException catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {

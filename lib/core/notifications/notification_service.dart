@@ -21,6 +21,13 @@ class NotificationService {
     importance: Importance.max,
   );
 
+  static const _absenceChannel = AndroidNotificationChannel(
+    'student_absence_alerts',
+    'تنبيهات الغياب',
+    description: 'تنبيهات الطلاب الذين تجاوزوا حد الغياب المسموح.',
+    importance: Importance.max,
+  );
+
   static const _windowsInitializationSettings =
       WindowsInitializationSettings(
     appName: 'سجل الطالب',
@@ -36,6 +43,14 @@ class NotificationService {
       hash = (hash * 31 + codeUnit) & 0x7fffffff;
     }
     return 100000 + (hash % 100000000);
+  }
+
+  static int absenceNotificationId(String studentUuid) {
+    var hash = 19;
+    for (final codeUnit in studentUuid.codeUnits) {
+      hash = (hash * 31 + codeUnit) & 0x7fffffff;
+    }
+    return 200000 + (hash % 100000000);
   }
 
   Future<void> initialize() async {
@@ -56,6 +71,7 @@ class NotificationService {
         AndroidFlutterLocalNotificationsPlugin>();
     await android?.createNotificationChannel(_channel);
     await android?.createNotificationChannel(_behaviorChannel);
+    await android?.createNotificationChannel(_absenceChannel);
   }
 
   Future<bool> requestNotificationPermission() async {
@@ -96,6 +112,37 @@ class NotificationService {
     );
     await _plugin.show(
       id: behaviorNotificationId(studentUuid),
+      title: title,
+      body: body,
+      notificationDetails: details,
+      payload: 'student:$studentUuid',
+    );
+  }
+
+  Future<void> showAbsenceAlert({
+    required String studentUuid,
+    required String title,
+    required String body,
+  }) async {
+    if (!await requestNotificationPermission()) return;
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _absenceChannel.id,
+        _absenceChannel.name,
+        channelDescription: _absenceChannel.description,
+        importance: Importance.max,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.reminder,
+        playSound: true,
+        enableVibration: true,
+      ),
+      windows: const WindowsNotificationDetails(
+        duration: WindowsNotificationDuration.long,
+        scenario: WindowsNotificationScenario.reminder,
+      ),
+    );
+    await _plugin.show(
+      id: absenceNotificationId(studentUuid),
       title: title,
       body: body,
       notificationDetails: details,

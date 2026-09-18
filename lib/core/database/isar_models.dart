@@ -57,6 +57,7 @@ class AppSettings {
   PenaltyRules penalties = PenaltyRules();
   bool institutionLineAnimated = false;
   double institutionLineSpeed = 40;
+  int absenceThreshold = 10;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -71,6 +72,10 @@ class AppSettings {
         },
         'institutionLineAnimated': institutionLineAnimated,
         'institutionLineSpeed': institutionLineSpeed,
+        'absenceThreshold': absenceThreshold,
+        'attendance': {
+          'absenceThreshold': absenceThreshold,
+        },
       };
 }
 

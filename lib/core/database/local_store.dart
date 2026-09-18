@@ -68,6 +68,7 @@ abstract interface class LocalStore {
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,
+    int? absenceThreshold,
   });
 
   Future<void> setAttendance({

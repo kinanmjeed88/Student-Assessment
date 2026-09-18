@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/attendance/attendance_summary.dart';
 import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
@@ -66,7 +67,7 @@ class _DashboardContent extends StatelessWidget {
     final absentToday = snapshot.todayAttendance
         .where((item) => item.status == AttendanceStatus.absent)
         .length;
-    final alerts = snapshot.students
+    final behaviorAlerts = snapshot.students
         .map(
           (student) => _BehaviorNotification(
             student: student,
@@ -79,18 +80,62 @@ class _DashboardContent extends StatelessWidget {
         .where((item) => item.summary.hasAlert)
         .toList(growable: false);
 
+    final absenceAlerts = snapshot.students
+        .map(
+          (student) => _AbsenceNotification(
+            student: student,
+            summary: calculateAttendanceSummary(
+              records: snapshot.attendanceFor(student.uuid),
+              settings: snapshot.settings,
+            ),
+          ),
+        )
+        .where((item) => item.summary.hasAlert)
+        .toList(growable: false);
+
+    final combinedMap = <String, _UnifiedNotification>{};
+    for (final item in behaviorAlerts) {
+      combinedMap[item.student.uuid] = _UnifiedNotification(
+        student: item.student,
+        behavior: item.summary,
+        attendance: null,
+      );
+    }
+    for (final item in absenceAlerts) {
+      final existing = combinedMap[item.student.uuid];
+      if (existing != null) {
+        combinedMap[item.student.uuid] = _UnifiedNotification(
+          student: item.student,
+          behavior: existing.behavior,
+          attendance: item.summary,
+        );
+      } else {
+        combinedMap[item.student.uuid] = _UnifiedNotification(
+          student: item.student,
+          behavior: null,
+          attendance: item.summary,
+        );
+      }
+    }
+    final unifiedNotifications = combinedMap.values.toList(growable: false);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _DashboardHeader(
           settings: snapshot.settings,
-          alertCount: alerts.length,
-          onNotifications: () => _showBehaviorNotifications(context, alerts),
+          alertCount: unifiedNotifications.length,
+          onNotifications: () => _showUnifiedNotifications(
+            context,
+            behaviorAlerts: behaviorAlerts,
+            absenceAlerts: absenceAlerts,
+            unified: unifiedNotifications,
+          ),
         ),
         AppSpacing.section,
         _StatsRow(
           totalStudents: totalStudents,
-          alerts: alerts.length,
+          alerts: behaviorAlerts.length,
           absentToday: absentToday,
         ),
         AppSpacing.section,
@@ -172,7 +217,7 @@ class _DashboardHeader extends StatelessWidget {
               count: alertCount,
               isLabelVisible: alertCount > 0,
               child: IconButton(
-                tooltip: 'الإشعارات السلوكية',
+                tooltip: 'الإشعارات',
                 onPressed: onNotifications,
                 icon: const Icon(Icons.notifications_none_outlined),
               ),
@@ -429,10 +474,30 @@ class _BehaviorNotification {
   final BehaviorSummary summary;
 }
 
-Future<void> _showBehaviorNotifications(
-  BuildContext context,
-  List<_BehaviorNotification> notifications,
-) async {
+class _AbsenceNotification {
+  const _AbsenceNotification({required this.student, required this.summary});
+
+  final Student student;
+  final AttendanceSummary summary;
+}
+
+class _UnifiedNotification {
+  const _UnifiedNotification({required this.student, this.behavior, this.attendance});
+
+  final Student student;
+  final BehaviorSummary? behavior;
+  final AttendanceSummary? attendance;
+
+  bool get hasBehavior => behavior?.hasAlert == true;
+  bool get hasAbsence => attendance?.hasAlert == true;
+}
+
+Future<void> _showUnifiedNotifications(
+  BuildContext context, {
+  required List<_BehaviorNotification> behaviorAlerts,
+  required List<_AbsenceNotification> absenceAlerts,
+  required List<_UnifiedNotification> unified,
+}) async {
   final scheme = Theme.of(context).colorScheme;
   await showModalBottomSheet<void>(
     context: context,
@@ -447,27 +512,27 @@ Future<void> _showBehaviorNotifications(
           ),
           child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 20),
-            child: notifications.isEmpty
+            child: unified.isEmpty
                 ? const AppEmptyState(
                     icon: Icons.notifications_none_outlined,
-                    title: 'لا توجد تنبيهات سلوكية',
-                    message: 'ستظهر هنا أسماء الطلاب الذين يحتاجون إلى متابعة سلوكية.',
+                    title: 'لا توجد تنبيهات',
+                    message: 'ستظهر هنا أسماء الطلاب الذين يحتاجون إلى متابعة سلوكية أو تجاوزوا حد الغياب.',
                   )
                 : ListView(
                     children: [
                       Text(
-                        'الإشعارات السلوكية',
+                        'الإشعارات',
                         style: Theme.of(sheetContext).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w900,
                             ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'طلاب يحتاجون إلى مراجعة سجلهم السلوكي.',
+                        'طلاب يحتاجون إلى مراجعة سجلهم السلوكي أو تجاوزوا حد الغياب.',
                         style: Theme.of(sheetContext).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 16),
-                      for (final notification in notifications)
+                      for (final notification in unified)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Card(
@@ -484,16 +549,22 @@ Future<void> _showBehaviorNotifications(
                                 );
                               },
                               leading: CircleAvatar(
-                                backgroundColor: notification.summary.dismissed
+                                backgroundColor: notification.hasBehavior && (notification.behavior?.dismissed == true)
                                     ? scheme.errorContainer
-                                    : scheme.tertiaryContainer,
-                                foregroundColor: notification.summary.dismissed
+                                    : notification.hasAbsence
+                                        ? scheme.errorContainer
+                                        : scheme.tertiaryContainer,
+                                foregroundColor: notification.hasBehavior && (notification.behavior?.dismissed == true) ||
+                                        notification.hasAbsence
                                     ? scheme.onErrorContainer
                                     : scheme.onTertiaryContainer,
-                                child: Text(
-                                  notification.student.firstName.isEmpty
-                                      ? '؟'
-                                      : notification.student.firstName.characters.first,
+                                child: Icon(
+                                  notification.hasAbsence && notification.hasBehavior
+                                      ? Icons.warning_amber_rounded
+                                      : notification.hasAbsence
+                                          ? Icons.event_busy_outlined
+                                          : Icons.rule_folder_outlined,
+                                  size: 20,
                                 ),
                               ),
                               title: Text(
@@ -502,13 +573,39 @@ Future<void> _showBehaviorNotifications(
                                       fontWeight: FontWeight.w800,
                                     ),
                               ),
-                              subtitle: Text(
-                                '${notification.summary.label} • الدرجة السلوكية ${notification.summary.totalPoints.toStringAsFixed(0)}',
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (notification.behavior != null && notification.behavior!.hasAlert)
+                                    Text(
+                                      '${notification.behavior!.label} • الدرجة السلوكية ${notification.behavior!.totalPoints.toStringAsFixed(0)}',
+                                    ),
+                                  if (notification.attendance != null && notification.attendance!.hasAlert)
+                                    Text(
+                                      'تجاوز حد الغياب • ${notification.attendance!.absentCount} / ${notification.attendance!.threshold} غياب',
+                                      style: TextStyle(
+                                        color: scheme.error,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  if ((notification.behavior == null || !notification.behavior!.hasAlert) &&
+                                      (notification.attendance == null || !notification.attendance!.hasAlert))
+                                    const Text('تنبيه عام'),
+                                ],
                               ),
                               trailing: const Icon(Icons.arrow_back_ios_new, size: 16),
                             ),
                           ),
                         ),
+                      if (behaviorAlerts.isNotEmpty && absenceAlerts.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '• تنبيهات سلوكية: ${behaviorAlerts.length}  •  تنبيهات غياب: ${absenceAlerts.length}',
+                          style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ],
                   ),
           ),
@@ -517,6 +614,20 @@ Future<void> _showBehaviorNotifications(
     },
   );
 }
+
+// للتوافق مع أي استدعاءات قديمة
+Future<void> _showBehaviorNotifications(
+  BuildContext context,
+  List<_BehaviorNotification> notifications,
+) =>
+    _showUnifiedNotifications(
+      context,
+      behaviorAlerts: notifications,
+      absenceAlerts: const [],
+      unified: notifications
+          .map((e) => _UnifiedNotification(student: e.student, behavior: e.summary))
+          .toList(),
+    );
 
 class _StudentListItem extends StatelessWidget {
   const _StudentListItem({required this.student, required this.onTap});

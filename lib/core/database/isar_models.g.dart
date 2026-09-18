@@ -17,6 +17,11 @@ const AppSettingsSchema = CollectionSchema(
   name: r'AppSettings',
   id: -5633561779022347008,
   properties: {
+    r'absenceThreshold': PropertySchema(
+      id: 9,
+      name: r'absenceThreshold',
+      type: IsarType.long,
+    ),
     r'academicYear': PropertySchema(
       id: 0,
       name: r'academicYear',
@@ -117,6 +122,7 @@ void _appSettingsSerialize(
   writer.writeString(offsets[6], object.stage);
   writer.writeString(offsets[7], object.teacherName);
   writer.writeDouble(offsets[8], object.warningThreshold);
+  writer.writeLong(offsets[9], object.absenceThreshold);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -142,6 +148,7 @@ AppSettings _appSettingsDeserialize(
   object.stage = reader.readString(offsets[6]);
   object.teacherName = reader.readString(offsets[7]);
   object.warningThreshold = reader.readDouble(offsets[8]);
+  object.absenceThreshold = reader.readLongOrNull(offsets[9]) ?? 10;
   return object;
 }
 
@@ -176,6 +183,8 @@ P _appSettingsDeserializeProp<P>(
       return (reader.readString(offset)) as P;
     case 8:
       return (reader.readDouble(offset)) as P;
+    case 9:
+      return (reader.readLongOrNull(offset) ?? 10) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -1147,6 +1156,61 @@ extension AppSettingsQueryFilter
       );
     });
   }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceThresholdEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'absenceThreshold', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceThresholdGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'absenceThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceThresholdLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'absenceThreshold',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  absenceThresholdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'absenceThreshold',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
 }
 
 extension AppSettingsQueryObject
@@ -1269,6 +1333,19 @@ extension AppSettingsQuerySortBy
       return query.addSortBy(r'warningThreshold', Sort.desc);
     });
   }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByAbsenceThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceThreshold', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByAbsenceThresholdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceThreshold', Sort.desc);
+    });
+  }
 }
 
 extension AppSettingsQuerySortThenBy
@@ -1389,6 +1466,19 @@ extension AppSettingsQuerySortThenBy
       return query.addSortBy(r'warningThreshold', Sort.desc);
     });
   }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByAbsenceThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceThreshold', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByAbsenceThresholdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'absenceThreshold', Sort.desc);
+    });
+  }
 }
 
 extension AppSettingsQueryWhereDistinct
@@ -1450,6 +1540,12 @@ extension AppSettingsQueryWhereDistinct
   distinctByWarningThreshold() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'warningThreshold');
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByAbsenceThreshold() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'absenceThreshold');
     });
   }
 }
@@ -1518,6 +1614,12 @@ extension AppSettingsQueryProperty
   warningThresholdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'warningThreshold');
+    });
+  }
+
+  QueryBuilder<AppSettings, int, QQueryOperations> absenceThresholdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'absenceThreshold');
     });
   }
 }

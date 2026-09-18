@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'attendance/attendance_summary.dart';
 import 'behavior/behavior_summary.dart';
 import 'database/app_snapshot.dart';
 import 'database/database_service.dart';
@@ -115,6 +116,7 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,
+    int? absenceThreshold,
   }) => _mutate(() => _repository.updateSettings(
         schoolName: schoolName,
         teacherName: teacherName,
@@ -125,6 +127,7 @@ class AppController extends AsyncNotifier<AppSnapshot> {
         penalties: penalties,
         institutionLineAnimated: institutionLineAnimated,
         institutionLineSpeed: institutionLineSpeed,
+        absenceThreshold: absenceThreshold,
       ));
 
   Future<void> setAttendance({
@@ -133,7 +136,11 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required AttendanceStatus status,
     String reason = '',
     String notes = '',
-  }) => _mutate(() => _repository.setAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+  }) async {
+    final previous = _attendanceSummary(studentUuid);
+    await _mutate(() => _repository.setAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+    await _notifyAbsenceAlert(studentUuid, previous);
+  }
 
   Future<void> updateAttendance({
     required String studentUuid,
@@ -141,10 +148,19 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required AttendanceStatus status,
     String reason = '',
     String notes = '',
-  }) => _mutate(() => _repository.updateAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+  }) async {
+    final previous = _attendanceSummary(studentUuid);
+    await _mutate(() => _repository.updateAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+    await _notifyAbsenceAlert(studentUuid, previous);
+  }
 
-  Future<void> deleteAttendance({required String studentUuid, required DateTime date}) =>
-      _mutate(() => _repository.deleteAttendance(studentUuid: studentUuid, date: date));
+  Future<void> deleteAttendance({required String studentUuid, required DateTime date}) async {
+    final previous = _attendanceSummary(studentUuid);
+    await _mutate(() => _repository.deleteAttendance(studentUuid: studentUuid, date: date));
+    // الحذف عادة يقلل الغياب لذا لا نرسل تنبيه عبور عتبة، لكن نحتفظ بالمنطق العام
+    // وقد نستخدمه لاحقاً لإلغاء الإشعار إذا زال السبب
+    await _notifyAbsenceAlert(studentUuid, previous, notifyOnlyOnCross: true);
+  }
 
   Future<void> createGradeField({required String subject, required String title, required double maxScore, required String term}) =>
       _mutate(() => _repository.createGradeField(subject: subject, title: title, maxScore: maxScore, term: term));
@@ -225,6 +241,46 @@ class AppController extends AsyncNotifier<AppSnapshot> {
       records: snapshot.behaviorsFor(studentUuid),
       settings: snapshot.settings,
     );
+  }
+
+  AttendanceSummary? _attendanceSummary(String studentUuid) {
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return null;
+    return calculateAttendanceSummary(
+      records: snapshot.attendanceFor(studentUuid),
+      settings: snapshot.settings,
+    );
+  }
+
+  Future<void> _notifyAbsenceAlert(
+    String studentUuid,
+    AttendanceSummary? previousSummary, {
+    bool notifyOnlyOnCross = false,
+  }) async {
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return;
+    Student? student;
+    for (final item in snapshot.students) {
+      if (item.uuid == studentUuid) {
+        student = item;
+        break;
+      }
+    }
+    if (student == null) return;
+    final summary = _attendanceSummary(studentUuid);
+    if (summary == null || !summary.hasAlert) return;
+    final alreadyAlerted = previousSummary?.hasAlert == true;
+    if (alreadyAlerted && notifyOnlyOnCross) return;
+    if (alreadyAlerted) return;
+    try {
+      await ref.read(notificationServiceProvider).showAbsenceAlert(
+            studentUuid: student.uuid,
+            title: 'تنبيه غياب: ${student.fullName}',
+            body: 'تجاوز حد الغياب ${summary.absentCount} / ${summary.threshold} أيام',
+          );
+    } catch (_) {
+      // لا ينبغي أن يمنع تعذر إشعار النظام حفظ السجل.
+    }
   }
 
   Future<void> _notifyBehaviorAlert(

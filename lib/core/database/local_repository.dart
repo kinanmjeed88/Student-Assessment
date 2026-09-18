@@ -241,6 +241,7 @@ class LocalRepository implements LocalStore {
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,
+    int? absenceThreshold,
   }) async {
     final db = await _db;
     await db.writeTxn(() async {
@@ -270,6 +271,12 @@ class LocalRepository implements LocalStore {
           throw const FormatException('سرعة سطر المؤسسة يجب أن تكون أكبر من صفر.');
         }
         settings.institutionLineSpeed = institutionLineSpeed;
+      }
+      if (absenceThreshold != null) {
+        if (absenceThreshold <= 0) {
+          throw const FormatException('حد الفصل للغياب يجب أن يكون أكبر من صفر.');
+        }
+        settings.absenceThreshold = absenceThreshold;
       }
       if (settings.warningThreshold > settings.dismissalThreshold) {
         throw const FormatException('حد التنبيه يجب أن يكون أقل من حد الفصل.');
@@ -822,6 +829,14 @@ AppSettings _settingsFromJson(dynamic value) {
     settings.warningThreshold = (behavior['warningThreshold'] as num?)?.toDouble() ?? settings.warningThreshold;
     final penalties = behavior['penalties'];
     settings.penalties = PenaltyRules.fromJson(penalties is Map ? Map<String, dynamic>.from(penalties) : null);
+  }
+  final attendance = json['attendance'];
+  if (attendance is Map) {
+    settings.absenceThreshold = (attendance['absenceThreshold'] as num?)?.toInt() ?? settings.absenceThreshold;
+  }
+  // دعم التوافق: الحقول القديمة التي قد تكون في المستوى العلوي
+  if (json.containsKey('absenceThreshold')) {
+    settings.absenceThreshold = (json['absenceThreshold'] as num?)?.toInt() ?? settings.absenceThreshold;
   }
   return settings;
 }
