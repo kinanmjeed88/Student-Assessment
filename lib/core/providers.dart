@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'attendance/attendance_summary.dart';
 import 'behavior/behavior_summary.dart';
 import 'database/app_snapshot.dart';
 import 'database/database_service.dart';
@@ -112,6 +113,8 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required String stage,
     double? dismissalThreshold,
     double? warningThreshold,
+    int? absenceWarningThreshold,
+    int? absenceDismissalThreshold,
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,
@@ -122,6 +125,8 @@ class AppController extends AsyncNotifier<AppSnapshot> {
         stage: stage,
         dismissalThreshold: dismissalThreshold,
         warningThreshold: warningThreshold,
+        absenceWarningThreshold: absenceWarningThreshold,
+        absenceDismissalThreshold: absenceDismissalThreshold,
         penalties: penalties,
         institutionLineAnimated: institutionLineAnimated,
         institutionLineSpeed: institutionLineSpeed,
@@ -133,7 +138,16 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required AttendanceStatus status,
     String reason = '',
     String notes = '',
-  }) => _mutate(() => _repository.setAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+  }) => _saveAttendance(
+        studentUuid: studentUuid,
+        persist: () => _repository.setAttendance(
+          studentUuid: studentUuid,
+          date: date,
+          status: status,
+          reason: reason,
+          notes: notes,
+        ),
+      );
 
   Future<void> updateAttendance({
     required String studentUuid,
@@ -141,7 +155,26 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required AttendanceStatus status,
     String reason = '',
     String notes = '',
-  }) => _mutate(() => _repository.updateAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+  }) => _saveAttendance(
+        studentUuid: studentUuid,
+        persist: () => _repository.updateAttendance(
+          studentUuid: studentUuid,
+          date: date,
+          status: status,
+          reason: reason,
+          notes: notes,
+        ),
+      );
+
+  /// يحفظ سجل الحضور ثم يتحقق من ضرورة إرسال إشعار غياب للطالب.
+  Future<void> _saveAttendance({
+    required String studentUuid,
+    required Future<void> Function() persist,
+  }) async {
+    final previousSummary = _attendanceSummary(studentUuid);
+    await _mutate(persist);
+    await _notifyAttendanceAlert(studentUuid, previousSummary);
+  }
 
   Future<void> deleteAttendance({required String studentUuid, required DateTime date}) =>
       _mutate(() => _repository.deleteAttendance(studentUuid: studentUuid, date: date));
@@ -227,37 +260,96 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     );
   }
 
+  AttendanceSummary? _attendanceSummary(String studentUuid) {
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return null;
+    return calculateAttendanceSummary(
+      records: snapshot.attendanceFor(studentUuid),
+      settings: snapshot.settings,
+    );
+  }
+
+  Student? _student(String studentUuid) {
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return null;
+    for (final student in snapshot.students) {
+      if (student.uuid == studentUuid) return student;
+    }
+    return null;
+  }
+
+  /// رتبة التنبيه: صفر بلا إشعار، 1 تنبيه، 2 حد فصل.
+  ///
+  /// تُستخدم لمقارنة الحالة السابقة بالحالة الجديدة فلا يُرسل إشعار مكرر لنفس
+  /// المستوى، بينما يُرسل إشعار جديد عند الانتقال من التنبيه إلى حد الفصل.
+  static int _alertRank({required bool dismissed, required bool warning}) =>
+      dismissed ? 2 : warning ? 1 : 0;
+
+  static String _formatPoints(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
+
   Future<void> _notifyBehaviorAlert(
     String studentUuid,
     BehaviorSummary? previousSummary,
   ) async {
-    final snapshot = _loadedSnapshot;
-    if (snapshot == null) return;
-    Student? student;
-    for (final item in snapshot.students) {
-      if (item.uuid == studentUuid) {
-        student = item;
-        break;
-      }
-    }
+    final student = _student(studentUuid);
     if (student == null) return;
 
     final summary = _behaviorSummary(studentUuid);
     if (summary == null || !summary.hasAlert) return;
-    final alreadyAlerted = previousSummary?.hasAlert == true;
-    if (alreadyAlerted) return;
+    final previousRank = previousSummary == null
+        ? 0
+        : _alertRank(
+            dismissed: previousSummary.dismissed,
+            warning: previousSummary.warning,
+          );
+    if (_alertRank(dismissed: summary.dismissed, warning: summary.warning) <=
+        previousRank) {
+      return;
+    }
 
-    final points = summary.totalPoints == summary.totalPoints.roundToDouble()
-        ? summary.totalPoints.toStringAsFixed(0)
-        : summary.totalPoints.toStringAsFixed(1);
     try {
       await ref.read(notificationServiceProvider).showBehaviorAlert(
             studentUuid: student.uuid,
             title: 'إشعار سلوكي: ${student.fullName}',
-            body: '${summary.label} • الدرجة السلوكية $points',
+            body: '${summary.label} • الدرجة السلوكية ${_formatPoints(summary.totalPoints)}',
           );
     } catch (_) {
       // لا ينبغي أن يمنع تعذر إشعار النظام حفظ السجل داخل قاعدة البيانات.
+    }
+  }
+
+  /// يرسل إشعار نظام عند بلوغ الطالب حد التنبيه بالغياب أو حد الفصل.
+  Future<void> _notifyAttendanceAlert(
+    String studentUuid,
+    AttendanceSummary? previousSummary,
+  ) async {
+    final student = _student(studentUuid);
+    if (student == null) return;
+
+    final summary = _attendanceSummary(studentUuid);
+    if (summary == null || !summary.hasAlert) return;
+    final previousRank = previousSummary == null
+        ? 0
+        : _alertRank(
+            dismissed: previousSummary.dismissed,
+            warning: previousSummary.warning,
+          );
+    if (_alertRank(dismissed: summary.dismissed, warning: summary.warning) <=
+        previousRank) {
+      return;
+    }
+
+    try {
+      await ref.read(notificationServiceProvider).showAbsenceAlert(
+            studentUuid: student.uuid,
+            title: 'إشعار غياب: ${student.fullName}',
+            body:
+                '${summary.label} • غياب بدون عذر ${summary.absentCount} من ${summary.dismissalThreshold} يوماً',
+          );
+    } catch (_) {
+      // لا ينبغي أن يمنع تعذر إشعار النظام حفظ سجل الحضور داخل قاعدة البيانات.
     }
   }
 
