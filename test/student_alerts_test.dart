@@ -106,7 +106,9 @@ void main() {
     final snapshot = _snapshot(
       settings: settings,
       students: [_student(uuid: 'student-d', fullName: 'ليان سعد')],
-      attendance: [_absence('student-d', 3)],
+      attendance: [
+        for (var day = 1; day <= 3; day++) _absence('student-d', day),
+      ],
       behaviors: const [],
     );
 

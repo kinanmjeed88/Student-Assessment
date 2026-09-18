@@ -19,7 +19,7 @@ Future<void> showStudentAlertsSheet(
     showDragHandle: true,
     isScrollControlled: true,
     backgroundColor: scheme.surface,
-    builder: (sheetContext) => _StudentAlertsSheet(
+    builder: (_) => _StudentAlertsSheet(
       alerts: alerts,
       onOpenStudent: onOpenStudent,
     ),
