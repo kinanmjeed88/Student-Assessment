@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/behavior/behavior_summary.dart';
+import '../../../core/alerts/student_alerts.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
@@ -66,18 +66,7 @@ class _DashboardContent extends StatelessWidget {
     final absentToday = snapshot.todayAttendance
         .where((item) => item.status == AttendanceStatus.absent)
         .length;
-    final alerts = snapshot.students
-        .map(
-          (student) => _BehaviorNotification(
-            student: student,
-            summary: calculateBehaviorSummary(
-              records: snapshot.behaviorsFor(student.uuid),
-              settings: snapshot.settings,
-            ),
-          ),
-        )
-        .where((item) => item.summary.hasAlert)
-        .toList(growable: false);
+    final alerts = buildStudentAlertsFromSnapshot(snapshot);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,7 +74,7 @@ class _DashboardContent extends StatelessWidget {
         _DashboardHeader(
           settings: snapshot.settings,
           alertCount: alerts.length,
-          onNotifications: () => _showBehaviorNotifications(context, alerts),
+          onNotifications: () => _showNotificationCenter(context, alerts),
         ),
         AppSpacing.section,
         _StatsRow(
@@ -172,7 +161,7 @@ class _DashboardHeader extends StatelessWidget {
               count: alertCount,
               isLabelVisible: alertCount > 0,
               child: IconButton(
-                tooltip: 'الإشعارات السلوكية',
+                tooltip: 'الإشعارات',
                 onPressed: onNotifications,
                 icon: const Icon(Icons.notifications_none_outlined),
               ),
@@ -422,16 +411,9 @@ class _Action {
   final Widget page;
 }
 
-class _BehaviorNotification {
-  const _BehaviorNotification({required this.student, required this.summary});
-
-  final Student student;
-  final BehaviorSummary summary;
-}
-
-Future<void> _showBehaviorNotifications(
+Future<void> _showNotificationCenter(
   BuildContext context,
-  List<_BehaviorNotification> notifications,
+  List<StudentAlert> alerts,
 ) async {
   final scheme = Theme.of(context).colorScheme;
   await showModalBottomSheet<void>(
@@ -447,67 +429,30 @@ Future<void> _showBehaviorNotifications(
           ),
           child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 20),
-            child: notifications.isEmpty
+            child: alerts.isEmpty
                 ? const AppEmptyState(
                     icon: Icons.notifications_none_outlined,
-                    title: 'لا توجد تنبيهات سلوكية',
-                    message: 'ستظهر هنا أسماء الطلاب الذين يحتاجون إلى متابعة سلوكية.',
+                    title: 'لا توجد إشعارات',
+                    message: 'ستظهر هنا أسماء الطلاب الذين تجاوزوا حدود السلوك أو الغياب المحددة.',
                   )
                 : ListView(
                     children: [
                       Text(
-                        'الإشعارات السلوكية',
+                        'الإشعارات',
                         style: Theme.of(sheetContext).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w900,
                             ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'طلاب يحتاجون إلى مراجعة سجلهم السلوكي.',
+                        'طلاب تجاوزوا حدود السلوك أو بلغوا حد الفصل المحدد للغياب.',
                         style: Theme.of(sheetContext).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 16),
-                      for (final notification in notifications)
+                      for (final alert in alerts)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: Card(
-                            color: scheme.surfaceContainerHighest,
-                            child: ListTile(
-                              onTap: () {
-                                Navigator.of(sheetContext).pop();
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => StudentDetailsPage(
-                                      studentUuid: notification.student.uuid,
-                                    ),
-                                  ),
-                                );
-                              },
-                              leading: CircleAvatar(
-                                backgroundColor: notification.summary.dismissed
-                                    ? scheme.errorContainer
-                                    : scheme.tertiaryContainer,
-                                foregroundColor: notification.summary.dismissed
-                                    ? scheme.onErrorContainer
-                                    : scheme.onTertiaryContainer,
-                                child: Text(
-                                  notification.student.firstName.isEmpty
-                                      ? '؟'
-                                      : notification.student.firstName.characters.first,
-                                ),
-                              ),
-                              title: Text(
-                                notification.student.fullName,
-                                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                              ),
-                              subtitle: Text(
-                                '${notification.summary.label} • الدرجة السلوكية ${notification.summary.totalPoints.toStringAsFixed(0)}',
-                              ),
-                              trailing: const Icon(Icons.arrow_back_ios_new, size: 16),
-                            ),
-                          ),
+                          child: _AlertCard(alert: alert),
                         ),
                     ],
                   ),
@@ -516,6 +461,96 @@ Future<void> _showBehaviorNotifications(
       );
     },
   );
+}
+
+class _AlertCard extends StatelessWidget {
+  const _AlertCard({required this.alert});
+
+  final StudentAlert alert;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = switch (alert.primaryType) {
+      StudentAlertType.behaviorDismissal => (scheme.errorContainer, scheme.onErrorContainer),
+      StudentAlertType.absenceThreshold => (scheme.secondaryContainer, scheme.onSecondaryContainer),
+      StudentAlertType.behaviorWarning => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
+    };
+    final summary = alert.behaviorSummary;
+    final behaviorAlert =
+        summary != null && (alert.hasType(StudentAlertType.behaviorDismissal) || alert.hasType(StudentAlertType.behaviorWarning));
+
+    return Card(
+      color: scheme.surfaceContainerHighest,
+      child: ListTile(
+        onTap: () => _openStudent(context),
+        leading: CircleAvatar(
+          backgroundColor: colors.$1,
+          foregroundColor: colors.$2,
+          child: Text(
+            alert.student.firstName.isEmpty ? '؟' : alert.student.firstName.characters.first,
+          ),
+        ),
+        title: Text(
+          alert.student.fullName,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (behaviorAlert)
+              _AlertReasonLine(
+                icon: Icons.rule_folder_outlined,
+                text:
+                    '${summary.label} • الدرجة السلوكية ${summary.totalPoints.toStringAsFixed(0)}',
+              ),
+            if (alert.hasType(StudentAlertType.absenceThreshold))
+              _AlertReasonLine(
+                icon: Icons.event_busy_outlined,
+                text:
+                    'بلغ حد الفصل للغياب • ${absenceDaysLabel(alert.absenceCount)}',
+              ),
+          ],
+        ),
+        trailing: const Icon(Icons.arrow_back_ios_new, size: 16),
+      ),
+    );
+  }
+
+  void _openStudent(BuildContext context) {
+    // إغلاق لوحة الإشعارات أولاً ثم فتح ملف الطالب.
+    Navigator.of(context)
+      ..pop()
+      ..push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => StudentDetailsPage(studentUuid: alert.student.uuid),
+        ),
+      );
+  }
+}
+
+class _AlertReasonLine extends StatelessWidget {
+  const _AlertReasonLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(child: Text(text, style: style)),
+        ],
+      ),
+    );
+  }
 }
 
 class _StudentListItem extends StatelessWidget {

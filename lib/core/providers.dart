@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'alerts/student_alerts.dart';
 import 'behavior/behavior_summary.dart';
 import 'database/app_snapshot.dart';
 import 'database/database_service.dart';
@@ -112,6 +113,7 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required String stage,
     double? dismissalThreshold,
     double? warningThreshold,
+    double? absenceDismissalThreshold,
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,
@@ -122,6 +124,7 @@ class AppController extends AsyncNotifier<AppSnapshot> {
         stage: stage,
         dismissalThreshold: dismissalThreshold,
         warningThreshold: warningThreshold,
+        absenceDismissalThreshold: absenceDismissalThreshold,
         penalties: penalties,
         institutionLineAnimated: institutionLineAnimated,
         institutionLineSpeed: institutionLineSpeed,
@@ -133,7 +136,11 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required AttendanceStatus status,
     String reason = '',
     String notes = '',
-  }) => _mutate(() => _repository.setAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+  }) async {
+    final wasOverAbsenceLimit = _isOverAbsenceLimit(studentUuid);
+    await _mutate(() => _repository.setAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+    await _notifyAbsenceAlert(studentUuid, wasOverAbsenceLimit);
+  }
 
   Future<void> updateAttendance({
     required String studentUuid,
@@ -141,10 +148,17 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     required AttendanceStatus status,
     String reason = '',
     String notes = '',
-  }) => _mutate(() => _repository.updateAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+  }) async {
+    final wasOverAbsenceLimit = _isOverAbsenceLimit(studentUuid);
+    await _mutate(() => _repository.updateAttendance(studentUuid: studentUuid, date: date, status: status, reason: reason, notes: notes));
+    await _notifyAbsenceAlert(studentUuid, wasOverAbsenceLimit);
+  }
 
-  Future<void> deleteAttendance({required String studentUuid, required DateTime date}) =>
-      _mutate(() => _repository.deleteAttendance(studentUuid: studentUuid, date: date));
+  Future<void> deleteAttendance({required String studentUuid, required DateTime date}) async {
+    final wasOverAbsenceLimit = _isOverAbsenceLimit(studentUuid);
+    await _mutate(() => _repository.deleteAttendance(studentUuid: studentUuid, date: date));
+    await _notifyAbsenceAlert(studentUuid, wasOverAbsenceLimit);
+  }
 
   Future<void> createGradeField({required String subject, required String title, required double maxScore, required String term}) =>
       _mutate(() => _repository.createGradeField(subject: subject, title: title, maxScore: maxScore, term: term));
@@ -218,6 +232,9 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     return currentState is AsyncData<AppSnapshot> ? currentState.value : null;
   }
 
+  Student? _studentFor(AppSnapshot snapshot, String studentUuid) =>
+      snapshot.students.where((item) => item.uuid == studentUuid).firstOrNull;
+
   BehaviorSummary? _behaviorSummary(String studentUuid) {
     final snapshot = _loadedSnapshot;
     if (snapshot == null) return null;
@@ -227,19 +244,54 @@ class AppController extends AsyncNotifier<AppSnapshot> {
     );
   }
 
+  /// هل تجاوز الطالب حد الغياب المحدد في الإعدادات وفق اللقطة الحالية؟
+  bool? _isOverAbsenceLimit(String studentUuid) {
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return null;
+    final threshold = snapshot.settings.absenceDismissalThreshold;
+    if (threshold <= 0) return false;
+    final absences = snapshot.attendance
+        .where((item) => item.studentUuid == studentUuid && item.status == AttendanceStatus.absent)
+        .length;
+    return absences >= threshold;
+  }
+
+  Future<void> _notifyAbsenceAlert(
+    String studentUuid,
+    bool? previousOverLimit,
+  ) async {
+    final isOverLimit = _isOverAbsenceLimit(studentUuid);
+    if (isOverLimit != true) return;
+    // يُطلق الإشعار عند العبور فقط، لا عند البقاء فوق الحد.
+    if (previousOverLimit == true) return;
+
+    final snapshot = _loadedSnapshot;
+    if (snapshot == null) return;
+    final student = _studentFor(snapshot, studentUuid);
+    if (student == null) return;
+
+    final absences = snapshot.attendance
+        .where((item) => item.studentUuid == studentUuid && item.status == AttendanceStatus.absent)
+        .length;
+    try {
+      await ref.read(notificationServiceProvider).showAbsenceAlert(
+            studentUuid: student.uuid,
+            title: 'إشعار غياب: ${student.fullName}',
+            body:
+                'بلغ ${absenceDaysLabel(absences)} وهو ما يساوي حد الفصل المحدد (${snapshot.settings.absenceDismissalThreshold.toStringAsFixed(0)} أيام) أو يجاوزه.',
+          );
+    } catch (_) {
+      // لا ينبغي أن يمنع تعذر إشعار النظام حفظ السجل داخل قاعدة البيانات.
+    }
+  }
+
   Future<void> _notifyBehaviorAlert(
     String studentUuid,
     BehaviorSummary? previousSummary,
   ) async {
     final snapshot = _loadedSnapshot;
     if (snapshot == null) return;
-    Student? student;
-    for (final item in snapshot.students) {
-      if (item.uuid == studentUuid) {
-        student = item;
-        break;
-      }
-    }
+    final student = _studentFor(snapshot, studentUuid);
     if (student == null) return;
 
     final summary = _behaviorSummary(studentUuid);

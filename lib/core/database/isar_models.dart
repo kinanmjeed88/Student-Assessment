@@ -54,6 +54,10 @@ class AppSettings {
   String stage = '';
   double dismissalThreshold = 50;
   double warningThreshold = 40;
+
+  /// عدد أيام الغياب التي تضيف الطالب إلى إشعارات حد الفصل.
+  double absenceDismissalThreshold = 3;
+
   PenaltyRules penalties = PenaltyRules();
   bool institutionLineAnimated = false;
   double institutionLineSpeed = 40;
@@ -68,6 +72,9 @@ class AppSettings {
           'dismissalThreshold': dismissalThreshold,
           'warningThreshold': warningThreshold,
           'penalties': penalties.toJson(),
+        },
+        'absence': {
+          'dismissalThreshold': absenceDismissalThreshold,
         },
         'institutionLineAnimated': institutionLineAnimated,
         'institutionLineSpeed': institutionLineSpeed,

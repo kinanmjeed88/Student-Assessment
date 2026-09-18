@@ -238,6 +238,7 @@ class LocalRepository implements LocalStore {
     required String stage,
     double? dismissalThreshold,
     double? warningThreshold,
+    double? absenceDismissalThreshold,
     PenaltyRules? penalties,
     bool? institutionLineAnimated,
     double? institutionLineSpeed,
@@ -253,6 +254,12 @@ class LocalRepository implements LocalStore {
         ..stage = stage.trim();
       if (dismissalThreshold != null) settings.dismissalThreshold = dismissalThreshold;
       if (warningThreshold != null) settings.warningThreshold = warningThreshold;
+      if (absenceDismissalThreshold != null) {
+        if (absenceDismissalThreshold <= 0) {
+          throw const FormatException('حد الفصل للغياب يجب أن يكون أكبر من صفر.');
+        }
+        settings.absenceDismissalThreshold = absenceDismissalThreshold;
+      }
       if (penalties != null) {
         // تحديث خصائص الكائن المضمّن نفسه يضمن أن Isar يحفظ القيم الجديدة
         // بدلاً من الاحتفاظ بنسخة embedded قديمة عند استبدال المرجع بالكامل.
@@ -822,6 +829,10 @@ AppSettings _settingsFromJson(dynamic value) {
     settings.warningThreshold = (behavior['warningThreshold'] as num?)?.toDouble() ?? settings.warningThreshold;
     final penalties = behavior['penalties'];
     settings.penalties = PenaltyRules.fromJson(penalties is Map ? Map<String, dynamic>.from(penalties) : null);
+  }
+  final absence = json['absence'];
+  if (absence is Map) {
+    settings.absenceDismissalThreshold = (absence['dismissalThreshold'] as num?)?.toDouble() ?? settings.absenceDismissalThreshold;
   }
   return settings;
 }
