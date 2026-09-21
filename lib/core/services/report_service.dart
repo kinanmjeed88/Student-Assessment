@@ -9,22 +9,128 @@ import '../behavior/behavior_summary.dart';
 import '../database/app_snapshot.dart';
 import '../database/isar_models.dart';
 import '../utils/iterable_extensions.dart';
+import 'excel_report_builder.dart';
 
 class ReportService {
+  /// وصف الصف الدراسي المستخدم كاسم ورقة عمل مستقلة.
+  ///
+  /// يضم الصف والشعبة معاً كي تُفصل «الأول أ» عن «الأول ب» في أوراق مختلفة.
+  String _groupName(AppSnapshot snapshot, String? classUuid, String? sectionUuid) {
+    final className = classUuid == null ? '' : _className(snapshot, classUuid);
+    final sectionName = sectionUuid == null ? '' : _sectionName(snapshot, sectionUuid);
+    if (className.isEmpty && sectionName.isEmpty) return kUnassignedGroupName;
+    if (sectionName.isEmpty) return className;
+    if (className.isEmpty) return sectionName;
+    return '$className - $sectionName';
+  }
+
+  String _studentGroup(AppSnapshot snapshot, Student? student) =>
+      student == null ? kUnassignedGroupName : _groupName(snapshot, student.classUuid, student.sectionUuid);
+
+  /// كل الصفوف والشعب المعرّفة في التطبيق، لضمان إنشاء ورقة لكل صف ولو كان فارغاً.
+  List<String> _allGroups(AppSnapshot snapshot) {
+    final groups = <String>[];
+    for (final schoolClass in snapshot.classes) {
+      final sections = snapshot.sections.where((section) => section.classUuid == schoolClass.uuid).toList(growable: false);
+      if (sections.isEmpty) {
+        groups.add(_groupName(snapshot, schoolClass.uuid, null));
+        continue;
+      }
+      for (final section in sections) {
+        groups.add(_groupName(snapshot, schoolClass.uuid, section.uuid));
+      }
+      // بعض الطلاب قد لا يُسندون إلى شعبة، فتُضاف ورقة الصف بلا شعبة أيضاً.
+      if (snapshot.students.any((student) => student.classUuid == schoolClass.uuid && _sectionName(snapshot, student.sectionUuid).isEmpty)) {
+        groups.add(_groupName(snapshot, schoolClass.uuid, null));
+      }
+    }
+    return groups;
+  }
+
   Uint8List exportStudentsXlsx(AppSnapshot snapshot) {
-    final workbook = Excel.createExcel();
-    final sheet = _createSheet(
-      workbook,
-      'الطلاب',
-      'تقرير الطلاب',
-      'قائمة الطلاب مع الصف والشعبة والحالة وملخص السلوك',
-      const ['الاسم الكامل', 'رقم الطالب', 'الصف', 'الشعبة', 'الجنس', 'الحالة', 'ولي الأمر', 'هاتف ولي الأمر', 'نقاط السلوك', 'حالة المتابعة'],
-      const [28, 16, 18, 18, 12, 16, 24, 18, 14, 20],
-    );
-    var row = 3;
+    const columns = [
+      ReportColumn('الاسم الكامل', 28),
+      ReportColumn('رقم الطالب', 16),
+      ReportColumn('الصف', 18),
+      ReportColumn('الشعبة', 18),
+      ReportColumn('الجنس', 12),
+      ReportColumn('الحالة', 16),
+      ReportColumn('ولي الأمر', 24),
+      ReportColumn('هاتف ولي الأمر', 18),
+      ReportColumn('نقاط السلوك', 14),
+      ReportColumn('حالة المتابعة', 20),
+    ];
+    final rows = <ReportRow>[];
     for (final student in snapshot.students) {
       final summary = _behaviorSummary(snapshot, student.uuid);
-      _appendRow(sheet, row++, [
+      rows.add(ReportRow(
+        group: _studentGroup(snapshot, student),
+        cells: [
+          _text(student.fullName),
+          _text(student.studentNumber),
+          _text(_className(snapshot, student.classUuid)),
+          _text(_sectionName(snapshot, student.sectionUuid)),
+          _text(_genderLabel(student.gender)),
+          _text(_studentStatusLabel(student.status)),
+          _text(student.guardianName),
+          _text(student.guardianPhone),
+          _number(summary.totalPoints),
+          _text(summary.label),
+        ],
+      ));
+    }
+
+    final builder = ExcelReportBuilder()
+      ..addGroupedSection(
+        sheetBaseName: 'الطلاب',
+        title: 'تقرير الطلاب',
+        subtitle: 'قائمة الطلاب مع الصف والشعبة والحالة وملخص السلوك',
+        columns: columns,
+        rows: rows,
+        totalLabel: 'عدد الطلاب',
+        groupOrder: _allGroups(snapshot),
+      );
+    return builder.save();
+  }
+
+  /// تصدير أسماء طلاب صف/شعبة محددة في ملف Excel مستقل.
+  ///
+  /// [sectionUuid] اختياري: عند تركه فارغاً يشمل التقرير كل شعب الصف.
+  Uint8List exportClassStudentsXlsx(
+    AppSnapshot snapshot, {
+    required String classUuid,
+    String sectionUuid = '',
+  }) {
+    final className = _className(snapshot, classUuid);
+    if (className.isEmpty) throw const FormatException('الصف المحدد غير موجود.');
+    final sectionName = sectionUuid.isEmpty ? '' : _sectionName(snapshot, sectionUuid);
+    if (sectionUuid.isNotEmpty && sectionName.isEmpty) {
+      throw const FormatException('الشعبة المحددة غير موجودة.');
+    }
+
+    final students = snapshot.students
+        .where((student) => student.classUuid == classUuid && (sectionUuid.isEmpty || student.sectionUuid == sectionUuid))
+        .toList()
+      ..sort((a, b) => a.fullName.compareTo(b.fullName));
+
+    const columns = [
+      ReportColumn('ت', 8),
+      ReportColumn('الاسم الكامل', 30),
+      ReportColumn('رقم الطالب', 16),
+      ReportColumn('الصف', 18),
+      ReportColumn('الشعبة', 18),
+      ReportColumn('الجنس', 12),
+      ReportColumn('الحالة', 16),
+      ReportColumn('ولي الأمر', 24),
+      ReportColumn('هاتف ولي الأمر', 18),
+    ];
+
+    final label = sectionName.isEmpty ? className : '$className - $sectionName';
+    final rows = <List<CellValue?>>[];
+    for (var index = 0; index < students.length; index++) {
+      final student = students[index];
+      rows.add([
+        _integer(index + 1),
         _text(student.fullName),
         _text(student.studentNumber),
         _text(_className(snapshot, student.classUuid)),
@@ -33,63 +139,294 @@ class ReportService {
         _text(_studentStatusLabel(student.status)),
         _text(student.guardianName),
         _text(student.guardianPhone),
-        _number(summary.totalPoints),
-        _text(summary.label),
       ]);
     }
-    _addFooter(sheet, row, 'عدد الطلاب', snapshot.students.length.toString());
-    return _save(workbook);
+
+    final builder = ExcelReportBuilder()
+      ..addSheet(
+        name: label,
+        title: 'أسماء طلاب $label',
+        subtitle: 'قائمة أسماء الطلاب حسب الترتيب المعروض في التطبيق',
+        columns: columns,
+        rows: rows,
+        totalLabel: 'عدد الطلاب',
+      );
+    return builder.save();
+  }
+
+  /// اسم ملف آمن لتنزيل أسماء طلاب صف/شعبة محددة.
+  String classStudentsFileName(AppSnapshot snapshot, {required String classUuid, String sectionUuid = ''}) {
+    final className = _className(snapshot, classUuid);
+    final sectionName = sectionUuid.isEmpty ? '' : _sectionName(snapshot, sectionUuid);
+    final label = sectionName.isEmpty ? className : '$className-$sectionName';
+    final safe = label.replaceAll(RegExp(r'[\\/:*?"<>|]'), ' ').replaceAll(RegExp(r'\s+'), '-').trim();
+    return 'students-${safe.isEmpty ? 'class' : safe}.xlsx';
   }
 
   Uint8List exportAttendanceXlsx(AppSnapshot snapshot) {
-    final workbook = Excel.createExcel();
-    final sheet = _createSheet(
-      workbook,
-      'الحضور',
-      'تقرير الحضور والغياب',
-      'سجل يومي يتضمن الحضور والغياب والتأخر والأعذار مع الأسباب والملاحظات',
-      const ['الطالب', 'رقم الطالب', 'الصف', 'الشعبة', 'التاريخ', 'الحالة', 'السبب', 'ملاحظات'],
-      const [28, 16, 18, 18, 15, 16, 28, 36],
-    );
-    var row = 3;
+    const columns = [
+      ReportColumn('الطالب', 28),
+      ReportColumn('رقم الطالب', 16),
+      ReportColumn('الصف', 18),
+      ReportColumn('الشعبة', 18),
+      ReportColumn('التاريخ', 15),
+      ReportColumn('الحالة', 16),
+      ReportColumn('السبب', 28),
+      ReportColumn('ملاحظات', 36),
+    ];
+    final rows = <ReportRow>[];
     for (final record in snapshot.attendance) {
       final student = _student(snapshot, record.studentUuid);
-      _appendRow(sheet, row++, [
-        _text(student?.fullName ?? record.studentUuid),
-        _text(student?.studentNumber ?? ''),
-        _text(student == null ? '' : _className(snapshot, student.classUuid)),
-        _text(student == null ? '' : _sectionName(snapshot, student.sectionUuid)),
-        _text(_date(record.date)),
-        _text(_attendanceLabel(record.status)),
-        _text(record.reason),
-        _text(record.notes),
-      ]);
+      rows.add(ReportRow(
+        group: _studentGroup(snapshot, student),
+        cells: [
+          _text(student?.fullName ?? record.studentUuid),
+          _text(student?.studentNumber ?? ''),
+          _text(student == null ? '' : _className(snapshot, student.classUuid)),
+          _text(student == null ? '' : _sectionName(snapshot, student.sectionUuid)),
+          _text(_date(record.date)),
+          _text(_attendanceLabel(record.status)),
+          _text(record.reason),
+          _text(record.notes),
+        ],
+      ));
     }
-    _addFooter(sheet, row, 'عدد سجلات الحضور', snapshot.attendance.length.toString());
-    return _save(workbook);
+
+    final builder = ExcelReportBuilder()
+      ..addGroupedSection(
+        sheetBaseName: 'الحضور',
+        title: 'تقرير الحضور والغياب',
+        subtitle: 'سجل يومي يتضمن الحضور والغياب والتأخر والأعذار مع الأسباب والملاحظات',
+        columns: columns,
+        rows: rows,
+        totalLabel: 'عدد سجلات الحضور',
+        groupOrder: _allGroups(snapshot),
+      );
+    return builder.save();
   }
 
   Uint8List exportGradesXlsx(AppSnapshot snapshot) {
-    final workbook = Excel.createExcel();
-    final sheet = _createSheet(
-      workbook,
-      'الدرجات',
-      'تقرير الدرجات والتقييمات',
-      'تفاصيل التقييمات والدرجات والنسب والملاحظات حسب الطالب والمادة',
-      const ['الطالب', 'رقم الطالب', 'الصف', 'الشعبة', 'المادة', 'التقييم', 'الفصل', 'الدرجة', 'الحد الأقصى', 'النسبة', 'التقدير', 'ملاحظات'],
-      const [26, 16, 16, 16, 20, 24, 18, 13, 15, 13, 16, 34],
-    );
-    var row = 3;
+    const columns = [
+      ReportColumn('الطالب', 26),
+      ReportColumn('رقم الطالب', 16),
+      ReportColumn('الصف', 16),
+      ReportColumn('الشعبة', 16),
+      ReportColumn('المادة', 20),
+      ReportColumn('التقييم', 24),
+      ReportColumn('الفصل', 18),
+      ReportColumn('الدرجة', 13),
+      ReportColumn('الحد الأقصى', 15),
+      ReportColumn('النسبة', 13),
+      ReportColumn('التقدير', 16),
+      ReportColumn('ملاحظات', 34),
+    ];
+    final rows = <ReportRow>[];
     for (final grade in snapshot.grades) {
       final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
       final student = _student(snapshot, grade.studentUuid);
       if (field == null || student == null) continue;
       final percentage = field.maxScore <= 0 ? 0.0 : grade.score / field.maxScore * 100.0;
-      _appendRow(sheet, row++, [
-        _text(student.fullName),
-        _text(student.studentNumber),
-        _text(_className(snapshot, student.classUuid)),
-        _text(_sectionName(snapshot, student.sectionUuid)),
+      rows.add(ReportRow(
+        group: _studentGroup(snapshot, student),
+        cells: [
+          _text(student.fullName),
+          _text(student.studentNumber),
+          _text(_className(snapshot, student.classUuid)),
+          _text(_sectionName(snapshot, student.sectionUuid)),
+          _text(field.subject),
+          _text(field.title),
+          _text(field.term),
+          _number(grade.score),
+          _number(field.maxScore),
+          _number(percentage),
+          _text(_gradeLabel(percentage)),
+          _text(grade.notes),
+        ],
+      ));
+    }
+
+    final builder = ExcelReportBuilder()
+      ..addGroupedSection(
+        sheetBaseName: 'الدرجات',
+        title: 'تقرير الدرجات والتقييمات',
+        subtitle: 'تفاصيل التقييمات والدرجات والنسب والملاحظات حسب الطالب والمادة',
+        columns: columns,
+        rows: rows,
+        totalLabel: 'عدد الدرجات',
+        groupOrder: _allGroups(snapshot),
+      );
+    return builder.save();
+  }
+
+  Uint8List exportBehaviorXlsx(AppSnapshot snapshot) {
+    const columns = [
+      ReportColumn('الطالب', 26),
+      ReportColumn('رقم الطالب', 16),
+      ReportColumn('الصف', 16),
+      ReportColumn('الشعبة', 16),
+      ReportColumn('التصنيف', 16),
+      ReportColumn('نوع المخالفة', 20),
+      ReportColumn('العنوان', 26),
+      ReportColumn('التفاصيل', 38),
+      ReportColumn('النقاط', 13),
+      ReportColumn('التاريخ', 15),
+      ReportColumn('الإجراء', 30),
+      ReportColumn('المتابعة', 30),
+    ];
+    final rows = <ReportRow>[];
+    for (final record in snapshot.behaviors) {
+      final student = _student(snapshot, record.studentUuid);
+      rows.add(ReportRow(
+        group: _studentGroup(snapshot, student),
+        cells: [
+          _text(student?.fullName ?? record.studentUuid),
+          _text(student?.studentNumber ?? ''),
+          _text(student == null ? '' : _className(snapshot, student.classUuid)),
+          _text(student == null ? '' : _sectionName(snapshot, student.sectionUuid)),
+          _text(_behaviorCategoryLabel(record.category)),
+          _text(_violationLabel(record.violationType)),
+          _text(record.title),
+          _text(record.details),
+          _number(record.penaltyPoints),
+          _text(_date(record.date)),
+          _text(record.actionTaken),
+          _text(record.followUp),
+        ],
+      ));
+    }
+
+    final builder = ExcelReportBuilder()
+      ..addGroupedSection(
+        sheetBaseName: 'السلوك',
+        title: 'تقرير السلوك والمتابعة',
+        subtitle: 'السجلات السلوكية والنقاط والإجراءات والمتابعات لكل طالب',
+        columns: columns,
+        rows: rows,
+        totalLabel: 'عدد السجلات السلوكية',
+        groupOrder: _allGroups(snapshot),
+      );
+    return builder.save();
+  }
+
+  Uint8List exportNotesXlsx(AppSnapshot snapshot) {
+    const columns = [
+      ReportColumn('الطالب', 26),
+      ReportColumn('رقم الطالب', 16),
+      ReportColumn('الصف', 16),
+      ReportColumn('الشعبة', 16),
+      ReportColumn('التصنيف', 18),
+      ReportColumn('العنوان', 26),
+      ReportColumn('التفاصيل', 42),
+      ReportColumn('تحتاج متابعة', 16),
+      ReportColumn('تاريخ المتابعة', 18),
+      ReportColumn('التاريخ', 15),
+    ];
+    final rows = <ReportRow>[];
+    for (final note in snapshot.notes) {
+      final student = _student(snapshot, note.studentUuid);
+      rows.add(ReportRow(
+        group: _studentGroup(snapshot, student),
+        cells: [
+          _text(student?.fullName ?? note.studentUuid),
+          _text(student?.studentNumber ?? ''),
+          _text(student == null ? '' : _className(snapshot, student.classUuid)),
+          _text(student == null ? '' : _sectionName(snapshot, student.sectionUuid)),
+          _text(_noteCategoryLabel(note.category)),
+          _text(note.title),
+          _text(note.details),
+          _text(note.needsFollowUp ? 'نعم' : 'لا'),
+          _text(note.followUpDate == null ? '' : _date(note.followUpDate!)),
+          _text(_date(note.date)),
+        ],
+      ));
+    }
+
+    final builder = ExcelReportBuilder()
+      ..addGroupedSection(
+        sheetBaseName: 'الملاحظات',
+        title: 'تقرير الملاحظات والمتابعة',
+        subtitle: 'الملاحظات الأكاديمية والصحية والتربوية ومواعيد المتابعة',
+        columns: columns,
+        rows: rows,
+        totalLabel: 'عدد الملاحظات',
+        groupOrder: _allGroups(snapshot),
+      );
+    return builder.save();
+  }
+
+  Uint8List exportImportHistoryXlsx(AppSnapshot snapshot) {
+    const columns = [
+      ReportColumn('اسم الملف', 34),
+      ReportColumn('الصيغة', 16),
+      ReportColumn('الصف', 20),
+      ReportColumn('الشعبة', 20),
+      ReportColumn('عدد الطلاب', 16),
+      ReportColumn('تاريخ الاستيراد', 18),
+      ReportColumn('الحالة', 18),
+      ReportColumn('تاريخ التراجع', 18),
+    ];
+    final rows = <ReportRow>[];
+    for (final record in snapshot.imports) {
+      rows.add(ReportRow(
+        group: _groupName(snapshot, record.classUuid, record.sectionUuid),
+        cells: [
+          _text(record.sourceFilename),
+          _text(_importFormatLabel(record.sourceFormat)),
+          _text(_className(snapshot, record.classUuid)),
+          _text(_sectionName(snapshot, record.sectionUuid)),
+          _integer(record.addedCount),
+          _text(_date(record.createdAt)),
+          _text(record.revertedAt == null ? 'نشط' : 'متراجع عنه'),
+          _text(record.revertedAt == null ? '' : _date(record.revertedAt!)),
+        ],
+      ));
+    }
+
+    final builder = ExcelReportBuilder()
+      ..addGroupedSection(
+        sheetBaseName: 'سجل الاستيراد',
+        title: 'تقرير سجل استيراد الطلاب',
+        subtitle: 'مصادر الملفات وعمليات الإضافة والتراجع وحالة كل عملية',
+        columns: columns,
+        rows: rows,
+        totalLabel: 'عدد عمليات الاستيراد',
+        groupOrder: _allGroups(snapshot),
+      );
+    return builder.save();
+  }
+
+  Uint8List exportStudentXlsx(AppSnapshot snapshot, String studentUuid) {
+    final student = _student(snapshot, studentUuid);
+    if (student == null) throw const FormatException('الطالب غير موجود.');
+    final behavior = _behaviorSummary(snapshot, studentUuid);
+    final builder = ExcelReportBuilder();
+
+    builder.addSheet(
+      name: 'الملف الشخصي',
+      title: 'ملف الطالب',
+      subtitle: 'البيانات الأساسية وملخص المتابعة السلوكية',
+      columns: const [ReportColumn('الحقل', 26), ReportColumn('القيمة', 46)],
+      rows: <List<CellValue?>>[
+        [_text('الاسم الكامل'), _text(student.fullName)],
+        [_text('رقم الطالب'), _text(student.studentNumber)],
+        [_text('الجنس'), _text(_genderLabel(student.gender))],
+        [_text('الصف'), _text(_className(snapshot, student.classUuid))],
+        [_text('الشعبة'), _text(_sectionName(snapshot, student.sectionUuid))],
+        [_text('الحالة'), _text(_studentStatusLabel(student.status))],
+        [_text('ولي الأمر'), _text(student.guardianName)],
+        [_text('هاتف ولي الأمر'), _text(student.guardianPhone)],
+        [_text('نقاط السلوك'), _number(behavior.totalPoints)],
+        [_text('حالة المتابعة'), _text(behavior.label)],
+      ],
+      totalLabel: 'عدد الحقول',
+    );
+
+    final gradeRows = <List<CellValue?>>[];
+    for (final grade in snapshot.gradesFor(studentUuid)) {
+      final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
+      if (field == null) continue;
+      final percentage = field.maxScore <= 0 ? 0.0 : grade.score / field.maxScore * 100.0;
+      gradeRows.add([
         _text(field.subject),
         _text(field.title),
         _text(field.term),
@@ -100,162 +437,98 @@ class ReportService {
         _text(grade.notes),
       ]);
     }
-    _addFooter(sheet, row, 'عدد الدرجات', snapshot.grades.length.toString());
-    return _save(workbook);
-  }
-
-  Uint8List exportBehaviorXlsx(AppSnapshot snapshot) {
-    final workbook = Excel.createExcel();
-    final sheet = _createSheet(
-      workbook,
-      'السلوك',
-      'تقرير السلوك والمتابعة',
-      'السجلات السلوكية والنقاط والإجراءات والمتابعات لكل طالب',
-      const ['الطالب', 'رقم الطالب', 'الصف', 'الشعبة', 'التصنيف', 'نوع المخالفة', 'العنوان', 'التفاصيل', 'النقاط', 'التاريخ', 'الإجراء', 'المتابعة'],
-      const [26, 16, 16, 16, 16, 20, 26, 38, 13, 15, 30, 30],
+    builder.addSheet(
+      name: 'الدرجات',
+      title: 'درجات الطالب',
+      subtitle: 'التقييمات والدرجات والنسب والملاحظات',
+      columns: const [
+        ReportColumn('المادة', 22),
+        ReportColumn('التقييم', 26),
+        ReportColumn('الفصل', 18),
+        ReportColumn('الدرجة', 13),
+        ReportColumn('الحد الأقصى', 15),
+        ReportColumn('النسبة', 13),
+        ReportColumn('التقدير', 16),
+        ReportColumn('ملاحظات', 36),
+      ],
+      rows: gradeRows,
+      totalLabel: 'عدد التقييمات',
     );
-    var row = 3;
-    for (final record in snapshot.behaviors) {
-      final student = _student(snapshot, record.studentUuid);
-      _appendRow(sheet, row++, [
-        _text(student?.fullName ?? record.studentUuid),
-        _text(student?.studentNumber ?? ''),
-        _text(student == null ? '' : _className(snapshot, student.classUuid)),
-        _text(student == null ? '' : _sectionName(snapshot, student.sectionUuid)),
-        _text(_behaviorCategoryLabel(record.category)),
-        _text(_violationLabel(record.violationType)),
-        _text(record.title),
-        _text(record.details),
-        _number(record.penaltyPoints),
-        _text(_date(record.date)),
-        _text(record.actionTaken),
-        _text(record.followUp),
-      ]);
-    }
-    _addFooter(sheet, row, 'عدد السجلات السلوكية', snapshot.behaviors.length.toString());
-    return _save(workbook);
-  }
 
-  Uint8List exportNotesXlsx(AppSnapshot snapshot) {
-    final workbook = Excel.createExcel();
-    final sheet = _createSheet(
-      workbook,
-      'الملاحظات',
-      'تقرير الملاحظات والمتابعة',
-      'الملاحظات الأكاديمية والصحية والتربوية ومواعيد المتابعة',
-      const ['الطالب', 'رقم الطالب', 'الصف', 'الشعبة', 'التصنيف', 'العنوان', 'التفاصيل', 'تحتاج متابعة', 'تاريخ المتابعة', 'التاريخ'],
-      const [26, 16, 16, 16, 18, 26, 42, 16, 18, 15],
+    builder.addSheet(
+      name: 'الحضور',
+      title: 'حضور الطالب',
+      subtitle: 'سجل الحضور والغياب والتأخر والأعذار',
+      columns: const [
+        ReportColumn('التاريخ', 18),
+        ReportColumn('الحالة', 18),
+        ReportColumn('السبب', 34),
+        ReportColumn('ملاحظات', 42),
+      ],
+      rows: [
+        for (final record in snapshot.attendanceFor(studentUuid))
+          [_text(_date(record.date)), _text(_attendanceLabel(record.status)), _text(record.reason), _text(record.notes)],
+      ],
+      totalLabel: 'عدد سجلات الحضور',
     );
-    var row = 3;
-    for (final note in snapshot.notes) {
-      final student = _student(snapshot, note.studentUuid);
-      _appendRow(sheet, row++, [
-        _text(student?.fullName ?? note.studentUuid),
-        _text(student?.studentNumber ?? ''),
-        _text(student == null ? '' : _className(snapshot, student.classUuid)),
-        _text(student == null ? '' : _sectionName(snapshot, student.sectionUuid)),
-        _text(_noteCategoryLabel(note.category)),
-        _text(note.title),
-        _text(note.details),
-        _text(note.needsFollowUp ? 'نعم' : 'لا'),
-        _text(note.followUpDate == null ? '' : _date(note.followUpDate!)),
-        _text(_date(note.date)),
-      ]);
-    }
-    _addFooter(sheet, row, 'عدد الملاحظات', snapshot.notes.length.toString());
-    return _save(workbook);
-  }
 
-  Uint8List exportImportHistoryXlsx(AppSnapshot snapshot) {
-    final workbook = Excel.createExcel();
-    final sheet = _createSheet(
-      workbook,
-      'سجل الاستيراد',
-      'تقرير سجل استيراد الطلاب',
-      'مصادر الملفات وعمليات الإضافة والتراجع وحالة كل عملية',
-      const ['اسم الملف', 'الصيغة', 'الصف', 'الشعبة', 'عدد الطلاب', 'تاريخ الاستيراد', 'الحالة', 'تاريخ التراجع'],
-      const [34, 16, 20, 20, 16, 18, 18, 18],
+    builder.addSheet(
+      name: 'السلوك',
+      title: 'سجل سلوك الطالب',
+      subtitle: 'المخالفات والإيجابيات والإجراءات والمتابعات',
+      columns: const [
+        ReportColumn('التصنيف', 18),
+        ReportColumn('نوع المخالفة', 20),
+        ReportColumn('العنوان', 26),
+        ReportColumn('التفاصيل', 38),
+        ReportColumn('النقاط', 13),
+        ReportColumn('التاريخ', 15),
+        ReportColumn('الإجراء', 30),
+        ReportColumn('المتابعة', 30),
+      ],
+      rows: [
+        for (final record in snapshot.behaviorsFor(studentUuid))
+          [
+            _text(_behaviorCategoryLabel(record.category)),
+            _text(_violationLabel(record.violationType)),
+            _text(record.title),
+            _text(record.details),
+            _number(record.penaltyPoints),
+            _text(_date(record.date)),
+            _text(record.actionTaken),
+            _text(record.followUp),
+          ],
+      ],
+      totalLabel: 'عدد سجلات السلوك',
     );
-    var row = 3;
-    for (final record in snapshot.imports) {
-      _appendRow(sheet, row++, [
-        _text(record.sourceFilename),
-        _text(_importFormatLabel(record.sourceFormat)),
-        _text(_className(snapshot, record.classUuid)),
-        _text(_sectionName(snapshot, record.sectionUuid)),
-        _integer(record.addedCount),
-        _text(_date(record.createdAt)),
-        _text(record.revertedAt == null ? 'نشط' : 'متراجع عنه'),
-        _text(record.revertedAt == null ? '' : _date(record.revertedAt!)),
-      ]);
-    }
-    _addFooter(sheet, row, 'عدد عمليات الاستيراد', snapshot.imports.length.toString());
-    return _save(workbook);
-  }
 
-  Uint8List exportStudentXlsx(AppSnapshot snapshot, String studentUuid) {
-    final student = _student(snapshot, studentUuid);
-    if (student == null) throw const FormatException('الطالب غير موجود.');
-    final behavior = _behaviorSummary(snapshot, studentUuid);
-    final workbook = Excel.createExcel();
-
-    final profile = _createSheet(
-      workbook,
-      'الملف الشخصي',
-      'ملف الطالب',
-      'البيانات الأساسية وملخص المتابعة السلوكية',
-      const ['الحقل', 'القيمة'],
-      const [26, 46],
+    builder.addSheet(
+      name: 'الملاحظات',
+      title: 'ملاحظات الطالب',
+      subtitle: 'الملاحظات الأكاديمية والصحية والتربوية والمتابعة',
+      columns: const [
+        ReportColumn('التصنيف', 18),
+        ReportColumn('العنوان', 26),
+        ReportColumn('التفاصيل', 42),
+        ReportColumn('تحتاج متابعة', 16),
+        ReportColumn('تاريخ المتابعة', 18),
+        ReportColumn('التاريخ', 15),
+      ],
+      rows: [
+        for (final note in snapshot.notesFor(studentUuid))
+          [
+            _text(_noteCategoryLabel(note.category)),
+            _text(note.title),
+            _text(note.details),
+            _text(note.needsFollowUp ? 'نعم' : 'لا'),
+            _text(note.followUpDate == null ? '' : _date(note.followUpDate!)),
+            _text(_date(note.date)),
+          ],
+      ],
+      totalLabel: 'عدد الملاحظات',
     );
-    var profileRow = 3;
-    final profileData = <List<CellValue?>>[
-      [_text('الاسم الكامل'), _text(student.fullName)],
-      [_text('رقم الطالب'), _text(student.studentNumber)],
-      [_text('الجنس'), _text(_genderLabel(student.gender))],
-      [_text('الصف'), _text(_className(snapshot, student.classUuid))],
-      [_text('الشعبة'), _text(_sectionName(snapshot, student.sectionUuid))],
-      [_text('الحالة'), _text(_studentStatusLabel(student.status))],
-      [_text('ولي الأمر'), _text(student.guardianName)],
-      [_text('هاتف ولي الأمر'), _text(student.guardianPhone)],
-      [_text('نقاط السلوك'), _number(behavior.totalPoints)],
-      [_text('حالة المتابعة'), _text(behavior.label)],
-    ];
-    for (final values in profileData) {
-      _appendRow(profile, profileRow++, values);
-    }
 
-    final grades = _createSheet(workbook, 'الدرجات', 'درجات الطالب', 'التقييمات والدرجات والنسب والملاحظات', const ['المادة', 'التقييم', 'الفصل', 'الدرجة', 'الحد الأقصى', 'النسبة', 'التقدير', 'ملاحظات'], const [22, 26, 18, 13, 15, 13, 16, 36]);
-    var gradeRow = 3;
-    for (final grade in snapshot.gradesFor(studentUuid)) {
-      final field = snapshot.gradeFields.where((item) => item.uuid == grade.fieldUuid).firstOrNull;
-      if (field == null) continue;
-      final percentage = field.maxScore <= 0 ? 0.0 : grade.score / field.maxScore * 100.0;
-      _appendRow(grades, gradeRow++, [_text(field.subject), _text(field.title), _text(field.term), _number(grade.score), _number(field.maxScore), _number(percentage), _text(_gradeLabel(percentage)), _text(grade.notes)]);
-    }
-    _addFooter(grades, gradeRow, 'عدد التقييمات', '${gradeRow - 3}');
-
-    final attendance = _createSheet(workbook, 'الحضور', 'حضور الطالب', 'سجل الحضور والغياب والتأخر والأعذار', const ['التاريخ', 'الحالة', 'السبب', 'ملاحظات'], const [18, 18, 34, 42]);
-    var attendanceRow = 3;
-    for (final record in snapshot.attendanceFor(studentUuid)) {
-      _appendRow(attendance, attendanceRow++, [_text(_date(record.date)), _text(_attendanceLabel(record.status)), _text(record.reason), _text(record.notes)]);
-    }
-    _addFooter(attendance, attendanceRow, 'عدد سجلات الحضور', '${attendanceRow - 3}');
-
-    final behaviorSheet = _createSheet(workbook, 'السلوك', 'سجل سلوك الطالب', 'المخالفات والإيجابيات والإجراءات والمتابعات', const ['التصنيف', 'نوع المخالفة', 'العنوان', 'التفاصيل', 'النقاط', 'التاريخ', 'الإجراء', 'المتابعة'], const [18, 20, 26, 38, 13, 15, 30, 30]);
-    var behaviorRow = 3;
-    for (final record in snapshot.behaviorsFor(studentUuid)) {
-      _appendRow(behaviorSheet, behaviorRow++, [_text(_behaviorCategoryLabel(record.category)), _text(_violationLabel(record.violationType)), _text(record.title), _text(record.details), _number(record.penaltyPoints), _text(_date(record.date)), _text(record.actionTaken), _text(record.followUp)]);
-    }
-    _addFooter(behaviorSheet, behaviorRow, 'عدد سجلات السلوك', '${behaviorRow - 3}');
-
-    final notes = _createSheet(workbook, 'الملاحظات', 'ملاحظات الطالب', 'الملاحظات الأكاديمية والصحية والتربوية والمتابعة', const ['التصنيف', 'العنوان', 'التفاصيل', 'تحتاج متابعة', 'تاريخ المتابعة', 'التاريخ'], const [18, 26, 42, 16, 18, 15]);
-    var noteRow = 3;
-    for (final note in snapshot.notesFor(studentUuid)) {
-      _appendRow(notes, noteRow++, [_text(_noteCategoryLabel(note.category)), _text(note.title), _text(note.details), _text(note.needsFollowUp ? 'نعم' : 'لا'), _text(note.followUpDate == null ? '' : _date(note.followUpDate!)), _text(_date(note.date))]);
-    }
-    _addFooter(notes, noteRow, 'عدد الملاحظات', '${noteRow - 3}');
-
-    return _save(workbook);
+    return builder.save();
   }
 
   Uint8List exportBackupJson(String json) => Uint8List.fromList(utf8.encode(json));
@@ -375,69 +648,9 @@ class ReportService {
     );
   }
 
-  Sheet _createSheet(
-    Excel workbook,
-    String name,
-    String title,
-    String subtitle,
-    List<String> headers,
-    List<double> widths,
-  ) {
-    final sheet = workbook[name];
-    final lastColumn = headers.length - 1;
-    final rtlHeaders = headers.reversed.toList(growable: false);
-    final rtlWidths = widths.reversed.toList(growable: false);
-
-    sheet.merge(
-      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
-      CellIndex.indexByColumnRow(columnIndex: lastColumn, rowIndex: 0),
-    );
-    sheet.merge(
-      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1),
-      CellIndex.indexByColumnRow(columnIndex: lastColumn, rowIndex: 1),
-    );
-    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
-      ..value = TextCellValue(title)
-      ..cellStyle = _titleStyle;
-    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1))
-      ..value = TextCellValue(subtitle)
-      ..cellStyle = _subtitleStyle;
-    sheet.appendRow([for (final header in rtlHeaders) _text(header)]);
-    for (var column = 0; column < rtlHeaders.length; column++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 2))
-        .cellStyle = _headerStyle;
-      sheet.setColumnWidth(column, rtlWidths[column]);
-    }
-    sheet.setRowHeight(0, 28);
-    sheet.setRowHeight(1, 22);
-    sheet.setRowHeight(2, 30);
-    return sheet;
-  }
-
-  void _appendRow(Sheet sheet, int row, List<CellValue?> values) {
-    final rtlValues = values.reversed.toList(growable: false);
-    sheet.appendRow(rtlValues);
-    for (var column = 0; column < rtlValues.length; column++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row))
-        .cellStyle = _bodyStyle;
-    }
-    sheet.setRowHeight(row, 24);
-  }
-
-  void _addFooter(Sheet sheet, int row, String label, String value) {
-    sheet.merge(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row), CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row));
-    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-      ..value = TextCellValue(label)
-      ..cellStyle = _footerStyle;
-    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: row))
-      ..value = TextCellValue(value)
-      ..cellStyle = _footerStyle;
-  }
-
   CellValue _text(String value) => TextCellValue(value.trim());
   CellValue _number(double value) => DoubleCellValue(value);
   CellValue _integer(int value) => IntCellValue(value);
-  Uint8List _save(Excel workbook) => Uint8List.fromList(workbook.save() ?? const <int>[]);
 
   BehaviorSummary _behaviorSummary(AppSnapshot snapshot, String studentUuid) => calculateBehaviorSummary(records: snapshot.behaviorsFor(studentUuid), settings: snapshot.settings);
   Student? _student(AppSnapshot snapshot, String uuid) => snapshot.students.where((item) => item.uuid == uuid).firstOrNull;
@@ -453,12 +666,6 @@ class ReportService {
   String _noteCategoryLabel(NoteCategory value) => switch (value) { NoteCategory.academic => 'أكاديمية', NoteCategory.health => 'صحية', NoteCategory.educational => 'تربوية', NoteCategory.attendance => 'حضور', NoteCategory.other => 'أخرى' };
   String _importFormatLabel(StudentImportFormat value) => switch (value) { StudentImportFormat.excel => 'Excel', StudentImportFormat.word => 'Word', StudentImportFormat.text => 'نص' };
   String _gradeLabel(double percentage) => percentage >= 90 ? 'ممتاز' : percentage >= 80 ? 'جيد جداً' : percentage >= 70 ? 'جيد' : percentage >= 50 ? 'مقبول' : 'يحتاج متابعة';
-
-  static final _titleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('1F4E78'), fontColorHex: ExcelColor.white, fontSize: 16, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
-  static final _subtitleStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('D9EAF7'), fontColorHex: ExcelColor.fromHexString('1F2937'), fontSize: 10, italic: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
-  static final _headerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('2F75B5'), fontColorHex: ExcelColor.white, bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
-  static final _bodyStyle = CellStyle(fontColorHex: ExcelColor.fromHexString('1F2937'), horizontalAlign: HorizontalAlign.Right, verticalAlign: VerticalAlign.Center, textWrapping: TextWrapping.WrapText);
-  static final _footerStyle = CellStyle(backgroundColorHex: ExcelColor.fromHexString('EAF2F8'), fontColorHex: ExcelColor.fromHexString('1F2937'), bold: true, horizontalAlign: HorizontalAlign.Center, verticalAlign: VerticalAlign.Center);
 
   pw.Widget _pdfHeader(AppSettings settings, String title) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
         pw.Text(settings.schoolName.isEmpty ? 'سجل الطالب' : settings.schoolName, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
