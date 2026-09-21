@@ -8,9 +8,12 @@
 # ومجلد android) ويدقّق CI في كل فرع على غياب واجهات برمجية غير مدعومة فيه.
 #
 # الاستخدام:
-#   scripts/sync_windows_branches.sh <commit-ish>            # تطبيق تجريبي
-#   scripts/sync_windows_branches.sh <commit-ish> --push     # تطبيق ثم دفع
+#   scripts/sync_windows_branches.sh                    # يلتقط رأس origin/main، تطبيق تجريبي
+#   scripts/sync_windows_branches.sh <commit-ish>       # تطبيق تجريبي لـ commit محدد
+#   scripts/sync_windows_branches.sh <commit-ish> --push  # تطبيق ثم دفع للفرعين
 #
+# إذا كان المعرّف المعطى commit دمج (مثل رأس origin/main بعد دمج طلب سحب)
+# يُلتقط رأس طلب السحب تلقائياً بدل الدمج، لأن cherry-pick لا يقبل الدمج بلا -m.
 # في الوضع التجريبي تُحفظ رقعة كل فرع في build/sync-<slug>.patch ولا يُدفع شيء.
 
 set -euo pipefail
@@ -18,19 +21,23 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-COMMIT="${1:-}"
-MODE="${2:-dry}"
-if [ -z "$COMMIT" ]; then
-  echo "الاستخدام: $0 <commit-ish> [--push]" >&2
-  exit 2
-fi
-
+COMMIT=""
 PUSH=0
-if [ "$MODE" = "--push" ]; then
-  PUSH=1
-elif [ "$MODE" != "dry" ]; then
-  echo "خيار غير معروف: $MODE" >&2
-  exit 2
+for arg in "$@"; do
+  case "$arg" in
+    --push) PUSH=1 ;;
+    -h|--help)
+      echo "الاستخدام: $0 [<commit-ish>] [--push]"
+      exit 0
+      ;;
+    *) COMMIT="$arg" ;;
+  esac
+done
+
+if [ -z "$COMMIT" ]; then
+  git fetch --quiet origin main || true
+  COMMIT="origin/main"
+  echo "لم يُحدَّد commit — سيُستخدم رأس الفرع الرئيسي: $COMMIT"
 fi
 
 # يُحوَّل المرجع إلى بصمة مطلقة قبل أي انتقال بين المجلدات، وإلا أعاد
@@ -38,6 +45,18 @@ fi
 if ! COMMIT="$(git rev-parse --verify --quiet "$COMMIT^{commit}")"; then
   echo "لا يوجد commit بالمعرّف: $1" >&2
   exit 2
+fi
+
+# commit الدمج لا يُلتقط مباشرة؛ يُستخدم رأس طلب السحب (الأب الثاني) بدلاً منه.
+PARENT_COUNT="$(git rev-list --parents -n 1 "$COMMIT" | wc -w)"
+if [ "$PARENT_COUNT" -gt 2 ]; then
+  MERGED_HEAD="$(git rev-list --parents -n 1 "$COMMIT" | cut -d' ' -f3)"
+  echo "المعرّف commit دمج، سيُلتقط رأس التغيير المدموج: ${MERGED_HEAD:0:7}"
+  COMMIT="$MERGED_HEAD"
+fi
+
+if ! git show --name-only --format= "$COMMIT" | grep -q 'lib/core/services/excel_report_builder.dart'; then
+  echo "تنبيه: الـ commit ${COMMIT:0:7} لا يمسّ باني أوراق Excel؛ تأكد أنه commit إصلاح التصدير." >&2
 fi
 
 WIN7_REF='سجل-الطالب-للوندوز-٧'
