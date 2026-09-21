@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:xml/xml.dart';
 
 import 'file_storage_service.dart';
+import 'workbook_names_reader.dart';
 
 class ImportedStudentsFile {
   const ImportedStudentsFile({required this.filename, required this.names, required this.format});
@@ -52,19 +53,23 @@ class ImportExportService {
         .toList();
   }
 
+  /// يقرأ أسماء الطلاب من مصنّف Excel.
+  ///
+  /// تُفكّ كل ورقة إلى نصوص ثم تُمرَّر إلى [readStudentNamesFromSheets] الذي
+  /// يتعرف على عمود الاسم من الترويسة. هكذا يقرأ الاستيراد ملفات التطبيق
+  /// المصدَّرة (حيث العمود الأول هو التسلسل «ت» ثم «الاسم الكامل») كما يقرأ
+  /// ملفات المعلم البسيطة ذات العمود الواحد.
   List<String> _readWorkbook(List<int> bytes) {
     final workbook = Excel.decodeBytes(bytes);
-    final names = <String>[];
+    final sheets = <List<List<String>>>[];
     for (final table in workbook.tables.values) {
+      final rows = <List<String>>[];
       for (final row in table.rows) {
-        final values = row
-            .map((cell) => cell?.value?.toString().trim() ?? '')
-            .where((value) => value.isNotEmpty)
-            .toList();
-        if (values.isNotEmpty) names.add(values.first);
+        rows.add(row.map((cell) => cell?.value?.toString() ?? '').toList());
       }
+      sheets.add(rows);
     }
-    return names;
+    return readStudentNamesFromSheets(sheets);
   }
 
   List<String> _readDocx(List<int> bytes) {
@@ -94,20 +99,9 @@ class ImportExportService {
         .toList();
   }
 
-  List<String> _cleanNames(Iterable<String> values) {
-    final seen = <String>{};
-    final result = <String>[];
-    for (final value in values) {
-      final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ');
-      if (normalized.isEmpty || _isHeader(normalized)) continue;
-      final key = normalized.toLowerCase();
-      if (seen.add(key)) result.add(normalized);
-    }
-    return result;
-  }
-
-  bool _isHeader(String value) {
-    final normalized = value.toLowerCase();
-    return const ['name', 'full name', 'student name', 'الاسم', 'اسم الطالب', 'الطلاب'].any(normalized.contains);
-  }
+  /// يوحّد المسافات ويستبعد الترويسات والعناوين والأرقام ويزيل التكرار.
+  ///
+  /// المنطق موحَّد في [cleanStudentNames] لتشترك فيه مسارات الاستيراد من
+  /// Excel وWord والنصوص، وحتى تغطيه الاختبارات دون حاجة إلى منتقي ملفات.
+  List<String> _cleanNames(Iterable<String> values) => cleanStudentNames(values);
 }

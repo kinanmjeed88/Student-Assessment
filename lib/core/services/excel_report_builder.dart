@@ -23,7 +23,11 @@ class ReportRow {
   /// اسم المجموعة التي ينتمي إليها الصف، ويقابل عادةً اسم الصف الدراسي.
   final String group;
 
-  /// قيم الخلايا مرتبة حسب ترتيب [ReportColumn] المنطقي (من اليمين لليسار).
+  /// قيم الخلايا مرتبة حسب ترتيب [ReportColumn] المنطقي.
+  ///
+  /// هذا الترتيب المنطقي هو نفسه الترتيب البصري من اليمين إلى اليسار، لأن
+  /// الورقة تُضبط على `rightToLeft` فتُعرض الخلية الأولى (العمود A) في أقصى
+  /// اليمين. لا يُعكس الترتيب فيزيائياً هنا ولا في [ExcelReportBuilder].
   final List<CellValue?> cells;
 }
 
@@ -38,6 +42,11 @@ class ReportRow {
 ///    الملف وكأنه يحتوي ورقة واحدة فارغة. تُحذف هنا دائماً.
 /// 3. اقتصار التقرير على صف دراسي واحد. هنا يُنتج المصنّف ورقة «الكل» تضم كل
 ///    السجلات، إضافةً إلى ورقة مستقلة لكل صف دراسي بلا استثناء.
+/// 4. انقلاب ترتيب الأعمدة في الملف المصدَّر. كانت الأوراق تُضبط على
+///    `rightToLeft` وتُعكس أعمدةُها فيزيائياً في الوقت نفسه، فيحصل انعكاس
+///    مزدوج يظهر معه الجدول بترتيب إنكليزي من اليسار إلى اليمين (عمود «ت»
+///    والاسم الكامل في أقصى اليسار). الآن تُضبط الورقة `rightToLeft` وتُكتب
+///    القيم بترتيبها المنطقي فقط، فيبدأ الجدول من اليمين بـ«ت» ثم الاسم.
 class ExcelReportBuilder {
   ExcelReportBuilder() : _workbook = Excel.createExcel();
 
@@ -109,8 +118,9 @@ class ExcelReportBuilder {
     _createdSheets.add(sheetName);
 
     final lastColumn = columns.length - 1;
-    // الأعمدة تُعكس ليقرأ المستخدم العربي من اليمين إلى اليسار.
-    final visualColumns = columns.reversed.toList(growable: false);
+    // الورقة مضبوطة على `rightToLeft` أعلاه، وهذا وحده يجعل Excel يعرض العمود A
+    // في أقصى اليمين. لذلك تُكتب الأعمدة بترتيبها المنطقي دون عكس فيزيائي،
+    // وإلا انقلب الترتيب مرتين وظهر الجدول كأنه إنكليزي من اليسار إلى اليمين.
 
     sheet.merge(
       CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
@@ -131,18 +141,18 @@ class ExcelReportBuilder {
       cellStyle: subtitleStyle,
     );
 
-    for (var column = 0; column < visualColumns.length; column++) {
+    for (var column = 0; column < columns.length; column++) {
       sheet.updateCell(
         CellIndex.indexByColumnRow(columnIndex: column, rowIndex: headerRowIndex),
-        TextCellValue(visualColumns[column].header),
+        TextCellValue(columns[column].header),
         cellStyle: headerStyle,
       );
-      sheet.setColumnWidth(column, visualColumns[column].width);
+      sheet.setColumnWidth(column, columns[column].width);
     }
 
     var rowIndex = firstDataRowIndex;
     for (final row in rows) {
-      final values = _normalize(row, columns.length).reversed.toList(growable: false);
+      final values = _normalize(row, columns.length);
       for (var column = 0; column < values.length; column++) {
         sheet.updateCell(
           CellIndex.indexByColumnRow(columnIndex: column, rowIndex: rowIndex),
@@ -199,7 +209,8 @@ class ExcelReportBuilder {
   }
 
   void _writeFooter(Sheet sheet, int rowIndex, int lastColumn, String label, int count) {
-    // العمود الأخير بصرياً هو صفر، لذا تُكتب التسمية فيه والقيمة بجانبه.
+    // العمود صفر هو أقصى يمين ورقة RTL، فتُكتب التسمية فيه والقيمة في العمود
+    // المجاور له يساراً.
     sheet.updateCell(
       CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
       TextCellValue(label),

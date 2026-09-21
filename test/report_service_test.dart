@@ -5,6 +5,7 @@ import 'package:almoktaber/core/database/app_snapshot.dart';
 import 'package:almoktaber/core/database/isar_models.dart';
 import 'package:almoktaber/core/services/excel_report_builder.dart';
 import 'package:almoktaber/core/services/report_service.dart';
+import 'package:almoktaber/core/services/workbook_names_reader.dart';
 
 /// يقرأ القيم النصية لصف واحد بالترتيب البصري (من اليمين لليسار).
 List<String> _rowValues(Sheet sheet, int rowIndex) {
@@ -12,6 +13,10 @@ List<String> _rowValues(Sheet sheet, int rowIndex) {
   if (rowIndex >= rows.length) return const <String>[];
   return rows[rowIndex].map((cell) => cell?.value?.toString().trim() ?? '').toList(growable: false);
 }
+
+/// صفوف ورقة كاملة كنصوص، بالصيغة التي يستهلكها قارئ أسماء الطلاب.
+List<List<String>> _sheetTextRows(Sheet sheet) =>
+    sheet.rows.map((row) => row.map((cell) => cell?.value?.toString() ?? '').toList()).toList();
 
 /// عدد صفوف البيانات في ورقة (بعد العنوان والوصف والترويسة وقبل الإجمالي).
 int _dataRowCount(Sheet sheet) {
@@ -135,6 +140,50 @@ AppSnapshot _buildSnapshot({int classCount = 2, int studentsPerSection = 3}) {
     todayAttendance: const [],
     behaviors: behaviors,
     notes: notes,
+    imports: const [],
+  );
+}
+
+/// لقطة بصف واحد وشعبة واحدة وبترتيب طلاب مقصود غير أبجدي.
+///
+/// تُستخدم للتحقق من أن التصدير يحفظ ترتيب العرض كما هو دون إعادة فرز، ومن
+/// أن الأعمدة تُكتب بترتيبها المنطقي الذي تعرضه ورقة RTL من اليمين.
+AppSnapshot _snapshotWithStudents(List<String> names) {
+  final schoolClass = SchoolClass()
+    ..uuid = 'class-x'
+    ..name = 'الصف الأول'
+    ..stage = ''
+    ..academicYear = '2025'
+    ..notes = '';
+  final section = Section()
+    ..uuid = 'section-x'
+    ..classUuid = 'class-x'
+    ..name = 'أ'
+    ..notes = '';
+
+  final students = <Student>[];
+  for (var index = 0; index < names.length; index++) {
+    students.add(Student()
+      ..uuid = 'student-x-$index'
+      ..fullName = names[index]
+      ..firstName = names[index]
+      ..lastName = ''
+      ..studentNumber = 'X$index'
+      ..classUuid = 'class-x'
+      ..sectionUuid = 'section-x');
+  }
+
+  return AppSnapshot(
+    settings: AppSettings(),
+    classes: [schoolClass],
+    sections: [section],
+    students: students,
+    gradeFields: const [],
+    grades: const [],
+    attendance: const [],
+    todayAttendance: const [],
+    behaviors: const [],
+    notes: const [],
     imports: const [],
   );
 }
@@ -291,6 +340,73 @@ void main() {
         );
       final workbook = Excel.decodeBytes(builder.save());
       expect(_dataRowCount(workbook.sheets['بيانات']!), 250);
+    });
+  });
+
+  group('ترتيب أعمدة التصدير من اليمين إلى اليسار', () {
+    test('ملف أسماء الصف يبدأ بعمود التسلسل ثم الاسم الكامل', () {
+      final snapshot = _buildSnapshot();
+      final workbook = Excel.decodeBytes(
+        service.exportClassStudentsXlsx(snapshot, classUuid: 'class-0', sectionUuid: 'section-0-0'),
+      );
+      final sheet = workbook.sheets['الصف الأول - أ']!;
+
+      expect(_rowValues(sheet, ExcelReportBuilder.headerRowIndex), const [
+        'ت',
+        'الاسم الكامل',
+        'رقم الطالب',
+        'الصف',
+        'الشعبة',
+        'الجنس',
+        'الحالة',
+        'ولي الأمر',
+        'هاتف ولي الأمر',
+      ]);
+
+      final student = snapshot.students.firstWhere(
+        (item) => item.classUuid == 'class-0' && item.sectionUuid == 'section-0-0',
+      );
+      final firstRow = _rowValues(sheet, ExcelReportBuilder.firstDataRowIndex);
+      expect(firstRow[0], '1', reason: 'عمود التسلسل هو العمود الأول في الورقة.');
+      expect(firstRow[1], student.fullName, reason: 'الاسم الكامل يلي عمود التسلسل مباشرة.');
+      expect(firstRow[2], student.studentNumber);
+      expect(firstRow.last, student.guardianPhone, reason: 'آخر عمود منطقي هو هاتف ولي الأمر.');
+    });
+
+    test('بقية التقارير تحفظ الترتيب المنطقي نفسه للأعمدة', () {
+      final snapshot = _buildSnapshot();
+      final studentsSheet = Excel.decodeBytes(service.exportStudentsXlsx(snapshot)).sheets['الطلاب - الكل']!;
+      final attendanceSheet = Excel.decodeBytes(service.exportAttendanceXlsx(snapshot)).sheets['الحضور - الكل']!;
+
+      expect(_rowValues(studentsSheet, ExcelReportBuilder.headerRowIndex).first, 'الاسم الكامل');
+      expect(_rowValues(attendanceSheet, ExcelReportBuilder.headerRowIndex).first, 'الطالب');
+    });
+
+    test('ترتيب الصفوف يطابق ترتيب العرض دون إعادة فرز', () {
+      final snapshot = _snapshotWithStudents(['زين علي', 'أحمد كريم', 'محمد حسن']);
+      final workbook = Excel.decodeBytes(
+        service.exportClassStudentsXlsx(snapshot, classUuid: 'class-x', sectionUuid: 'section-x'),
+      );
+      final sheet = workbook.sheets['الصف الأول - أ']!;
+
+      final exported = <String>[
+        for (var index = 0; index < snapshot.students.length; index++)
+          _rowValues(sheet, ExcelReportBuilder.firstDataRowIndex + index)[1],
+      ];
+
+      expect(exported, snapshot.students.map((student) => student.fullName).toList());
+      expect(exported, ['زين علي', 'أحمد كريم', 'محمد حسن']);
+    });
+
+    test('ملف الأسماء المصدَّر يعيد الأسماء نفسها عند استيراده', () {
+      final snapshot = _buildSnapshot();
+      final workbook = Excel.decodeBytes(service.exportClassStudentsXlsx(snapshot, classUuid: 'class-0'));
+      final sheets = workbook.tables.values.map(_sheetTextRows).toList();
+
+      expect(
+        readStudentNamesFromSheets(sheets),
+        snapshot.students.where((student) => student.classUuid == 'class-0').map((student) => student.fullName).toList(),
+      );
     });
   });
 }
