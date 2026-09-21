@@ -108,10 +108,12 @@ class ReportService {
       throw const FormatException('الشعبة المحددة غير موجودة.');
     }
 
+    // ترتيب الصفوف هو ترتيب العرض في صفحة الطلاب تماماً: المستودع يسلّم
+    // الطلاب مرتبين أصلاً، والفرز الإضافي هنا غير مستقر فقد يبدّل مواقع
+    // الأسماء المتطابقة ويخالف ما يراه المستخدم على الشاشة.
     final students = snapshot.students
         .where((student) => student.classUuid == classUuid && (sectionUuid.isEmpty || student.sectionUuid == sectionUuid))
-        .toList()
-      ..sort((a, b) => a.fullName.compareTo(b.fullName));
+        .toList(growable: false);
 
     const columns = [
       ReportColumn('ت', 8),
