@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +7,7 @@ import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/report_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/iterable_extensions.dart';
 import '../../../core/widgets/app_components.dart';
@@ -25,6 +27,7 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
   String _classFilter = 'all';
   String _sectionFilter = 'all';
   String _attentionFilter = 'all';
+  bool _isExporting = false;
 
   @override
   void dispose() {
@@ -65,6 +68,13 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
       appBar: AppBar(
         title: const Text('الطلاب'),
         actions: [
+          IconButton(
+            tooltip: _classFilter == 'all' ? 'اختر صفاً لتنزيل أسماء طلابه' : 'تنزيل أسماء الطلاب (Excel)',
+            onPressed: _classFilter == 'all' || _isExporting ? null : () => _downloadClassStudents(snapshot),
+            icon: _isExporting
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.download_outlined),
+          ),
           IconButton(
             tooltip: 'استيراد الطلاب',
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ImportStudentsPage())),
@@ -107,6 +117,19 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
                     title: 'الطلاب',
                     subtitle: '${students.length} طالب مطابق للمرشحات الحالية.',
                   ),
+                  if (_classFilter != 'all') ...[
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: OutlinedButton.icon(
+                        onPressed: _isExporting ? null : () => _downloadClassStudents(snapshot),
+                        icon: _isExporting
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.file_download_outlined),
+                        label: Text('تنزيل أسماء ${_selectedScopeLabel(snapshot)} (Excel)'),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   if (students.isEmpty)
                     AppEmptyState(
@@ -135,6 +158,53 @@ class _StudentsPageState extends ConsumerState<StudentsPage> {
         ),
       ),
     );
+  }
+
+  /// وصف المرحلة المحددة حالياً (الصف مع الشعبة إن وُجدت) لعرضه على الزر.
+  String _selectedScopeLabel(AppSnapshot snapshot) {
+    final className = snapshot.classes.where((item) => item.uuid == _classFilter).firstOrNull?.name ?? '';
+    final sectionName = _sectionFilter == 'all' ? '' : snapshot.sections.where((item) => item.uuid == _sectionFilter).firstOrNull?.name ?? '';
+    if (className.isEmpty) return 'الطلاب';
+    return sectionName.isEmpty ? className : '$className $sectionName';
+  }
+
+  /// ينزّل أسماء طلاب الصف (والشعبة إن حُددت) في ملف Excel مستقل.
+  Future<void> _downloadClassStudents(AppSnapshot snapshot) async {
+    if (_classFilter == 'all' || _isExporting) return;
+    final classUuid = _classFilter;
+    final sectionUuid = _sectionFilter == 'all' ? '' : _sectionFilter;
+
+    final hasStudents = snapshot.students.any(
+      (student) => student.classUuid == classUuid && (sectionUuid.isEmpty || student.sectionUuid == sectionUuid),
+    );
+    if (!hasStudents) {
+      _showMessage('لا يوجد طلاب في المرحلة المحددة لتنزيلها.');
+      return;
+    }
+
+    setState(() => _isExporting = true);
+    try {
+      final service = ReportService();
+      final bytes = service.exportClassStudentsXlsx(snapshot, classUuid: classUuid, sectionUuid: sectionUuid);
+      if (bytes.isEmpty) throw const FormatException('تعذر إنشاء الملف لأن الناتج فارغ.');
+      final fileName = service.classStudentsFileName(snapshot, classUuid: classUuid, sectionUuid: sectionUuid);
+      final path = await FilePicker.saveFile(
+        dialogTitle: 'حفظ أسماء الطلاب',
+        fileName: fileName,
+        bytes: bytes,
+      );
+      if (!mounted) return;
+      _showMessage(path == null ? 'تم إلغاء حفظ الملف.' : 'تم حفظ أسماء الطلاب بنجاح.');
+    } catch (error) {
+      if (mounted) _showMessage('تعذر تنزيل أسماء الطلاب: $error');
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showStudentForm(AppSnapshot snapshot, {Student? student}) async {
