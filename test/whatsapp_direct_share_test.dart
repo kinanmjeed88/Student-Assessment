@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,7 +16,7 @@ void main() {
   setUp(() {
     lastArguments = null;
     handlerError = null;
-    channel.setMockMethodCallHandler((call) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
       if (handlerError != null) throw handlerError!;
       lastArguments = (call.arguments as Map?)?.map(
         (key, value) => MapEntry(key.toString(), value as Object?),
@@ -42,7 +41,7 @@ void main() {
     });
   });
 
-  tearDown(() => channel.setMockMethodCallHandler(null));
+  tearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
 
   test('يبني JID من الرقم المطبّع ويرفض الرقم الفارغ', () {
     expect(
@@ -53,7 +52,7 @@ void main() {
   });
 
   test('يحتوي Intent على النص والملف وJID والحزمة مع MIME صحيح', () {
-    const payload = WhatsAppDirectPayload(
+    final payload = WhatsAppDirectPayload(
       phone: '964700123456',
       text: 'تقرير الطالب',
       filePath: '/cache/shared_reports/report.pdf',
@@ -170,7 +169,7 @@ void main() {
   });
 
   test('يعالج عدم تثبيت واتساب دون ادعاء الإرسال', () async {
-    handlerError = const PlatformException(
+    handlerError = PlatformException(
       code: 'WHATSAPP_NOT_FOUND',
       message: 'No WhatsApp',
     );
