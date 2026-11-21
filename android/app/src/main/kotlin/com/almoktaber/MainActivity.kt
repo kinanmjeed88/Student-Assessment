@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.ClipData
 import android.content.pm.PackageManager
-import android.net.Uri
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -34,7 +33,6 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "availablePackages" -> result.success(installedWhatsAppPackages())
-                    "openChat" -> openChat(call, result)
                     "shareToChat" -> shareToChat(call, result)
                     else -> result.notImplemented()
                 }
@@ -56,41 +54,6 @@ class MainActivity : FlutterActivity() {
             return requested.takeIf(::isInstalled)
         }
         return listOf(WHATSAPP, WHATSAPP_BUSINESS).firstOrNull(::isInstalled)
-    }
-
-    /** يفتح محادثة الرقم بالنص عبر wa.me. لا يرفق ملفاً ولا يؤكد وصول الرسالة. */
-    private fun openChat(call: MethodCall, result: MethodChannel.Result) {
-        val phone = call.argument<String>("phone")?.trim().orEmpty()
-        val text = call.argument<String>("text").orEmpty()
-        if (phone.isEmpty()) {
-            result.error(ERROR_PHONE, "رقم ولي الأمر فارغ.", null)
-            return
-        }
-        val packageName = resolvePackage(call.argument<String>("package"))
-        if (packageName == null) {
-            result.error(ERROR_NOT_FOUND, "واتساب غير مثبت على الجهاز.", null)
-            return
-        }
-
-        val url = "https://wa.me/$phone?text=${Uri.encode(text)}"
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-            setPackage(packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            startActivity(intent)
-            result.success(
-                mapOf(
-                    "status" to STATUS_LAUNCHED,
-                    "package" to packageName,
-                    "message" to "تم فتح التطبيق فقط؛ لم يُرسل أي نص."
-                )
-            )
-        } catch (_: ActivityNotFoundException) {
-            result.error(ERROR_NOT_FOUND, "تعذر فتح واتساب.", null)
-        } catch (error: Exception) {
-            result.error(ERROR_FAILED, error.message ?: "تعذر فتح واتساب.", null)
-        }
     }
 
     /**

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -42,7 +44,7 @@ class WhatsAppDirectResult {
   /// رسالة واضحة لا تدّعي أن المستخدم أرسل الرسالة فعلاً.
   String get statusMessage => switch (status) {
         WhatsAppDirectStatus.launched =>
-          'تم فتح واتساب فقط؛ تأكد من المحادثة ثم اضغط إرسال داخل التطبيق.',
+          'تم فتح واتساب. راجع المستلم والنص والمرفق ثم أرسل من داخل التطبيق.',
         WhatsAppDirectStatus.notFound =>
           'واتساب غير مثبت على الجهاز.',
         WhatsAppDirectStatus.failed =>
@@ -123,29 +125,6 @@ class WhatsappDirectShareService {
             .whereType<WhatsAppPackage>()
             .toList(growable: false) ??
         const <WhatsAppPackage>[];
-  }
-
-  Future<WhatsAppDirectResult> openChat({
-    required String phone,
-    required String text,
-    WhatsAppPackage? package,
-  }) async {
-    final phoneError = GuardianPhone.validationError(phone);
-    if (phoneError != null) {
-      return WhatsAppDirectResult(
-        status: WhatsAppDirectStatus.failed,
-        message: phoneError,
-      );
-    }
-    final normalized = GuardianPhone.normalize(phone);
-    return _invoke(
-      'openChat',
-      <String, Object?>{
-        'phone': normalized,
-        'text': text,
-        if (package != null) 'package': package.packageName,
-      },
-    );
   }
 
   Future<WhatsAppDirectResult> shareToChat({

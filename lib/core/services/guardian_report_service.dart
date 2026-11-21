@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../database/app_snapshot.dart';
 import '../database/isar_models.dart';
@@ -31,8 +30,9 @@ class PreparedGuardianReport {
   final GuardianReportFormat format;
 }
 
-/// نتيجة اختيار المستخدم في ورقة المشاركة النظامية.
-enum GuardianShareOutcome { shared, dismissed }
+/// نتيجة ورقة المشاركة النظامية؛ `completed` تعني أن الواجهة أكملت عملها
+/// ولا تعني أن المستلم ضغط إرسال داخل التطبيق المستقبِل.
+enum GuardianShareOutcome { completed, dismissed }
 
 /// يجهّز التقرير الشهري ويشاركه عبر واتساب أو أي تطبيق مشاركة آخر.
 ///
@@ -51,7 +51,11 @@ class GuardianReportService {
     required String guardianPhone,
     required GuardianReportFormat format,
     DateTime? now,
+    String? text,
   }) async {
+    if (text != null && text.trim().isEmpty) {
+      throw const FormatException('نص الرسالة فارغ.');
+    }
     Student? student;
     for (final candidate in snapshot.students) {
       if (candidate.uuid == studentUuid) {
@@ -78,7 +82,8 @@ class GuardianReportService {
       bytes: bytes,
       fileName: _fileName(student, monthly.period, format),
       mimeType: format.mimeType,
-      text: buildGuardianReportText(
+      // عند تمرير نص المعاينة يُستخدم حرفياً؛ لا تُعاد صياغته هنا أبداً.
+      text: text ?? buildGuardianReportText(
         settings: snapshot.settings,
         student: student,
         monthly: monthly,
@@ -104,21 +109,8 @@ class GuardianReportService {
     );
     return switch (result.status) {
       ShareResultStatus.dismissed => GuardianShareOutcome.dismissed,
-      _ => GuardianShareOutcome.shared,
+      _ => GuardianShareOutcome.completed,
     };
-  }
-
-  /// بديل مباشر عندما يتعذر إرفاق ملف من قائمة المشاركة: يفتح محادثة الرقم
-  /// المثبت بالنص جاهزاً، ويطلب من المستخدم إرفاق الملف يدوياً.
-  Future<void> openWhatsAppChat(PreparedGuardianReport report) async {
-    final uri = GuardianPhone.chatUri(
-      phone: report.guardianPhone,
-      text: report.text,
-    );
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched) {
-      throw const FormatException('تعذر فتح واتساب. تأكد من تثبيت التطبيق.');
-    }
   }
 
   static String _fileName(

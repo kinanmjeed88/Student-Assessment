@@ -76,6 +76,47 @@ void main() {
     expect(builder.captured!.behaviors, hasLength(2));
   });
 
+  test('يستخدم نص المعاينة حرفياً دون إعادة بنائه عند PDF أو Excel', () async {
+    final fixture = GuardianReportFixture();
+    final service = GuardianReportService(reportService: _CapturingReportService());
+    const preview = 'نص المعاينة كما يراه المستخدم\nسطر ثانٍ ٩٨٪';
+
+    for (final format in GuardianReportFormat.values) {
+      final report = await service.prepare(
+        snapshot: fixture.snapshot,
+        studentUuid: GuardianReportFixture.studentUuid,
+        guardianPhone: fixture.student.guardianPhone,
+        format: format,
+        now: fixture.now,
+        text: preview,
+      );
+      expect(report.text, same(preview));
+      expect(report.mimeType, format.mimeType);
+      expect(report.fileName, endsWith('.${format.extension}'));
+    }
+  });
+
+  test('يرفض نص المعاينة الفارغ', () async {
+    final fixture = GuardianReportFixture();
+    final service = GuardianReportService(reportService: _CapturingReportService());
+
+    expect(
+      service.prepare(
+        snapshot: fixture.snapshot,
+        studentUuid: GuardianReportFixture.studentUuid,
+        guardianPhone: fixture.student.guardianPhone,
+        format: GuardianReportFormat.pdf,
+        now: fixture.now,
+        text: '   ',
+      ),
+      throwsA(isA<FormatException>().having(
+        (error) => error.message,
+        'message',
+        contains('فارغ'),
+      )),
+    );
+  });
+
   test('يرفض رقم ولي الأمر الناقص والطالب غير الموجود', () async {
     final fixture = GuardianReportFixture();
     final service = GuardianReportService(reportService: _CapturingReportService());

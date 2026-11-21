@@ -55,6 +55,14 @@ if grep -RInE 'Uri\.fromFile|file://' "$NATIVE_DIR"; then
   echo 'Unsafe file:// URI found in native share code.'
   fail=1
 fi
+if grep -RInE 'مشاركة التقرير والملف|فتح محادثة واتساب بالنص فقط|توجيه مباشر' lib; then
+  echo 'Obsolete guardian report send buttons are still present.'
+  fail=1
+fi
+if [ "$(grep -Roh 'إرسال التقرير والملف' lib | wc -l)" -ne 1 ]; then
+  echo 'The unified guardian report send button is missing or duplicated.'
+  fail=1
+fi
 
 if [ "$fail" -ne 0 ]; then
   exit 1

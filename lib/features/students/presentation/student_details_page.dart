@@ -12,6 +12,7 @@ import '../../../core/providers.dart';
 import '../../../core/services/guardian_phone.dart';
 import '../../../core/services/guardian_report_service.dart';
 import '../../../core/services/guardian_report_text.dart';
+import '../../../core/services/guardian_send_coordinator.dart';
 import '../../../core/services/monthly_report_scope.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/services/whatsapp_direct_share.dart';
@@ -62,6 +63,7 @@ class _StudentProfile extends ConsumerStatefulWidget {
 }
 
 class _StudentProfileState extends ConsumerState<_StudentProfile> {
+  final GuardianSendCoordinator _sendCoordinator = GuardianSendCoordinator();
 
   AppSnapshot get snapshot => widget.snapshot;
   Student get student => widget.student;
@@ -537,10 +539,14 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إنشاء الملف: $error')));
   }
 
-  /// يجمع رقم ولي الأمر وصيغة الملف قبل تجهيز التقرير الشهري ومشاركته.
+  /// نافذة واحدة لإعداد التقرير. النص المعروض هنا هو الذي يُمرَّر حرفياً
+  /// إلى طلب المشاركة، ولا يُعاد بناؤه عند التنفيذ.
   Future<void> _showGuardianReportSheet(BuildContext context) async {
     final phone = TextEditingController(text: student.guardianPhone);
     var format = GuardianReportFormat.pdf;
+    final reportNow = DateTime.now();
+    String? previewText;
+    final sending = ValueNotifier<bool>(false);
 
     await showAppFormSheet<void>(
       context: context,
@@ -548,13 +554,14 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
       subtitle: 'تُجهَّز بيانات الشهر الحالي حتى الآن بنفس تنسيق ملف الطالب، ثم تُرسل عبر واتساب.',
       child: StatefulBuilder(
         builder: (sheetContext, setState) {
-          final monthly = scopeToCurrentMonth(snapshot);
+          final monthly = scopeToCurrentMonth(snapshot, now: reportNow);
           final preview = buildGuardianReportText(
             settings: snapshot.settings,
             student: student,
             monthly: monthly,
             format: format,
           );
+          previewText = preview;
           final scheme = Theme.of(sheetContext).colorScheme;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -589,138 +596,114 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
                 decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
                 child: Text(preview, style: Theme.of(sheetContext).textTheme.bodyMedium),
               ),
-              TextButton.icon(
-                onPressed: () => _deliverGuardianReport(context, phone.text, format, textOnly: true),
-                icon: const Icon(Icons.open_in_new_outlined),
-                label: const Text('فتح محادثة واتساب بالنص فقط'),
-              ),
-              if (WhatsAppDirectSupport.shouldOfferDirectSend(Theme.of(sheetContext).platform)) ...[
-                const Divider(height: 12),
-                TextButton.icon(
-                  onPressed: () async {
-                    final error = GuardianPhone.validationError(phone.text);
-                    if (error != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-                      return;
-                    }
-                    Navigator.pop(context);
-                    await _startDirectSend(context, phone.text, format);
-                  },
-                  icon: const Icon(Icons.alt_route_outlined),
-                  label: const Text('توجيه مباشر تجريبي إلى المحادثة'),
-                ),
-                Text(
-                  'يحاول التوجيه عبر حقل jid غير رسمي؛ إذا لم تكن المحادثة موجودة مسبقاً فقد تظهر قائمة المستلمين.',
-                  style: Theme.of(sheetContext).textTheme.bodySmall,
-                ),
-              ],
             ],
           );
         },
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-        FilledButton.icon(
-          onPressed: () async {
-            final error = GuardianPhone.validationError(phone.text);
-            if (error != null) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-              return;
-            }
-            Navigator.pop(context);
-            await _deliverGuardianReport(context, phone.text, format, textOnly: false);
-          },
-          icon: const Icon(Icons.send_outlined),
-          label: const Text('مشاركة التقرير والملف'),
+        ValueListenableBuilder<bool>(
+          valueListenable: sending,
+          builder: (actionContext, isSending, _) => FilledButton.icon(
+            onPressed: isSending
+                ? null
+                : () => _handleGuardianSend(
+                      actionContext,
+                      phone.text,
+                      format,
+                      previewText,
+                      reportNow,
+                      sending,
+                    ),
+            icon: isSending
+                ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.send_outlined),
+            label: const Text('إرسال التقرير والملف'),
+          ),
         ),
       ],
     );
+    sending.dispose();
     phone.dispose();
   }
 
-  Future<void> _deliverGuardianReport(
-    BuildContext context,
-    String rawPhone,
-    GuardianReportFormat format, {
-    required bool textOnly,
-  }) async {
-    final service = ref.read(guardianReportServiceProvider);
-    try {
-      final report = await service.prepare(
-        snapshot: snapshot,
-        studentUuid: student.uuid,
-        guardianPhone: rawPhone,
-        format: format,
-      );
-      if (!mounted) return;
-      if (textOnly) {
-        await service.openWhatsAppChat(report);
-        _showGuardianMessage('فتحت محادثة واتساب؛ أرفق الملف يدوياً من معرض الملفات.');
-        return;
-      }
-      final outcome = await service.share(report);
-      if (!mounted) return;
-      _showGuardianMessage(
-        outcome == GuardianShareOutcome.dismissed
-            ? 'تم إلغاء المشاركة.'
-            : 'تم فتح قائمة المشاركة؛ اختر واتساب لإرسال التقرير لولي الأمر.',
-      );
-    } on FormatException catch (error) {
-      _showGuardianMessage(error.message);
-    } catch (error) {
-      _showGuardianMessage('تعذر تجهيز التقرير: $error');
-    }
-  }
-
-  /// مسار Android أصلي تجريبي: يحاول توجيه الملف والنص إلى رقم ولي الأمر.
-  ///
-  /// لا يُبلَّغ المستخدم بأن الرسالة أُرسلت؛ MethodChannel يعيد فقط نتيجة
-  /// تشغيل Intent، أما توجيه المحادثة وإرسالها فيبقى داخل واتساب.
-  Future<void> _startDirectSend(
-    BuildContext context,
+  /// يُنفَّذ مسار واحد فقط حسب المنصة، ويمنع الضغط المتكرر تكرار التنفيذ.
+  Future<void> _handleGuardianSend(
+    BuildContext sheetContext,
     String rawPhone,
     GuardianReportFormat format,
+    String? previewText,
+    DateTime reportNow,
+    ValueNotifier<bool> sending,
   ) async {
-    final reportService = ref.read(guardianReportServiceProvider);
-    final directService = ref.read(whatsappDirectShareProvider);
-    try {
-      final report = await reportService.prepare(
-        snapshot: snapshot,
-        studentUuid: student.uuid,
-        guardianPhone: rawPhone,
-        format: format,
-      );
-      if (!mounted) return;
-
-      final packages = await directService.availablePackages();
-      if (!mounted) return;
-      if (packages.isEmpty) {
-        _showGuardianMessage('واتساب أو واتساب بيزنس غير مثبت على الجهاز.');
-        return;
-      }
-      final package = packages.contains(WhatsAppPackage.whatsapp)
-          ? WhatsAppPackage.whatsapp
-          : WhatsAppPackage.whatsappBusiness;
-
-      final path = await directService.writeReportFile(
-        bytes: report.bytes,
-        fileName: report.fileName,
-      );
-      final result = await directService.shareToChat(
-        phone: GuardianPhone.normalize(rawPhone),
-        text: report.text,
-        filePath: path,
-        fileName: report.fileName,
-        mimeType: format.mimeType,
-        package: package,
-      );
-      if (!mounted) return;
-      _showGuardianMessage(result.statusMessage);
-    } on FormatException catch (error) {
-      _showGuardianMessage(error.message);
-    } catch (error) {
-      _showGuardianMessage('تعذر التوجيه المباشر: $error');
+    final phoneError = GuardianPhone.validationError(rawPhone);
+    if (phoneError != null) {
+      _showGuardianMessage(phoneError);
+      return;
     }
+    if (_sendCoordinator.isSending) return;
+
+    var message = 'تعذر تجهيز التقرير.';
+    sending.value = true;
+    try {
+      await _sendCoordinator.run(() async {
+        final service = ref.read(guardianReportServiceProvider);
+        final report = await service.prepare(
+          snapshot: snapshot,
+          studentUuid: student.uuid,
+          guardianPhone: rawPhone,
+          format: format,
+          now: reportNow,
+          text: previewText,
+        );
+        if (!mounted) return;
+        if (WhatsAppDirectSupport.shouldOfferDirectSend(Theme.of(sheetContext).platform)) {
+          message = await _shareThroughInstalledWhatsApp(report);
+        } else {
+          final outcome = await service.share(report);
+          message = switch (outcome) {
+            GuardianShareOutcome.dismissed => 'تم إلغاء المشاركة.',
+            GuardianShareOutcome.completed =>
+              'تم فتح نافذة المشاركة؛ راجع النص والملف ثم أكمل الإرسال.',
+          };
+        }
+      });
+    } on FormatException catch (error) {
+      message = error.message;
+    } catch (error) {
+      message = 'تعذر تجهيز التقرير: $error';
+    } finally {
+      sending.value = false;
+    }
+
+    if (!mounted) return;
+    if (sheetContext.mounted) Navigator.pop(sheetContext);
+    _showGuardianMessage(message);
+  }
+
+  /// يستخدم ملف التقرير والنص نفسيهما في طلب مشاركة واحد.
+  Future<String> _shareThroughInstalledWhatsApp(PreparedGuardianReport report) async {
+    final direct = ref.read(whatsappDirectShareProvider);
+    final packages = await direct.availablePackages();
+    if (packages.isEmpty) {
+      return 'واتساب أو واتساب بيزنس غير مثبت على الجهاز.';
+    }
+    final package = packages.contains(WhatsAppPackage.whatsapp)
+        ? WhatsAppPackage.whatsapp
+        : WhatsAppPackage.whatsappBusiness;
+    final path = await direct.writeReportFile(
+      bytes: report.bytes,
+      fileName: report.fileName,
+    );
+    final result = await direct.shareToChat(
+      phone: report.guardianPhone,
+      text: report.text,
+      filePath: path,
+      fileName: report.fileName,
+      mimeType: report.mimeType,
+      package: package,
+    );
+    return result.statusMessage;
   }
 
   void _showGuardianMessage(String message) {

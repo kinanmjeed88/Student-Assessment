@@ -27,10 +27,6 @@ void main() {
             'com.whatsapp.w4b',
             'com.unknown.app',
           ],
-        'openChat' => <String, Object?>{
-            'status': 'launched',
-            'package': 'com.whatsapp',
-          },
         'shareToChat' => <String, Object?>{
             'status': 'launched',
             'package': 'com.whatsapp',
@@ -43,6 +39,9 @@ void main() {
 
   tearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
 
+  String tempReport(String suffix) =>
+      '${Directory.systemTemp.path}/guardian_${DateTime.now().microsecondsSinceEpoch}_$suffix';
+
   test('يبني JID من الرقم المطبّع ويرفض الرقم الفارغ', () {
     expect(
       WhatsAppDirectJid.fromPhone('964700123456'),
@@ -51,7 +50,7 @@ void main() {
     expect(() => WhatsAppDirectJid.fromPhone(''), throwsArgumentError);
   });
 
-  test('يحتوي Intent على النص والملف وJID والحزمة مع MIME صحيح', () {
+  test('طلب المشاركة الواحد يحمل النص والملف وJID والحزمة مع MIME صحيح', () {
     final payload = WhatsAppDirectPayload(
       phone: '964700123456',
       text: 'تقرير الطالب',
@@ -67,13 +66,22 @@ void main() {
     expect(arguments['filePath'], '/cache/shared_reports/report.pdf');
     expect(arguments['mimeType'], 'application/pdf');
     expect(arguments['package'], 'com.whatsapp.w4b');
-    expect(GuardianReportFormat.xlsx.mimeType, contains('spreadsheetml'));
   });
 
-  test('يختار الحزمة الصحيحة ويقصر المسار المباشر على Android', () {
+  test('MIME يطابق امتداد PDF وExcel', () {
+    expect(GuardianReportFormat.pdf.mimeType, 'application/pdf');
     expect(
-      WhatsAppPackage.fromPackageName('com.whatsapp.w4b'),
-      WhatsAppPackage.whatsappBusiness,
+      GuardianReportFormat.xlsx.mimeType,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    expect(GuardianReportFormat.pdf.extension, 'pdf');
+    expect(GuardianReportFormat.xlsx.extension, 'xlsx');
+  });
+
+  test('يكتشف الحزمتين المعروفين فقط ويقصر المسار على Android', () async {
+    expect(
+      await WhatsappDirectShareService().availablePackages(),
+      [WhatsAppPackage.whatsapp, WhatsAppPackage.whatsappBusiness],
     );
     expect(WhatsAppPackage.fromPackageName('com.unknown.app'), isNull);
     expect(
@@ -86,45 +94,45 @@ void main() {
     );
   });
 
-  test('يكتشف الحزمتين المعروفين فقط', () async {
-    final packages = await WhatsappDirectShareService().availablePackages();
+  test('يمرّر نص المعاينة حرفياً مع الملف في استدعاء واحد', () async {
+    final report = File(tempReport('shared.txt'));
+    await report.writeAsBytes(<int>[1, 2, 3, 4]);
+    const preview = 'تقرير الطالب\nالشهر الحالي\nالدرجات: ٩٨٪';
 
-    expect(packages, [
-      WhatsAppPackage.whatsapp,
-      WhatsAppPackage.whatsappBusiness,
-    ]);
-  });
-
-  test('يمرر الرقم المطبّع إلى فتح المحادثة دون ادعاء الإرسال', () async {
-    final result = await WhatsappDirectShareService().openChat(
+    final result = await WhatsappDirectShareService().shareToChat(
       phone: '0700123456',
-      text: 'تقرير الطالب',
+      text: preview,
+      filePath: report.path,
+      fileName: 'تقرير_أحمد.pdf',
+      mimeType: GuardianReportFormat.pdf.mimeType,
+      package: WhatsAppPackage.whatsapp,
     );
 
     expect(result.status, WhatsAppDirectStatus.launched);
-    expect(result.package, WhatsAppPackage.whatsapp);
-    expect(result.statusMessage, contains('تم فتح واتساب فقط'));
-    expect(result.statusMessage, isNot(contains('تم الإرسال')));
+    expect(lastArguments?['text'], preview);
+    expect(lastArguments?['filePath'], report.path);
+    expect(lastArguments, containsPair('mimeType', 'application/pdf'));
     expect(lastArguments?['phone'], '964700123456');
-    expect(lastArguments?['text'], 'تقرير الطالب');
+    expect(lastArguments?['jid'], '964700123456@s.whatsapp.net');
   });
 
-  test('لا يستدعي المنصة عند رقم غير صالح', () async {
-    final result = await WhatsappDirectShareService().openChat(
-      phone: '123',
-      text: 'تقرير الطالب',
-    );
-
-    expect(result.status, WhatsAppDirectStatus.failed);
-    expect(lastArguments, isNull);
-  });
-
-  test('يرفض مشاركة ملف غير موجود أو فارغ قبل تشغيل Intent', () async {
+  test('لا يستدعي المنصة عند رقم غير صالح أو ملف مفقود أو فارغ', () async {
     final service = WhatsappDirectShareService();
+    final invalid = await service.shareToChat(
+      phone: '123',
+      text: 'تقرير',
+      filePath: tempReport('never.pdf'),
+      fileName: 'report.pdf',
+      mimeType: 'application/pdf',
+      package: WhatsAppPackage.whatsapp,
+    );
+    expect(invalid.status, WhatsAppDirectStatus.failed);
+    expect(lastArguments, isNull);
+
     final missing = await service.shareToChat(
       phone: '964700123456',
       text: 'تقرير',
-      filePath: '${Directory.systemTemp.path}/missing-report.pdf',
+      filePath: tempReport('missing.pdf'),
       fileName: 'report.pdf',
       mimeType: 'application/pdf',
       package: WhatsAppPackage.whatsapp,
@@ -132,63 +140,75 @@ void main() {
     expect(missing.status, WhatsAppDirectStatus.failed);
     expect(lastArguments, isNull);
 
-    final emptyFile = File('${Directory.systemTemp.path}/empty-report.pdf');
-    await emptyFile.writeAsBytes(<int>[]);
-    final empty = await service.shareToChat(
+    final empty = File(tempReport('empty.pdf'));
+    await empty.writeAsBytes(<int>[]);
+    final emptyResult = await service.shareToChat(
       phone: '964700123456',
       text: 'تقرير',
-      filePath: emptyFile.path,
+      filePath: empty.path,
       fileName: 'report.pdf',
       mimeType: 'application/pdf',
       package: WhatsAppPackage.whatsapp,
     );
-    expect(empty.status, WhatsAppDirectStatus.failed);
+    expect(emptyResult.status, WhatsAppDirectStatus.failed);
     expect(lastArguments, isNull);
   });
 
-  test('يمرر الملف الموجود مع النص والـ jid إلى القناة الأصلية', () async {
-    final report = File('${Directory.systemTemp.path}/direct-report.xlsx');
-    await report.writeAsBytes(<int>[1, 2, 3, 4]);
-
-    final result = await WhatsappDirectShareService().shareToChat(
-      phone: '+964700123456',
-      text: 'تقرير الطالب',
-      filePath: report.path,
-      fileName: 'تقرير_أحمد.xlsx',
-      mimeType: GuardianReportFormat.xlsx.mimeType,
-      package: WhatsAppPackage.whatsappBusiness,
-    );
-
-    expect(result.status, WhatsAppDirectStatus.launched);
-    expect(result.package, WhatsAppPackage.whatsapp);
-    expect(lastArguments?['phone'], '964700123456');
-    expect(lastArguments?['jid'], '964700123456@s.whatsapp.net');
-    expect(lastArguments?['filePath'], report.path);
-    expect(lastArguments?['fileName'], 'تقرير_أحمد.xlsx');
-    expect(lastArguments?['package'], 'com.whatsapp.w4b');
-  });
-
-  test('يعالج عدم تثبيت واتساب دون ادعاء الإرسال', () async {
+  test('يعالج عدم تثبيت واتساب أثناء المشاركة دون ادعاء الإرسال', () async {
     handlerError = PlatformException(
       code: 'WHATSAPP_NOT_FOUND',
       message: 'No WhatsApp',
     );
-    final result = await WhatsappDirectShareService().openChat(
+    final report = File(tempReport('not-installed.pdf'));
+    await report.writeAsBytes(<int>[1]);
+
+    final result = await WhatsappDirectShareService().shareToChat(
       phone: '964700123456',
       text: 'تقرير',
+      filePath: report.path,
+      fileName: 'report.pdf',
+      mimeType: 'application/pdf',
+      package: WhatsAppPackage.whatsapp,
     );
 
     expect(result.status, WhatsAppDirectStatus.notFound);
     expect(result.launched, isFalse);
+    expect(result.statusMessage, isNot(contains('تم الإرسال')));
   });
 
-  test('أي حالة غير launched تُعد فشلاً وليست إرسالاً ناجحاً', () {
+  test('يعالج فشل فتح التطبيق أو رفض المشاركة كفشل صريح', () async {
+    handlerError = PlatformException(code: 'SHARE_FAILED', message: 'رفض النظام');
+    final report = File(tempReport('failed.xlsx'));
+    await report.writeAsBytes(<int>[1]);
+
+    final result = await WhatsappDirectShareService().shareToChat(
+      phone: '964700123456',
+      text: 'تقرير',
+      filePath: report.path,
+      fileName: 'report.xlsx',
+      mimeType: GuardianReportFormat.xlsx.mimeType,
+      package: WhatsAppPackage.whatsappBusiness,
+    );
+
+    expect(result.status, WhatsAppDirectStatus.failed);
+    expect(result.message, contains('رفض النظام'));
+    expect(result.statusMessage, contains('تعذر فتح واتساب'));
+  });
+
+  test('حالة الإقلاع لا تعني وصول الرسالة أو ضغط إرسال', () {
     final result = WhatsAppDirectResult.fromMap(<String, Object?>{
+      'status': 'launched',
+      'package': 'com.whatsapp',
+    });
+    expect(result.launched, isTrue);
+    expect(result.statusMessage, contains('راجع المستلم'));
+    expect(result.statusMessage, isNot(contains('تم الإرسال')));
+
+    final unknown = WhatsAppDirectResult.fromMap(<String, Object?>{
       'status': 'activity_started_but_unknown',
       'package': 'com.whatsapp',
     });
-
-    expect(result.status, WhatsAppDirectStatus.failed);
-    expect(result.launched, isFalse);
+    expect(unknown.status, WhatsAppDirectStatus.failed);
+    expect(unknown.launched, isFalse);
   });
 }
