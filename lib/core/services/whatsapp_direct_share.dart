@@ -166,6 +166,23 @@ class WhatsappDirectShareService {
     return _invoke('shareToChat', payload.toArguments());
   }
 
+  /// يشارك الملف وحده في رسالة مستقلة؛ النص أُرسل في خطوة سابقة.
+  Future<WhatsAppDirectResult> shareFile({
+    required String phone,
+    required String filePath,
+    required String fileName,
+    required String mimeType,
+    required WhatsAppPackage package,
+  }) =>
+      shareToChat(
+        phone: phone,
+        text: '',
+        filePath: filePath,
+        fileName: fileName,
+        mimeType: mimeType,
+        package: package,
+      );
+
   /// يكتب التقرير في cache-path الذي يسمح به FileProvider فقط.
   ///
   /// البادئة الزمنية تمنع استبدال ملف ما زال واتساب يقرؤه في محاولة سابقة.

@@ -16,7 +16,7 @@ void main() {
     final source = read(mainActivity);
     expect(source, contains('Intent.ACTION_SEND'));
     expect(source, contains('putExtra(Intent.EXTRA_STREAM, uri)'));
-    expect(source, contains('putExtra(Intent.EXTRA_TEXT, text)'));
+    expect(source, contains('if (text.isNotEmpty()) putExtra(Intent.EXTRA_TEXT, text)'));
     expect(source, contains('setPackage(packageName)'));
     expect(source, contains('FLAG_GRANT_READ_URI_PERMISSION'));
     expect(source, contains('ClipData.newUri'));

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:excel_plus/excel_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:almoktaber/core/database/app_snapshot.dart';
 import 'package:almoktaber/core/services/guardian_report_service.dart';
@@ -32,6 +33,8 @@ List<String> _rowValues(Sheet sheet, int rowIndex) => sheet.rows[rowIndex]
     .toList(growable: false);
 
 void main() {
+  ShareParams? capturedParams;
+
   test('يمرّر لقطة الشهر إلى باني Excel ويجهّز الاسم والنص والرقم', () async {
     final fixture = GuardianReportFixture();
     final builder = _CapturingReportService();
@@ -94,6 +97,34 @@ void main() {
       expect(report.mimeType, format.mimeType);
       expect(report.fileName, endsWith('.${format.extension}'));
     }
+  });
+
+  test('مرحلة النص تمرر النص وحدها ومرحلة الملف تمرر الملف وحده', () async {
+    final fixture = GuardianReportFixture();
+    final service = GuardianReportService(
+      reportService: _CapturingReportService(),
+      sharer: (params) async {
+        capturedParams = params;
+        return GuardianShareOutcome.completed;
+      },
+    );
+    final report = await service.prepare(
+      snapshot: fixture.snapshot,
+      studentUuid: GuardianReportFixture.studentUuid,
+      guardianPhone: fixture.student.guardianPhone,
+      format: GuardianReportFormat.xlsx,
+      now: fixture.now,
+      text: 'نص المعاينة',
+    );
+
+    await service.shareTextOnly(report);
+    expect(capturedParams?.text, 'نص المعاينة');
+    expect(capturedParams?.files?.isEmpty ?? true, isTrue);
+
+    await service.shareFileOnly(report);
+    expect(capturedParams?.text, isNull);
+    expect(capturedParams?.files, hasLength(1));
+    expect(capturedParams?.fileNameOverrides, [report.fileName]);
   });
 
   test('يرفض نص المعاينة الفارغ', () async {

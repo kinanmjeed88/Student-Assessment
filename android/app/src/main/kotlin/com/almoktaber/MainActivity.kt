@@ -65,7 +65,7 @@ class MainActivity : FlutterActivity() {
      */
     private fun shareToChat(call: MethodCall, result: MethodChannel.Result) {
         val phone = call.argument<String>("phone")?.trim().orEmpty()
-        val text = call.argument<String>("text").orEmpty()
+        val text = call.argument<String>("text")?.trim().orEmpty()
         val filePath = call.argument<String>("filePath")?.trim().orEmpty()
         val mimeType = call.argument<String>("mimeType")?.takeIf { it.isNotBlank() } ?: "*/*"
         val expectedJid = "$phone$JID_SUFFIX"
@@ -116,7 +116,8 @@ class MainActivity : FlutterActivity() {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_TEXT, text)
+            // المرحلة الثانية تشارك الملف وحدها، لذلك لا يُضاف نص فارغ.
+            if (text.isNotEmpty()) putExtra(Intent.EXTRA_TEXT, text)
             // حقل غير رسمي؛ قد يتجاهله واتساب ولا يمكن اكتشاف ذلك من التطبيق.
             putExtra("jid", jid)
             setPackage(packageName)

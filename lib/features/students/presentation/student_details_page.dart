@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/attendance/attendance_summary.dart';
 import '../../../core/behavior/behavior_summary.dart';
@@ -12,12 +13,15 @@ import '../../../core/providers.dart';
 import '../../../core/services/guardian_phone.dart';
 import '../../../core/services/guardian_report_service.dart';
 import '../../../core/services/guardian_report_text.dart';
-import '../../../core/services/guardian_send_coordinator.dart';
+import '../../../core/services/guardian_phone_copier.dart';
+import '../../../core/services/guardian_send_session.dart';
 import '../../../core/services/monthly_report_scope.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/services/whatsapp_direct_share.dart';
 import '../../../core/utils/iterable_extensions.dart';
 import '../../../core/widgets/app_components.dart';
+
+const String guardianStartSendLabel = 'إرسال التقرير والملف';
 
 class StudentDetailsPage extends ConsumerWidget {
   const StudentDetailsPage({required this.studentUuid, super.key});
@@ -63,7 +67,7 @@ class _StudentProfile extends ConsumerStatefulWidget {
 }
 
 class _StudentProfileState extends ConsumerState<_StudentProfile> {
-  final GuardianSendCoordinator _sendCoordinator = GuardianSendCoordinator();
+  final GuardianPhoneCopier _phoneCopier = GuardianPhoneCopier();
 
   AppSnapshot get snapshot => widget.snapshot;
   Student get student => widget.student;
@@ -539,171 +543,321 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إنشاء الملف: $error')));
   }
 
-  /// نافذة واحدة لإعداد التقرير. النص المعروض هنا هو الذي يُمرَّر حرفياً
-  /// إلى طلب المشاركة، ولا يُعاد بناؤه عند التنفيذ.
+  /// نافذة واحدة ذات تسلسل واضح: نص في محادثة، ثم ملف في رسالة مستقلة.
   Future<void> _showGuardianReportSheet(BuildContext context) async {
     final phone = TextEditingController(text: student.guardianPhone);
-    var format = GuardianReportFormat.pdf;
+    final formatNotifier = ValueNotifier<GuardianReportFormat>(GuardianReportFormat.pdf);
     final reportNow = DateTime.now();
     String? previewText;
-    final sending = ValueNotifier<bool>(false);
+    final session = GuardianSendSession();
 
     await showAppFormSheet<void>(
       context: context,
       title: 'إرسال تقرير ولي الأمر',
-      subtitle: 'تُجهَّز بيانات الشهر الحالي حتى الآن بنفس تنسيق ملف الطالب، ثم تُرسل عبر واتساب.',
-      child: StatefulBuilder(
-        builder: (sheetContext, setState) {
+      subtitle: 'تُجهَّز بيانات الشهر الحالي حتى الآن بنفس تنسيق ملف الطالب، ثم تُرسل على مرحلتين.',
+      child: ValueListenableBuilder<GuardianReportFormat>(
+        valueListenable: formatNotifier,
+        builder: (_, format, _) => ValueListenableBuilder<GuardianSendSnapshot>(
+        valueListenable: session.state,
+        builder: (sheetContext, sendState, _) {
           final monthly = scopeToCurrentMonth(snapshot, now: reportNow);
-          final preview = buildGuardianReportText(
-            settings: snapshot.settings,
-            student: student,
-            monthly: monthly,
-            format: format,
-          );
-          previewText = preview;
-          final scheme = Theme.of(sheetContext).colorScheme;
+          if (sendState.stage == GuardianSendStage.idle) {
+            final preview = buildGuardianReportText(
+              settings: snapshot.settings,
+              student: student,
+              monthly: monthly,
+              format: format,
+            );
+            previewText = preview;
+            final scheme = Theme.of(sheetContext).colorScheme;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('الرقم المثبت في الملف: ${student.guardianPhone.isEmpty ? 'غير محدد' : student.guardianPhone}'),
+                AppSpacing.item,
+                TextFormField(
+                  controller: phone,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'رقم هاتف ولي الأمر',
+                    helperText: 'إذا لم تظهر المحادثة في واتساب، انسخ الرقم وابحث عنه من خلال البحث أو أضِفه إلى جهات الاتصال',
+                    suffixIcon: IconButton(
+                      tooltip: 'نسخ الرقم',
+                      icon: const Icon(Icons.copy_all_outlined),
+                      onPressed: () => _copyGuardianPhone(phone.text),
+                    ),
+                  ),
+                  validator: (_) => GuardianPhone.validationError(phone.text),
+                ),
+                AppSpacing.item,
+                SegmentedButton<GuardianReportFormat>(
+                  selected: {format},
+                  onSelectionChanged: (value) => formatNotifier.value = value.first,
+                  segments: const [
+                    ButtonSegment(value: GuardianReportFormat.pdf, label: Text('PDF'), icon: Icon(Icons.picture_as_pdf_outlined)),
+                    ButtonSegment(value: GuardianReportFormat.xlsx, label: Text('Excel'), icon: Icon(Icons.table_view_outlined)),
+                  ],
+                ),
+                AppSpacing.item,
+                _SheetInfo(label: 'فترة التقرير', value: '${monthly.period.startLabel} إلى ${monthly.period.endLabel}'),
+                AppSpacing.item,
+                Text('معاينة الرسالة', style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
+                  child: Text(preview, style: Theme.of(sheetContext).textTheme.bodyMedium),
+                ),
+              ],
+            );
+          }
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('الرقم المثبت في الملف: ${student.guardianPhone.isEmpty ? 'غير محدد' : student.guardianPhone}'),
-              AppSpacing.item,
-              TextFormField(
-                controller: phone,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'رقم هاتف ولي الأمر',
-                  helperText: 'يُستخدم للإرسال، ويمكن تصحيحه لهذه المرة فقط.',
+              Text(
+                _guardianStageTitle(sendState.stage),
+                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              Text(_guardianStageMessage(sendState)),
+              if (sendState.error.isNotEmpty) ...[
+                AppSpacing.item,
+                Text(
+                  sendState.error,
+                  style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(sheetContext).colorScheme.error,
+                      ),
                 ),
-                validator: (_) => GuardianPhone.validationError(phone.text),
-              ),
+              ],
               AppSpacing.item,
-              SegmentedButton<GuardianReportFormat>(
-                selected: {format},
-                onSelectionChanged: (value) => setState(() => format = value.first),
-                segments: const [
-                  ButtonSegment(value: GuardianReportFormat.pdf, label: Text('PDF'), icon: Icon(Icons.picture_as_pdf_outlined)),
-                  ButtonSegment(value: GuardianReportFormat.xlsx, label: Text('Excel'), icon: Icon(Icons.table_view_outlined)),
-                ],
-              ),
+              _SheetInfo(label: 'الصيغة', value: format.label),
               AppSpacing.item,
               _SheetInfo(label: 'فترة التقرير', value: '${monthly.period.startLabel} إلى ${monthly.period.endLabel}'),
               AppSpacing.item,
-              Text('معاينة الرسالة', style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
-                child: Text(preview, style: Theme.of(sheetContext).textTheme.bodyMedium),
+              Text(
+                'إذا لم تظهر المحادثة في واتساب، انسخ الرقم وابحث عنه من خلال البحث أو أضِفه إلى جهات الاتصال',
+                style: Theme.of(sheetContext).textTheme.bodySmall,
               ),
             ],
           );
-        },
+        ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-        ValueListenableBuilder<bool>(
-          valueListenable: sending,
-          builder: (actionContext, isSending, _) => FilledButton.icon(
-            onPressed: isSending
-                ? null
-                : () => _handleGuardianSend(
-                      actionContext,
-                      phone.text,
-                      format,
-                      previewText,
-                      reportNow,
-                      sending,
-                    ),
-            icon: isSending
-                ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.send_outlined),
-            label: const Text('إرسال التقرير والملف'),
+        ValueListenableBuilder<GuardianSendSnapshot>(
+          valueListenable: session.state,
+          builder: (actionContext, sendState, _) => TextButton(
+            onPressed: sendState.isBusy ? null : () => Navigator.pop(actionContext),
+            child: const Text('إلغاء'),
           ),
+        ),
+        ValueListenableBuilder<GuardianSendSnapshot>(
+          valueListenable: session.state,
+          builder: (actionContext, sendState, _) {
+            final busy = sendState.isBusy ||
+                sendState.stage == GuardianSendStage.messageReady;
+            final retryFile = sendState.stage == GuardianSendStage.failed &&
+                session.messageChatOpened;
+            final label = _guardianActionLabel(sendState.stage, retryFile);
+            return FilledButton.icon(
+              onPressed: busy
+                  ? null
+                  : () {
+                      if (retryFile ||
+                          sendState.stage == GuardianSendStage.messageChatOpened ||
+                          sendState.stage == GuardianSendStage.fileReady ||
+                          sendState.stage == GuardianSendStage.fileSharing ||
+                          sendState.stage == GuardianSendStage.completed) {
+                        _handleGuardianFileShare(actionContext, session);
+                      } else {
+                        _handleGuardianMessageStart(
+                          actionContext,
+                          phone.text,
+                          formatNotifier.value,
+                          previewText,
+                          reportNow,
+                          session,
+                        );
+                      }
+                    },
+              icon: busy
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_outlined),
+              label: Text(label),
+            );
+          },
         ),
       ],
     );
-    sending.dispose();
+    await session.dispose();
+    formatNotifier.dispose();
     phone.dispose();
   }
 
-  /// يُنفَّذ مسار واحد فقط حسب المنصة، ويمنع الضغط المتكرر تكرار التنفيذ.
-  Future<void> _handleGuardianSend(
+  String _guardianStageTitle(GuardianSendStage stage) => switch (stage) {
+        GuardianSendStage.preparing => 'جارٍ تجهيز التقرير',
+        GuardianSendStage.messageReady => 'فتح محادثة واتساب لإرسال الرسالة',
+        GuardianSendStage.messageChatOpened => 'تم فتح المحادثة',
+        GuardianSendStage.fileReady => 'إرسال ملف التقرير',
+        GuardianSendStage.fileSharing => 'جارٍ فتح مشاركة الملف',
+        GuardianSendStage.completed => 'الملف جاهز للمشاركة',
+        GuardianSendStage.failed => 'تعذر إكمال العملية',
+        GuardianSendStage.idle => '',
+      };
+
+  String _guardianStageMessage(GuardianSendSnapshot state) => switch (state.stage) {
+        GuardianSendStage.preparing => 'يُجهَّز النص والملف مرة واحدة قبل فتح واتساب.',
+        GuardianSendStage.messageReady => 'النص جاهز؛ سيُفتح واتساب على محادثة ولي الأمر لإرسال الرسالة.',
+        GuardianSendStage.messageChatOpened =>
+          'بعد إرسال الرسالة النصية في واتساب، ارجع إلى التطبيق لإرسال ملف التقرير في رسالة مستقلة',
+        GuardianSendStage.fileReady =>
+          'بعد إرسال الرسالة النصية في واتساب، ارجع إلى التطبيق لإرسال ملف التقرير في رسالة مستقلة',
+        GuardianSendStage.fileSharing => 'يُفتح الآن طلب مشاركة الملف وحده، دون نص إضافي.',
+        GuardianSendStage.completed => 'تم فتح مشاركة الملف؛ أكمل الإرسال داخل واتساب.',
+        GuardianSendStage.failed => state.error.isEmpty ? 'حدث خطأ. يمكنك المحاولة مرة أخرى.' : state.error,
+        GuardianSendStage.idle => '',
+      };
+
+  String _guardianActionLabel(GuardianSendStage stage, bool retryFile) => switch (stage) {
+        GuardianSendStage.preparing => 'جارٍ التجهيز...',
+        GuardianSendStage.messageReady => 'جارٍ فتح المحادثة...',
+        GuardianSendStage.fileSharing => 'جارٍ المشاركة...',
+        GuardianSendStage.messageChatOpened || GuardianSendStage.fileReady => 'إرسال ملف التقرير',
+        GuardianSendStage.completed => 'إرسال الملف مرة أخرى',
+        GuardianSendStage.failed => retryFile ? 'إعادة إرسال الملف' : guardianStartSendLabel,
+        GuardianSendStage.idle => guardianStartSendLabel,
+      };
+
+  Future<void> _copyGuardianPhone(String rawPhone) async {
+    final copied = await _phoneCopier.copy(rawPhone);
+    if (!mounted) return;
+    _showGuardianMessage(
+      copied == null ? 'رقم ولي الأمر غير صالح.' : 'تم نسخ رقم ولي الأمر',
+    );
+  }
+
+  /// المرحلة الأولى: نسخ احتياطي للرقم، تجهيز واحد، ثم فتح محادثة بالنص.
+  Future<void> _handleGuardianMessageStart(
     BuildContext sheetContext,
     String rawPhone,
     GuardianReportFormat format,
     String? previewText,
     DateTime reportNow,
-    ValueNotifier<bool> sending,
+    GuardianSendSession session,
   ) async {
     final phoneError = GuardianPhone.validationError(rawPhone);
     if (phoneError != null) {
       _showGuardianMessage(phoneError);
       return;
     }
-    if (_sendCoordinator.isSending) return;
+    await _phoneCopier.copy(rawPhone);
 
-    var message = 'تعذر تجهيز التقرير.';
-    sending.value = true;
-    try {
-      await _sendCoordinator.run(() async {
-        final service = ref.read(guardianReportServiceProvider);
-        final report = await service.prepare(
-          snapshot: snapshot,
-          studentUuid: student.uuid,
-          guardianPhone: rawPhone,
-          format: format,
-          now: reportNow,
-          text: previewText,
-        );
-        if (!mounted) return;
-        if (WhatsAppDirectSupport.shouldOfferDirectSend(Theme.of(sheetContext).platform)) {
-          message = await _shareThroughInstalledWhatsApp(report);
-        } else {
-          final outcome = await service.share(report);
-          message = switch (outcome) {
-            GuardianShareOutcome.dismissed => 'تم إلغاء المشاركة.',
-            GuardianShareOutcome.completed =>
-              'تم فتح نافذة المشاركة؛ راجع النص والملف ثم أكمل الإرسال.',
-          };
-        }
-      });
-    } on FormatException catch (error) {
-      message = error.message;
-    } catch (error) {
-      message = 'تعذر تجهيز التقرير: $error';
-    } finally {
-      sending.value = false;
-    }
-
+    final service = ref.read(guardianReportServiceProvider);
+    final direct = ref.read(whatsappDirectShareProvider);
+    await session.startMessage(
+      prepare: () => service.prepare(
+        snapshot: snapshot,
+        studentUuid: student.uuid,
+        guardianPhone: rawPhone,
+        format: formatNotifier.value,
+        now: reportNow,
+        text: previewText,
+      ),
+      writeFile: (report) => direct.writeReportFile(
+        bytes: report.bytes,
+        fileName: report.fileName,
+      ),
+      openChat: (report) => _openGuardianChat(sheetContext, report, service, direct),
+    );
     if (!mounted) return;
-    if (sheetContext.mounted) Navigator.pop(sheetContext);
-    _showGuardianMessage(message);
+    final sendState = session.state.value;
+    _showGuardianMessage(sendState.error.isEmpty
+        ? sendState.message
+        : '${sendState.message}: ${sendState.error}');
   }
 
-  /// يستخدم ملف التقرير والنص نفسيهما في طلب مشاركة واحد.
-  Future<String> _shareThroughInstalledWhatsApp(PreparedGuardianReport report) async {
-    final direct = ref.read(whatsappDirectShareProvider);
+  Future<bool> _openGuardianChat(
+    BuildContext context,
+    PreparedGuardianReport report,
+    GuardianReportService service,
+    WhatsappDirectShareService direct,
+  ) async {
+    if (!WhatsAppDirectSupport.shouldOfferDirectSend(Theme.of(context).platform)) {
+      final outcome = await service.shareTextOnly(report);
+      return outcome != GuardianShareOutcome.dismissed;
+    }
     final packages = await direct.availablePackages();
     if (packages.isEmpty) {
-      return 'واتساب أو واتساب بيزنس غير مثبت على الجهاز.';
+      throw const FormatException('واتساب أو واتساب بيزنس غير مثبت على الجهاز.');
+    }
+    final uri = GuardianPhone.chatUri(
+      phone: report.guardianPhone,
+      text: report.text,
+    );
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) {
+      throw const FormatException('تعذر فتح محادثة واتساب.');
+    }
+    return true;
+  }
+
+  /// المرحلة الثانية: مشاركة الملف المجهز وحده، دون إعادة توليده.
+  Future<void> _handleGuardianFileShare(
+    BuildContext sheetContext,
+    GuardianSendSession session,
+  ) async {
+    final service = ref.read(guardianReportServiceProvider);
+    final direct = ref.read(whatsappDirectShareProvider);
+    await session.shareFile(
+      share: (report, path) => _shareGuardianFile(
+        sheetContext,
+        report,
+        path,
+        service,
+        direct,
+      ),
+    );
+    if (!mounted) return;
+    final sendState = session.state.value;
+    _showGuardianMessage(sendState.error.isEmpty
+        ? sendState.message
+        : '${sendState.message}: ${sendState.error}');
+  }
+
+  Future<GuardianShareOutcome> _shareGuardianFile(
+    BuildContext context,
+    PreparedGuardianReport report,
+    String filePath,
+    GuardianReportService service,
+    WhatsappDirectShareService direct,
+  ) async {
+    if (!WhatsAppDirectSupport.shouldOfferDirectSend(Theme.of(context).platform)) {
+      return service.shareFileOnly(report);
+    }
+    final packages = await direct.availablePackages();
+    if (packages.isEmpty) {
+      throw const FormatException('واتساب أو واتساب بيزنس غير مثبت على الجهاز.');
     }
     final package = packages.contains(WhatsAppPackage.whatsapp)
         ? WhatsAppPackage.whatsapp
         : WhatsAppPackage.whatsappBusiness;
-    final path = await direct.writeReportFile(
-      bytes: report.bytes,
-      fileName: report.fileName,
-    );
-    final result = await direct.shareToChat(
+    final result = await direct.shareFile(
       phone: report.guardianPhone,
-      text: report.text,
-      filePath: path,
+      filePath: filePath,
       fileName: report.fileName,
       mimeType: report.mimeType,
       package: package,
     );
-    return result.statusMessage;
+    return switch (result.status) {
+      WhatsAppDirectStatus.launched => GuardianShareOutcome.completed,
+      WhatsAppDirectStatus.notFound =>
+        throw const FormatException('واتساب غير مثبت على الجهاز.'),
+      WhatsAppDirectStatus.failed => throw FormatException(
+          result.message.isEmpty ? 'تعذر مشاركة الملف.' : result.message),
+    };
   }
 
   void _showGuardianMessage(String message) {

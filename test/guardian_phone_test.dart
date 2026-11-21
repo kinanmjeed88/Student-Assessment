@@ -29,4 +29,17 @@ void main() {
     expect(uri.queryParameters['text'], 'تقرير الطالب أحمد');
     expect(uri.toString(), contains('%D8%AA%D9%82%D8%B1%D9%8A%D8%B1'));
   });
+
+  test('يرمّز النص العربي والأسطر الجديدة وعلامات الترقيم في رابط wa.me', () {
+    const message = 'تقرير الطالب\nالحضور: ١٨/٢٠\nالسلوك: ممتاز، بدون ملاحظات.';
+    final uri = GuardianPhone.chatUri(
+      phone: GuardianPhone.normalize('٠٧٠٠١٢٣٤٥٦'),
+      text: message,
+    );
+
+    expect(uri.path, '/964700123456');
+    expect(uri.queryParameters['text'], message);
+    expect(uri.toString(), contains('%0A'));
+    expect(uri.toString(), isNot(contains('+')));
+  });
 }

@@ -63,6 +63,12 @@ if [ "$(grep -Roh 'إرسال التقرير والملف' lib | wc -l)" -ne 1 ]
   echo 'The unified guardian report send button is missing or duplicated.'
   fail=1
 fi
+for required in 'نسخ الرقم' 'تم نسخ رقم ولي الأمر' 'إرسال ملف التقرير' 'إذا لم تظهر المحادثة في واتساب'; do
+  if ! grep -Rq "$required" lib; then
+    echo "Missing guardian two-step UI text: $required"
+    fail=1
+  fi
+done
 
 if [ "$fail" -ne 0 ]; then
   exit 1

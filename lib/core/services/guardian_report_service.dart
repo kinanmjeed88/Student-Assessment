@@ -39,10 +39,14 @@ enum GuardianShareOutcome { completed, dismissed }
 /// لا يُرسل التطبيق رسالة آلياً من الخلفية: يُفتح واتساب أو قائمة المشاركة
 /// ويبقى الإرسال النهائي بيد المستخدم، وهو السلوك الموثوق دون خادم أو مفاتيح API.
 class GuardianReportService {
-  GuardianReportService({ReportService? reportService})
-      : _reportService = reportService ?? ReportService();
+  GuardianReportService({
+    ReportService? reportService,
+    Future<GuardianShareOutcome> Function(ShareParams params)? sharer,
+  })  : _reportService = reportService ?? ReportService(),
+        _sharer = sharer ?? _shareThroughPlatform;
 
   final ReportService _reportService;
+  final Future<GuardianShareOutcome> Function(ShareParams params) _sharer;
 
   /// يولّد الملف العادي للطالب بعد تقييد بياناته بالشهر الحالي حتى [now].
   Future<PreparedGuardianReport> prepare({
@@ -95,18 +99,39 @@ class GuardianReportService {
     );
   }
 
-  /// يفتح قائمة المشاركة في النظام مع النص والملف ليسهل اختيار واتساب.
-  Future<GuardianShareOutcome> share(PreparedGuardianReport report) async {
-    final result = await SharePlus.instance.share(
-      ShareParams(
+  /// يشارك النص وحده، ويُستخدم على المنصات التي لا تفتح تطبيق واتساب.
+  Future<GuardianShareOutcome> shareTextOnly(PreparedGuardianReport report) =>
+      _sharer(ShareParams(
+        text: report.text,
+        title: 'تقرير الطالب',
+      ));
+
+  /// يشارك الملف وحده في رسالة مستقلة، دون أي نص إضافي.
+  Future<GuardianShareOutcome> shareFileOnly(PreparedGuardianReport report) =>
+      _sharer(ShareParams(
+        title: 'تقرير الطالب',
+        files: [
+          XFile.fromData(report.bytes, mimeType: report.mimeType),
+        ],
+        fileNameOverrides: [report.fileName],
+      ));
+
+  /// يبقى متاحاً للتوافق مع أي استخدام سابق، لكن مسار ولي الأمر الجديد
+  /// يستخدم المرحلتين المنفصلتين ولا يعتمد على اجتماع النص والملف.
+  Future<GuardianShareOutcome> share(PreparedGuardianReport report) =>
+      _sharer(ShareParams(
         text: report.text,
         title: 'تقرير الطالب',
         files: [
           XFile.fromData(report.bytes, mimeType: report.mimeType),
         ],
         fileNameOverrides: [report.fileName],
-      ),
-    );
+      ));
+
+  static Future<GuardianShareOutcome> _shareThroughPlatform(
+    ShareParams params,
+  ) async {
+    final result = await SharePlus.instance.share(params);
     return switch (result.status) {
       ShareResultStatus.dismissed => GuardianShareOutcome.dismissed,
       _ => GuardianShareOutcome.completed,

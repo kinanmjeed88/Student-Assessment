@@ -116,6 +116,25 @@ void main() {
     expect(lastArguments?['jid'], '964700123456@s.whatsapp.net');
   });
 
+  test('مشاركة الملف وحدها لا تمرر نصاً إضافياً في طلب المشاركة', () async {
+    final report = File(tempReport('file-only.pdf'));
+    await report.writeAsBytes(<int>[1, 2, 3]);
+
+    final result = await WhatsappDirectShareService().shareFile(
+      phone: '0700123456',
+      filePath: report.path,
+      fileName: 'report.pdf',
+      mimeType: GuardianReportFormat.pdf.mimeType,
+      package: WhatsAppPackage.whatsappBusiness,
+    );
+
+    expect(result.status, WhatsAppDirectStatus.launched);
+    expect(lastArguments?['text'], '');
+    expect(lastArguments?['filePath'], report.path);
+    expect(lastArguments?['mimeType'], 'application/pdf');
+    expect(lastArguments?['package'], 'com.whatsapp.w4b');
+  });
+
   test('لا يستدعي المنصة عند رقم غير صالح أو ملف مفقود أو فارغ', () async {
     final service = WhatsappDirectShareService();
     final invalid = await service.shareToChat(
