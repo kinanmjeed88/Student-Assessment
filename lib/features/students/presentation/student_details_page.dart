@@ -641,6 +641,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
               ),
             ],
           );
+        },
         ),
       ),
       actions: [
