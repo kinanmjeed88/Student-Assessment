@@ -9,6 +9,10 @@ import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/guardian_phone.dart';
+import '../../../core/services/guardian_report_service.dart';
+import '../../../core/services/guardian_report_text.dart';
+import '../../../core/services/monthly_report_scope.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/utils/iterable_extensions.dart';
 import '../../../core/widgets/app_components.dart';
@@ -82,6 +86,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
       average: average,
       onExportExcel: () => _exportExcel(context),
       onExportPdf: () => _exportPdf(context),
+      onSendGuardianReport: () => _showGuardianReportSheet(context),
     );
 
     return DefaultTabController(
@@ -531,13 +536,148 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إنشاء الملف: $error')));
   }
 
+  /// يجمع رقم ولي الأمر وصيغة الملف قبل تجهيز التقرير الشهري ومشاركته.
+  Future<void> _showGuardianReportSheet(BuildContext context) async {
+    final phone = TextEditingController(text: student.guardianPhone);
+    var format = GuardianReportFormat.pdf;
+
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'إرسال تقرير ولي الأمر',
+      subtitle: 'تُجهَّز بيانات الشهر الحالي حتى الآن بنفس تنسيق ملف الطالب، ثم تُرسل عبر واتساب.',
+      child: StatefulBuilder(
+        builder: (sheetContext, setState) {
+          final monthly = scopeToCurrentMonth(snapshot);
+          final preview = buildGuardianReportText(
+            settings: snapshot.settings,
+            student: student,
+            monthly: monthly,
+            format: format,
+          );
+          final scheme = Theme.of(sheetContext).colorScheme;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('الرقم المثبت في الملف: ${student.guardianPhone.isEmpty ? 'غير محدد' : student.guardianPhone}'),
+              AppSpacing.item,
+              TextFormField(
+                controller: phone,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'رقم هاتف ولي الأمر',
+                  helperText: 'يُستخدم للإرسال، ويمكن تصحيحه لهذه المرة فقط.',
+                ),
+                validator: (_) => GuardianPhone.validationError(phone.text),
+              ),
+              AppSpacing.item,
+              SegmentedButton<GuardianReportFormat>(
+                selected: {format},
+                onSelectionChanged: (value) => setState(() => format = value.first),
+                segments: const [
+                  ButtonSegment(value: GuardianReportFormat.pdf, label: Text('PDF'), icon: Icon(Icons.picture_as_pdf_outlined)),
+                  ButtonSegment(value: GuardianReportFormat.xlsx, label: Text('Excel'), icon: Icon(Icons.table_view_outlined)),
+                ],
+              ),
+              AppSpacing.item,
+              _SheetInfo(label: 'فترة التقرير', value: '${monthly.period.startLabel} إلى ${monthly.period.endLabel}'),
+              AppSpacing.item,
+              Text('معاينة الرسالة', style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
+                child: Text(preview, style: Theme.of(sheetContext).textTheme.bodyMedium),
+              ),
+              TextButton.icon(
+                onPressed: () => _deliverGuardianReport(context, phone.text, format, textOnly: true),
+                icon: const Icon(Icons.open_in_new_outlined),
+                label: const Text('فتح محادثة واتساب بالنص فقط'),
+              ),
+            ],
+          );
+        },
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton.icon(
+          onPressed: () async {
+            final error = GuardianPhone.validationError(phone.text);
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+              return;
+            }
+            Navigator.pop(context);
+            await _deliverGuardianReport(context, phone.text, format, textOnly: false);
+          },
+          icon: const Icon(Icons.send_outlined),
+          label: const Text('مشاركة التقرير والملف'),
+        ),
+      ],
+    );
+    phone.dispose();
+  }
+
+  Future<void> _deliverGuardianReport(
+    BuildContext context,
+    String rawPhone,
+    GuardianReportFormat format, {
+    required bool textOnly,
+  }) async {
+    final service = ref.read(guardianReportServiceProvider);
+    try {
+      final report = await service.prepare(
+        snapshot: snapshot,
+        studentUuid: student.uuid,
+        guardianPhone: rawPhone,
+        format: format,
+      );
+      if (!mounted) return;
+      if (textOnly) {
+        await service.openWhatsAppChat(report);
+        _showGuardianMessage('فتحت محادثة واتساب؛ أرفق الملف يدوياً من معرض الملفات.');
+        return;
+      }
+      final outcome = await service.share(report);
+      if (!mounted) return;
+      _showGuardianMessage(
+        outcome == GuardianShareOutcome.dismissed
+            ? 'تم إلغاء المشاركة.'
+            : 'تم فتح قائمة المشاركة؛ اختر واتساب لإرسال التقرير لولي الأمر.',
+      );
+    } on FormatException catch (error) {
+      _showGuardianMessage(error.message);
+    } catch (error) {
+      _showGuardianMessage('تعذر تجهيز التقرير: $error');
+    }
+  }
+
+  void _showGuardianMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   InputDecoration _decoration(String label) => InputDecoration(labelText: label);
   TextFormField _input(TextEditingController controller, String label, {bool numeric = false, bool required = true, int maxLines = 1}) => TextFormField(controller: controller, maxLines: maxLines, keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text, decoration: _decoration(label), validator: required ? (value) => value == null || value.trim().isEmpty ? 'هذا الحقل مطلوب' : null : null);
 
 }
 
+class _SheetInfo extends StatelessWidget {
+  const _SheetInfo({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Text('$label: ', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+          Expanded(child: Text(value)),
+        ],
+      );
+}
+
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendance, required this.average, required this.onExportExcel, required this.onExportPdf});
+  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendance, required this.average, required this.onExportExcel, required this.onExportPdf, required this.onSendGuardianReport});
 
   final Student student;
   final String? schoolClass;
@@ -547,6 +687,7 @@ class _ProfileHeader extends StatelessWidget {
   final double? average;
   final VoidCallback onExportExcel;
   final VoidCallback onExportPdf;
+  final VoidCallback onSendGuardianReport;
 
   @override
   Widget build(BuildContext context) {
@@ -578,19 +719,29 @@ class _ProfileHeader extends StatelessWidget {
                   builder: (context, constraints) {
                     final compact = constraints.maxWidth < 420;
                     final status = AppStatusPill(label: _statusLabelForProfile(student.status), icon: _statusIconForProfile(student.status), tone: statusTone);
+                    Widget action({required IconData icon, required String label, required VoidCallback onPressed}) => FilledButton.icon(
+                          onPressed: onPressed,
+                          style: buttonStyle,
+                          icon: Icon(icon),
+                          label: Text(label),
+                        );
                     final compactActions = Row(
                       children: [
-                        Expanded(child: FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel'))),
+                        Expanded(child: action(icon: Icons.table_view_outlined, label: 'Excel', onPressed: onExportExcel)),
                         const SizedBox(width: 8),
-                        Expanded(child: FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF'))),
+                        Expanded(child: action(icon: Icons.picture_as_pdf_outlined, label: 'PDF', onPressed: onExportPdf)),
+                        const SizedBox(width: 8),
+                        Expanded(child: action(icon: Icons.send_outlined, label: 'واتساب', onPressed: onSendGuardianReport)),
                       ],
                     );
                     final wideActions = Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel')),
+                        action(icon: Icons.table_view_outlined, label: 'Excel', onPressed: onExportExcel),
                         const SizedBox(width: 8),
-                        FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF')),
+                        action(icon: Icons.picture_as_pdf_outlined, label: 'PDF', onPressed: onExportPdf),
+                        const SizedBox(width: 8),
+                        action(icon: Icons.send_outlined, label: 'واتساب', onPressed: onSendGuardianReport),
                       ],
                     );
                     if (compact) {
