@@ -40,6 +40,8 @@ void main() {
     expect(uri.path, '/964700123456');
     expect(uri.queryParameters['text'], message);
     expect(uri.toString(), contains('%0A'));
-    expect(uri.toString(), isNot(contains('+')));
+    expect(uri.path, isNot(contains('+')));
+    expect(uri.path, isNot(contains(' ')));
+    expect(uri.queryParameters['text'], message);
   });
 }
