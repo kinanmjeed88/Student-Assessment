@@ -763,7 +763,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
         snapshot: snapshot,
         studentUuid: student.uuid,
         guardianPhone: rawPhone,
-        format: formatNotifier.value,
+        format: format,
         now: reportNow,
         text: previewText,
       ),
