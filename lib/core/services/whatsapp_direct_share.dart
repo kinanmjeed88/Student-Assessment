@@ -84,6 +84,7 @@ class WhatsAppDirectPayload {
 
   Map<String, Object?> toArguments() => <String, Object?>{
         'phone': phone,
+        'jid': jid,
         'text': text,
         'filePath': filePath,
         'fileName': fileName,

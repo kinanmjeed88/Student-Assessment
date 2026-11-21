@@ -105,6 +105,9 @@ class MainActivity : FlutterActivity() {
         val text = call.argument<String>("text").orEmpty()
         val filePath = call.argument<String>("filePath")?.trim().orEmpty()
         val mimeType = call.argument<String>("mimeType")?.takeIf { it.isNotBlank() } ?: "*/*"
+        val expectedJid = "$phone$JID_SUFFIX"
+        val jid = call.argument<String>("jid")?.takeIf { it == expectedJid }
+            ?: expectedJid
 
         if (phone.isEmpty()) {
             result.error(ERROR_PHONE, "رقم ولي الأمر فارغ.", null)
@@ -152,7 +155,7 @@ class MainActivity : FlutterActivity() {
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_TEXT, text)
             // حقل غير رسمي؛ قد يتجاهله واتساب ولا يمكن اكتشاف ذلك من التطبيق.
-            putExtra("jid", "$phone$JID_SUFFIX")
+            putExtra("jid", jid)
             setPackage(packageName)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -165,7 +168,7 @@ class MainActivity : FlutterActivity() {
                 mapOf(
                     "status" to STATUS_LAUNCHED,
                     "package" to packageName,
-                    "jid" to "$phone$JID_SUFFIX",
+                    "jid" to jid,
                     "message" to "تم فتح التطبيق فقط؛ تأكد من المحادثة قبل الإرسال."
                 )
             )
