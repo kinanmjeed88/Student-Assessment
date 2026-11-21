@@ -4,6 +4,12 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- اكتشاف محدود لحزمتَي واتساب فقط، دون صلاحية اكتشاف عامة. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <application
         android:label="سجل الطالب"
         android:name="${applicationName}"
@@ -35,6 +41,15 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+        <provider
+            android:name=".GuardianReportFileProvider"
+            android:authorities="com.almoktaber.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <meta-data android:name="flutterEmbedding" android:value="2" />
     </application>
 </manifest>

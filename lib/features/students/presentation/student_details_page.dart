@@ -14,6 +14,7 @@ import '../../../core/services/guardian_report_service.dart';
 import '../../../core/services/guardian_report_text.dart';
 import '../../../core/services/monthly_report_scope.dart';
 import '../../../core/services/report_service.dart';
+import '../../../core/services/whatsapp_direct_share.dart';
 import '../../../core/utils/iterable_extensions.dart';
 import '../../../core/widgets/app_components.dart';
 
@@ -593,6 +594,26 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
                 icon: const Icon(Icons.open_in_new_outlined),
                 label: const Text('فتح محادثة واتساب بالنص فقط'),
               ),
+              if (WhatsAppDirectSupport.shouldOfferDirectSend(Theme.of(sheetContext).platform)) ...[
+                const Divider(height: 12),
+                TextButton.icon(
+                  onPressed: () async {
+                    final error = GuardianPhone.validationError(phone.text);
+                    if (error != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                      return;
+                    }
+                    Navigator.pop(context);
+                    await _startDirectSend(context, phone.text, format);
+                  },
+                  icon: const Icon(Icons.alt_route_outlined),
+                  label: const Text('توجيه مباشر تجريبي إلى المحادثة'),
+                ),
+                Text(
+                  'يحاول التوجيه عبر حقل jid غير رسمي؛ إذا لم تكن المحادثة موجودة مسبقاً فقد تظهر قائمة المستلمين.',
+                  style: Theme.of(sheetContext).textTheme.bodySmall,
+                ),
+              ],
             ],
           );
         },
@@ -651,6 +672,57 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     }
   }
 
+  /// مسار Android أصلي تجريبي: يحاول توجيه الملف والنص إلى رقم ولي الأمر.
+  ///
+  /// لا يُبلَّغ المستخدم بأن الرسالة أُرسلت؛ MethodChannel يعيد فقط نتيجة
+  /// تشغيل Intent، أما توجيه المحادثة وإرسالها فيبقى داخل واتساب.
+  Future<void> _startDirectSend(
+    BuildContext context,
+    String rawPhone,
+    GuardianReportFormat format,
+  ) async {
+    final reportService = ref.read(guardianReportServiceProvider);
+    final directService = ref.read(whatsappDirectShareProvider);
+    try {
+      final report = await reportService.prepare(
+        snapshot: snapshot,
+        studentUuid: student.uuid,
+        guardianPhone: rawPhone,
+        format: format,
+      );
+      if (!mounted) return;
+
+      final packages = await directService.availablePackages();
+      if (!mounted) return;
+      if (packages.isEmpty) {
+        _showGuardianMessage('واتساب أو واتساب بيزنس غير مثبت على الجهاز.');
+        return;
+      }
+      final package = packages.contains(WhatsAppPackage.whatsapp)
+          ? WhatsAppPackage.whatsapp
+          : WhatsAppPackage.whatsappBusiness;
+
+      final path = await directService.writeReportFile(
+        bytes: report.bytes,
+        fileName: report.fileName,
+      );
+      final result = await directService.shareToChat(
+        phone: GuardianPhone.normalize(rawPhone),
+        text: report.text,
+        filePath: path,
+        fileName: report.fileName,
+        mimeType: format.mimeType,
+        package: package,
+      );
+      if (!mounted) return;
+      _showGuardianMessage(result.statusMessage);
+    } on FormatException catch (error) {
+      _showGuardianMessage(error.message);
+    } catch (error) {
+      _showGuardianMessage('تعذر التوجيه المباشر: $error');
+    }
+  }
+
   void _showGuardianMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
@@ -699,7 +771,8 @@ class _ProfileHeader extends StatelessWidget {
       backgroundColor: WidgetStatePropertyAll(scheme.primaryContainer),
       foregroundColor: WidgetStatePropertyAll(scheme.onPrimaryContainer),
       elevation: const WidgetStatePropertyAll(0),
-      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 6, vertical: 8)),
+      visualDensity: VisualDensity.compact,
     );
 
     return Column(
@@ -719,18 +792,31 @@ class _ProfileHeader extends StatelessWidget {
                   builder: (context, constraints) {
                     final compact = constraints.maxWidth < 420;
                     final status = AppStatusPill(label: _statusLabelForProfile(student.status), icon: _statusIconForProfile(student.status), tone: statusTone);
-                    Widget action({required IconData icon, required String label, required VoidCallback onPressed}) => FilledButton.icon(
+                    Widget action({required IconData icon, required String label, required VoidCallback onPressed}) => FilledButton(
                           onPressed: onPressed,
                           style: buttonStyle,
-                          icon: Icon(icon),
-                          label: Text(label),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, size: 16),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.labelLarge?.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
                         );
                     final compactActions = Row(
                       children: [
                         Expanded(child: action(icon: Icons.table_view_outlined, label: 'Excel', onPressed: onExportExcel)),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Expanded(child: action(icon: Icons.picture_as_pdf_outlined, label: 'PDF', onPressed: onExportPdf)),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Expanded(child: action(icon: Icons.send_outlined, label: 'واتساب', onPressed: onSendGuardianReport)),
                       ],
                     );
@@ -738,9 +824,9 @@ class _ProfileHeader extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         action(icon: Icons.table_view_outlined, label: 'Excel', onPressed: onExportExcel),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         action(icon: Icons.picture_as_pdf_outlined, label: 'PDF', onPressed: onExportPdf),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         action(icon: Icons.send_outlined, label: 'واتساب', onPressed: onSendGuardianReport),
                       ],
                     );

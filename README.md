@@ -246,6 +246,7 @@ assets/                    # الصور والخطوط</code></pre>
     <li><a href="NOTIFICATIONS_AUDIT.md">فحص نظام الإشعارات وإضافة إشعارات الغياب</a></li>
     <li><a href="WINDOWS_NOTIFICATIONS.md">دعم Windows والإشعارات</a></li>
     <li><a href="WHATSAPP_GUARDIAN_REPORT.md">إرسال تقرير ولي الأمر عبر واتساب</a></li>
+    <li><a href="WHATSAPP_DIRECT_SEND_AUDIT.md">فحص جدوى التوجيه المباشر عبر واتساب</a></li>
   </ol>
 </section>
 
