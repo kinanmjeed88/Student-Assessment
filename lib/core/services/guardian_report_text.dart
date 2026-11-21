@@ -1,7 +1,5 @@
 import '../attendance/attendance_summary.dart';
 import '../behavior/behavior_summary.dart';
-import '../database/app_snapshot.dart';
-import '../database/isar_models.dart';
 import 'monthly_report_scope.dart';
 
 /// صيغة ملف التقرير المُرسل إلى ولي الأمر.

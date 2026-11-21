@@ -1,5 +1,4 @@
 import '../database/app_snapshot.dart';
-import '../database/isar_models.dart';
 
 /// الفترة الزمنية لتقرير ولي الأمر: من بداية الشهر الحالي حتى لحظة التوليد.
 ///
