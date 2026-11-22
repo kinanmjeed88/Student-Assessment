@@ -75,6 +75,14 @@ jobs:
         shell: pwsh
         run: flutter analyze
 
+      - name: Verify guardian PDF and Excel tests
+        shell: pwsh
+        run: flutter test test/guardian_report_service_test.dart --reporter expanded --timeout 2m
+
+      - name: Verify guardian report interaction test
+        shell: pwsh
+        run: flutter test test/guardian_report_sheet_test.dart --reporter expanded --timeout 2m
+
       - name: Run Flutter tests
         shell: pwsh
         run: flutter test --reporter github --timeout 2m
