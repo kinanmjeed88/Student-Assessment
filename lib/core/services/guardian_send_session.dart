@@ -97,7 +97,7 @@ class GuardianSendSession {
           retryStep: GuardianRetryStep.text,
         );
 
-        if (_report == null) _report = await prepare();
+        _report ??= await prepare();
         await _copyPhoneOnce(copyPhone);
 
         final existingPath = _filePath;

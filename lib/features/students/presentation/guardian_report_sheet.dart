@@ -102,8 +102,8 @@ class _GuardianReportSheetState extends State<_GuardianReportSheet> {
             subtitle:
                 'يُجهَّز نص المعاينة وملف الشهر الحالي مرة واحدة، ثم تُفتح مشاركتهما في خطوتين منفصلتين.',
             closeEnabled: !busy,
-            child: _buildContent(context, sendState),
             actions: _buildActions(context, sendState),
+            child: _buildContent(context, sendState),
           ),
         );
       },

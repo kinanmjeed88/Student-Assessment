@@ -8,7 +8,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:almoktaber/core/database/app_snapshot.dart';
 import 'package:almoktaber/core/services/guardian_report_service.dart';
 import 'package:almoktaber/core/services/guardian_report_text.dart';
-import 'package:almoktaber/core/services/monthly_report_scope.dart';
 import 'package:almoktaber/core/services/report_service.dart';
 
 import 'support/guardian_report_fixture.dart';
