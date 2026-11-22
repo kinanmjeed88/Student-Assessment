@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:almoktaber/core/database/app_snapshot.dart';
-import 'package:almoktaber/core/database/isar_models.dart';
 import 'package:almoktaber/core/services/guardian_phone.dart';
 import 'package:almoktaber/core/services/guardian_phone_copier.dart';
 import 'package:almoktaber/core/services/guardian_report_file_store.dart';
