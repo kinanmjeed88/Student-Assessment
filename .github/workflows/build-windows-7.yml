@@ -84,6 +84,10 @@ jobs:
         shell: pwsh
         run: flutter analyze --no-fatal-infos
 
+      - name: Run Flutter tests
+        shell: pwsh
+        run: flutter test
+
       - name: Build Windows release
         shell: pwsh
         run: flutter build windows --release

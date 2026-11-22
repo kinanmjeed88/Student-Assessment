@@ -1,14 +1,27 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/file_storage_service.dart';
+import '../../../core/services/guardian_phone.dart';
+import '../../../core/services/guardian_phone_copier.dart';
+import '../../../core/services/guardian_report_service.dart';
+import '../../../core/services/guardian_report_text.dart';
+import '../../../core/services/guardian_send_session.dart';
+import '../../../core/services/monthly_report_scope.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/utils/iterable_extensions.dart';
 import '../../../core/widgets/app_components.dart';
+
+/// عنوان زر بدء العملية في ورقة تقرير ولي الأمر.
+const String guardianStartSendLabel = 'إرسال التقرير والملف';
 
 class StudentDetailsPage extends ConsumerWidget {
   const StudentDetailsPage({required this.studentUuid, super.key});
@@ -54,6 +67,8 @@ class _StudentProfile extends ConsumerStatefulWidget {
 }
 
 class _StudentProfileState extends ConsumerState<_StudentProfile> {
+  final GuardianPhoneCopier _phoneCopier = GuardianPhoneCopier();
+  String? _guardianSavedPath;
 
   AppSnapshot get snapshot => widget.snapshot;
   Student get student => widget.student;
@@ -80,6 +95,7 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
       average: average,
       onExportExcel: () => _exportExcel(context),
       onExportPdf: () => _exportPdf(context),
+      onSendGuardianReport: () => _showGuardianReportSheet(context),
     );
 
     return DefaultTabController(
@@ -533,13 +549,324 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إنشاء الملف: $error')));
   }
 
+  /// نافذة واحدة ذات تسلسل واضح: نص في محادثة، ثم ملف في خطوة مستقلة.
+  ///
+  /// النص والملف يُجهَّزان مرة واحدة فقط؛ إعادة المحاولة بعد الفشل لا
+  /// تعيد توليدهما. لا يُرسل التطبيق شيئاً تلقائياً: المستخدم يختار
+  /// المستلم في واتساب وينفّذ الإرسال بنفسه.
+  Future<void> _showGuardianReportSheet(BuildContext context) async {
+    final phone = TextEditingController(text: student.guardianPhone);
+    final formatNotifier = ValueNotifier<GuardianReportFormat>(GuardianReportFormat.pdf);
+    final reportNow = DateTime.now();
+    String? previewText;
+    final session = GuardianSendSession();
+    _guardianSavedPath = null;
+
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'إرسال تقرير ولي الأمر',
+      subtitle: 'تُجهَّز بيانات الشهر الحالي حتى الآن بنفس تنسيق ملف الطالب، ثم تُرسل على مرحلتين.',
+      child: ValueListenableBuilder<GuardianReportFormat>(
+        valueListenable: formatNotifier,
+        builder: (formatContext, format, _) => ValueListenableBuilder<GuardianSendSnapshot>(
+          valueListenable: session.state,
+          builder: (sheetContext, sendState, _) {
+            final monthly = scopeToCurrentMonth(snapshot, now: reportNow);
+            if (sendState.stage == GuardianSendStage.idle) {
+              final preview = buildGuardianReportText(
+                settings: snapshot.settings,
+                student: student,
+                monthly: monthly,
+                format: format,
+              );
+              previewText = preview;
+              final scheme = Theme.of(sheetContext).colorScheme;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('الرقم المثبت في الملف: ${student.guardianPhone.isEmpty ? 'غير محدد' : student.guardianPhone}'),
+                  AppSpacing.item,
+                  TextFormField(
+                    controller: phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'رقم هاتف ولي الأمر',
+                      helperText: 'إذا لم تظهر المحادثة في واتساب، انسخ الرقم وابحث عنه من خلال البحث أو أضِفه إلى جهات الاتصال',
+                      suffixIcon: IconButton(
+                        tooltip: 'نسخ الرقم',
+                        icon: const Icon(Icons.copy_all_outlined),
+                        onPressed: () => _copyGuardianPhone(phone.text),
+                      ),
+                    ),
+                    validator: (_) => GuardianPhone.validationError(phone.text),
+                  ),
+                  AppSpacing.item,
+                  SegmentedButton<GuardianReportFormat>(
+                    selected: {format},
+                    onSelectionChanged: (value) => formatNotifier.value = value.first,
+                    segments: const [
+                      ButtonSegment(value: GuardianReportFormat.pdf, label: Text('PDF'), icon: Icon(Icons.picture_as_pdf_outlined)),
+                      ButtonSegment(value: GuardianReportFormat.xlsx, label: Text('Excel'), icon: Icon(Icons.table_view_outlined)),
+                    ],
+                  ),
+                  AppSpacing.item,
+                  _SheetInfo(label: 'فترة التقرير', value: '${monthly.period.startLabel} إلى ${monthly.period.endLabel}'),
+                  AppSpacing.item,
+                  Text('معاينة الرسالة', style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: scheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
+                    child: Text(preview, style: Theme.of(sheetContext).textTheme.bodyMedium),
+                  ),
+                ],
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _guardianStageTitle(sendState.stage),
+                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Text(_guardianStageMessage(sendState)),
+                if (sendState.error.isNotEmpty) ...[
+                  AppSpacing.item,
+                  Text(
+                    sendState.error,
+                    style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(sheetContext).colorScheme.error,
+                        ),
+                  ),
+                ],
+                AppSpacing.item,
+                _SheetInfo(label: 'الصيغة', value: format.label),
+                AppSpacing.item,
+                _SheetInfo(label: 'فترة التقرير', value: '${monthly.period.startLabel} إلى ${monthly.period.endLabel}'),
+                if (_guardianSavedPath != null) ...[
+                  AppSpacing.item,
+                  _SheetInfo(label: 'الملف المحفوظ', value: _guardianSavedPath!),
+                ],
+                AppSpacing.item,
+                Text(
+                  'إذا لم تظهر المحادثة في واتساب، انسخ الرقم وابحث عنه من خلال البحث أو أضِفه إلى جهات الاتصال',
+                  style: Theme.of(sheetContext).textTheme.bodySmall,
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+      actions: [
+        ValueListenableBuilder<GuardianSendSnapshot>(
+          valueListenable: session.state,
+          builder: (actionContext, sendState, _) => TextButton(
+            onPressed: sendState.isBusy ? null : () => Navigator.pop(actionContext),
+            child: const Text('إلغاء'),
+          ),
+        ),
+        ValueListenableBuilder<GuardianSendSnapshot>(
+          valueListenable: session.state,
+          builder: (actionContext, sendState, _) {
+            final busy = sendState.isBusy ||
+                sendState.stage == GuardianSendStage.messageReady;
+            final retryFile = sendState.stage == GuardianSendStage.failed &&
+                session.messageChatOpened;
+            final label = _guardianActionLabel(sendState.stage, retryFile);
+            return FilledButton.icon(
+              onPressed: busy
+                  ? null
+                  : () {
+                      if (retryFile ||
+                          sendState.stage == GuardianSendStage.messageChatOpened ||
+                          sendState.stage == GuardianSendStage.fileReady ||
+                          sendState.stage == GuardianSendStage.fileSharing ||
+                          sendState.stage == GuardianSendStage.completed) {
+                        _handleGuardianFileShare(session);
+                      } else {
+                        _handleGuardianMessageStart(
+                          phone.text,
+                          formatNotifier.value,
+                          previewText,
+                          reportNow,
+                          session,
+                        );
+                      }
+                    },
+              icon: busy
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_outlined),
+              label: Text(label),
+            );
+          },
+        ),
+      ],
+    );
+    await session.dispose();
+    formatNotifier.dispose();
+    phone.dispose();
+  }
+
+  String _guardianStageTitle(GuardianSendStage stage) => switch (stage) {
+        GuardianSendStage.preparing => 'جارٍ تجهيز التقرير',
+        GuardianSendStage.messageReady => 'فتح محادثة واتساب لإرسال الرسالة',
+        GuardianSendStage.messageChatOpened => 'تم فتح المحادثة',
+        GuardianSendStage.fileReady => 'إرسال ملف التقرير',
+        GuardianSendStage.fileSharing => 'جارٍ حفظ ملف التقرير',
+        GuardianSendStage.completed => 'تم حفظ ملف التقرير',
+        GuardianSendStage.failed => 'تعذر إكمال العملية',
+        GuardianSendStage.idle => '',
+      };
+
+  String _guardianStageMessage(GuardianSendSnapshot state) => switch (state.stage) {
+        GuardianSendStage.preparing => 'يُجهَّز النص والملف مرة واحدة قبل فتح واتساب.',
+        GuardianSendStage.messageReady => 'النص جاهز؛ سيُفتح واتساب على محادثة ولي الأمر لإرسال الرسالة.',
+        GuardianSendStage.messageChatOpened =>
+          'بعد إرسال الرسالة النصية في واتساب، ارجع إلى التطبيق لإرسال ملف التقرير في رسالة مستقلة',
+        GuardianSendStage.fileReady =>
+          'بعد إرسال الرسالة النصية في واتساب، ارجع إلى التطبيق لإرسال ملف التقرير في رسالة مستقلة',
+        GuardianSendStage.fileSharing => 'يُفتح الآن حفظ ملف التقرير وحده، دون نص إضافي.',
+        GuardianSendStage.completed => 'تم حفظ الملف؛ أرفقه في رسالة واتساب وأكمل الإرسال بنفسك.',
+        GuardianSendStage.failed => state.error.isEmpty ? 'حدث خطأ. يمكنك المحاولة مرة أخرى.' : state.error,
+        GuardianSendStage.idle => '',
+      };
+
+  String _guardianActionLabel(GuardianSendStage stage, bool retryFile) => switch (stage) {
+        GuardianSendStage.preparing => 'جارٍ التجهيز...',
+        GuardianSendStage.messageReady => 'جارٍ فتح المحادثة...',
+        GuardianSendStage.fileSharing => 'جارٍ الحفظ...',
+        GuardianSendStage.messageChatOpened || GuardianSendStage.fileReady => 'إرسال ملف التقرير',
+        GuardianSendStage.completed => 'إرسال الملف مرة أخرى',
+        GuardianSendStage.failed => retryFile ? 'إعادة إرسال الملف' : guardianStartSendLabel,
+        GuardianSendStage.idle => guardianStartSendLabel,
+      };
+
+  Future<void> _copyGuardianPhone(String rawPhone) async {
+    final copied = await _phoneCopier.copy(rawPhone);
+    if (!mounted) return;
+    _showGuardianMessage(
+      copied == null ? 'رقم ولي الأمر غير صالح.' : 'تم نسخ رقم ولي الأمر',
+    );
+  }
+
+  /// المرحلة الأولى: نسخ احتياطي للرقم، تجهيز واحد، ثم فتح محادثة بالنص.
+  Future<void> _handleGuardianMessageStart(
+    String rawPhone,
+    GuardianReportFormat format,
+    String? previewText,
+    DateTime reportNow,
+    GuardianSendSession session,
+  ) async {
+    final phoneError = GuardianPhone.validationError(rawPhone);
+    if (phoneError != null) {
+      _showGuardianMessage(phoneError);
+      return;
+    }
+    // النسخ التلقائي يحدث عند بدء العملية فقط؛ النسخ اليدوي متاح دائماً
+    // من زر النسخ في حقل الرقم.
+    await _phoneCopier.copy(rawPhone);
+
+    final service = ref.read(guardianReportServiceProvider);
+    await session.startMessage(
+      prepare: () => service.prepare(
+        snapshot: snapshot,
+        studentUuid: student.uuid,
+        guardianPhone: rawPhone,
+        format: format,
+        now: reportNow,
+        text: previewText,
+      ),
+      writeFile: (report) => _writeGuardianReportFile(report),
+      openChat: (report) => _openGuardianChat(report),
+    );
+    if (!mounted) return;
+    final sendState = session.state.value;
+    _showGuardianMessage(sendState.error.isEmpty
+        ? sendState.message
+        : '${sendState.message}: ${sendState.error}');
+  }
+
+  /// يكتب الملف مرة واحدة إلى مجلد مؤقت ليكون جاهزاً لخطوة الملف دون
+  /// إعادة توليده عند إعادة المحاولة.
+  Future<String> _writeGuardianReportFile(PreparedGuardianReport report) async {
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/${report.fileName}');
+    await file.writeAsBytes(report.bytes, flush: true);
+    return file.path;
+  }
+
+  /// على ويندوز ٧ يُفتح رابط wa.me في المتصفح بالنص الجاهز؛ لا يوجد توجيه
+  /// تلقائي إلى محادثة معيّنة، والمستخدم يؤكد الإرسال بنفسه في واتساب.
+  Future<bool> _openGuardianChat(PreparedGuardianReport report) {
+    final uri = GuardianPhone.chatUri(
+      phone: report.guardianPhone,
+      text: report.text,
+    );
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  /// المرحلة الثانية: حفظ الملف المجهز وحده دون إعادة توليده.
+  Future<void> _handleGuardianFileShare(GuardianSendSession session) async {
+    await session.shareFile(
+      share: (report, path) => _saveGuardianReportFile(report),
+    );
+    if (!mounted) return;
+    final sendState = session.state.value;
+    _showGuardianMessage(sendState.error.isEmpty
+        ? sendState.message
+        : '${sendState.message}: ${sendState.error}');
+  }
+
+  /// يسلّم الملف نفسه إلى المستخدم عبر حفظه باختياره، فيرفقه يدوياً في
+  /// رسالة واتساب. إلغاء الحفظ يعني `dismissed` ويعيد خطوة الملف للظهور.
+  Future<GuardianShareOutcome> _saveGuardianReportFile(
+    PreparedGuardianReport report,
+  ) async {
+    final savedPath = await const FileStorageService().saveBytes(
+      bytes: report.bytes,
+      fileName: report.fileName,
+      dialogTitle: 'حفظ ملف تقرير ولي الأمر',
+    );
+    if (savedPath == null) return GuardianShareOutcome.dismissed;
+    if (mounted) {
+      setState(() => _guardianSavedPath = savedPath);
+    }
+    return GuardianShareOutcome.completed;
+  }
+
+  void _showGuardianMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   InputDecoration _decoration(String label) => InputDecoration(labelText: label);
   TextFormField _input(TextEditingController controller, String label, {bool numeric = false, bool required = true, int maxLines = 1}) => TextFormField(controller: controller, maxLines: maxLines, keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text, decoration: _decoration(label), validator: required ? (value) => value == null || value.trim().isEmpty ? 'هذا الحقل مطلوب' : null : null);
 
 }
 
+/// سطر معلومة داخل ورقة تقرير ولي الأمر: عنوان قصير وقيمة ممتدة.
+class _SheetInfo extends StatelessWidget {
+  const _SheetInfo({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Text('$label: ', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+          Expanded(child: Text(value)),
+        ],
+      );
+}
+
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendanceCount, required this.absentCount, required this.average, required this.onExportExcel, required this.onExportPdf});
+  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendanceCount, required this.absentCount, required this.average, required this.onExportExcel, required this.onExportPdf, required this.onSendGuardianReport});
 
   final Student student;
   final String? schoolClass;
@@ -550,6 +877,7 @@ class _ProfileHeader extends StatelessWidget {
   final double? average;
   final VoidCallback onExportExcel;
   final VoidCallback onExportPdf;
+  final VoidCallback onSendGuardianReport;
 
   @override
   Widget build(BuildContext context) {
@@ -561,7 +889,8 @@ class _ProfileHeader extends StatelessWidget {
       backgroundColor: MaterialStatePropertyAll(scheme.primaryContainer),
       foregroundColor: MaterialStatePropertyAll(scheme.onPrimaryContainer),
       elevation: const MaterialStatePropertyAll(0),
-      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 6, vertical: 8)),
+      visualDensity: VisualDensity.compact,
     );
 
     return Column(
@@ -581,19 +910,42 @@ class _ProfileHeader extends StatelessWidget {
                   builder: (context, constraints) {
                     final compact = constraints.maxWidth < 420;
                     final status = AppStatusPill(label: _statusLabelForProfile(student.status), icon: _statusIconForProfile(student.status), tone: statusTone);
+                    Widget action({required IconData icon, required String label, required VoidCallback onPressed}) => FilledButton(
+                          onPressed: onPressed,
+                          style: buttonStyle,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, size: 16),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.labelLarge?.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
                     final compactActions = Row(
                       children: [
-                        Expanded(child: FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel'))),
-                        const SizedBox(width: 8),
-                        Expanded(child: FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF'))),
+                        Expanded(child: action(icon: Icons.table_view_outlined, label: 'Excel', onPressed: onExportExcel)),
+                        const SizedBox(width: 6),
+                        Expanded(child: action(icon: Icons.picture_as_pdf_outlined, label: 'PDF', onPressed: onExportPdf)),
+                        const SizedBox(width: 6),
+                        Expanded(child: action(icon: Icons.send_outlined, label: 'واتساب', onPressed: onSendGuardianReport)),
                       ],
                     );
                     final wideActions = Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel')),
-                        const SizedBox(width: 8),
-                        FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF')),
+                        action(icon: Icons.table_view_outlined, label: 'Excel', onPressed: onExportExcel),
+                        const SizedBox(width: 6),
+                        action(icon: Icons.picture_as_pdf_outlined, label: 'PDF', onPressed: onExportPdf),
+                        const SizedBox(width: 6),
+                        action(icon: Icons.send_outlined, label: 'واتساب', onPressed: onSendGuardianReport),
                       ],
                     );
                     if (compact) {
