@@ -7,6 +7,7 @@ import 'database/isar_models.dart';
 import 'database/local_repository.dart';
 import 'database/local_store.dart';
 import 'notifications/notification_service.dart';
+import 'services/guardian_report_service.dart';
 
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
   final service = DatabaseService();
@@ -20,6 +21,11 @@ final localRepositoryProvider = Provider<LocalStore>((ref) {
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService();
+});
+
+/// خدمة تجهيز تقرير ولي الأمر الشهري (نص + ملف) مرة واحدة لكل عملية إرسال.
+final guardianReportServiceProvider = Provider<GuardianReportService>((ref) {
+  return GuardianReportService();
 });
 
 final appControllerProvider = AsyncNotifierProvider<AppController, AppSnapshot>(AppController.new);
