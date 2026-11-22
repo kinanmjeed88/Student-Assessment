@@ -77,7 +77,7 @@ jobs:
 
       - name: Run Flutter tests
         shell: pwsh
-        run: flutter test
+        run: flutter test --reporter github --timeout 2m
 
       - name: Build Windows release
         shell: pwsh
