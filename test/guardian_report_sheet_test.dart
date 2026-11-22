@@ -27,6 +27,14 @@ class _FakeReportService extends ReportService {
       Uint8List.fromList([5, 6, 7, 8]);
 }
 
+Future<void> _pumpUntilFound(WidgetTester tester, Finder finder) async {
+  for (var attempt = 0; attempt < 50; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (finder.evaluate().isNotEmpty) return;
+  }
+  throw TestFailure('لم يظهر العنصر المطلوب خلال خمس ثوانٍ.');
+}
+
 void main() {
   testWidgets('تعرض خطوتي النص والملف ولا تجمعهما في طلب واحد', (tester) async {
     final fixture = GuardianReportFixture();
@@ -73,12 +81,12 @@ void main() {
     );
 
     await tester.tap(find.text('فتح'));
-    await tester.pumpAndSettle();
+    await _pumpUntilFound(tester, find.text(guardianReportStartLabel));
     expect(find.text(guardianReportStartLabel), findsOneWidget);
     expect(find.textContaining('لا يختار التطبيق المستلم'), findsOneWidget);
 
     await tester.tap(find.text(guardianReportStartLabel));
-    await tester.pumpAndSettle();
+    await _pumpUntilFound(tester, find.text(guardianReportFileStepTitle));
 
     expect(shared, hasLength(1));
     expect(shared.single.text, isNotEmpty);
@@ -89,7 +97,7 @@ void main() {
     await tester.tap(
       find.widgetWithText(FilledButton, guardianReportFileStepTitle),
     );
-    await tester.pumpAndSettle();
+    await _pumpUntilFound(tester, find.text('طُلبت مشاركة ملف التقرير'));
 
     expect(shared, hasLength(2));
     expect(shared.last.text, isNull);
@@ -100,5 +108,8 @@ void main() {
       find.widgetWithText(FilledButton, guardianReportFileStepTitle),
       findsNothing,
     );
+
+    await tester.tap(find.text('إغلاق'));
+    await tester.pump(const Duration(seconds: 1));
   });
 }
