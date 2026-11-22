@@ -73,7 +73,20 @@ jobs:
 
       - name: Analyze Dart code
         shell: pwsh
-        run: flutter analyze
+        run: |
+          $lines = & flutter analyze --machine 2>&1
+          $exitCode = $LASTEXITCODE
+          $lines | ForEach-Object {
+            $line = "$_"
+            Write-Output $line
+            $parts = $line -split '\|', 8
+            if ($parts.Count -eq 8 -and @('ERROR', 'WARNING', 'INFO') -contains $parts[0]) {
+              $level = if ($parts[0] -eq 'ERROR') { 'error' } else { 'warning' }
+              $message = $parts[7].Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Output "::$level file=$($parts[3]),line=$($parts[4]),col=$($parts[5])::$message"
+            }
+          }
+          exit $exitCode
 
       - name: Run Flutter tests
         shell: pwsh
