@@ -81,6 +81,9 @@ jobs:
             cp android/app/build.gradle "$tmp_dir/build.gradle"
             cp android/app/src/main/AndroidManifest.xml "$tmp_dir/AndroidManifest.xml"
             cp -R android/app/src/main/res "$tmp_dir/res"
+            if [ -d android/app/src/main/kotlin ]; then
+              cp -R android/app/src/main/kotlin "$tmp_dir/kotlin"
+            fi
             rm -rf android
             flutter create --platforms=android --org com.almoktaber --project-name almoktaber .
             find android/app/src/main -name MainActivity.kt -exec sed -i 's/^package .*/package com.almoktaber/' {} +
@@ -88,6 +91,10 @@ jobs:
             cp "$tmp_dir/AndroidManifest.xml" android/app/src/main/AndroidManifest.xml
             rm -rf android/app/src/main/res
             cp -R "$tmp_dir/res" android/app/src/main/res
+            if [ -d "$tmp_dir/kotlin" ]; then
+              rm -rf android/app/src/main/kotlin
+              cp -R "$tmp_dir/kotlin" android/app/src/main/kotlin
+            fi
             rm -f test/widget_test.dart
           fi
 

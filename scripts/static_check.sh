@@ -30,6 +30,46 @@ if ! grep -q "applicationId 'com.almoktaber'" android/app/build.gradle || ! grep
   fail=1
 fi
 
+NATIVE_DIR="android/app/src/main/kotlin/com/almoktaber"
+if [ ! -f "$NATIVE_DIR/MainActivity.kt" ] || [ ! -f "$NATIVE_DIR/GuardianReportFileProvider.kt" ]; then
+  echo 'Native WhatsApp channel sources are missing.'
+  fail=1
+fi
+if [ ! -f android/app/src/main/res/xml/file_paths.xml ]; then
+  echo 'FileProvider paths configuration is missing.'
+  fail=1
+fi
+if ! grep -q 'com.almoktaber.fileprovider' android/app/src/main/AndroidManifest.xml; then
+  echo 'FileProvider authority is missing from the manifest.'
+  fail=1
+fi
+if ! grep -q 'android:name="com.whatsapp"' android/app/src/main/AndroidManifest.xml || ! grep -q 'android:name="com.whatsapp.w4b"' android/app/src/main/AndroidManifest.xml; then
+  echo 'Limited WhatsApp package queries are missing from the manifest.'
+  fail=1
+fi
+if grep -RInq 'QUERY_ALL_PACKAGES' android; then
+  echo 'QUERY_ALL_PACKAGES is not allowed for this feature.'
+  fail=1
+fi
+if grep -RInE 'Uri\.fromFile|file://' "$NATIVE_DIR"; then
+  echo 'Unsafe file:// URI found in native share code.'
+  fail=1
+fi
+if grep -RInE 'مشاركة التقرير والملف|فتح محادثة واتساب بالنص فقط|توجيه مباشر' lib; then
+  echo 'Obsolete guardian report send buttons are still present.'
+  fail=1
+fi
+if [ "$(grep -Roh 'إرسال التقرير والملف' lib | wc -l)" -ne 1 ]; then
+  echo 'The unified guardian report send button is missing or duplicated.'
+  fail=1
+fi
+for required in 'نسخ الرقم' 'تم نسخ رقم ولي الأمر' 'إرسال ملف التقرير' 'إذا لم تظهر المحادثة في واتساب'; do
+  if ! grep -Rq "$required" lib; then
+    echo "Missing guardian two-step UI text: $required"
+    fail=1
+  fi
+done
+
 if [ "$fail" -ne 0 ]; then
   exit 1
 fi
