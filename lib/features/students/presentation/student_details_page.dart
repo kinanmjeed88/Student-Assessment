@@ -8,9 +8,11 @@ import '../../../core/behavior/behavior_summary.dart';
 import '../../../core/database/app_snapshot.dart';
 import '../../../core/database/isar_models.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/guardian_phone_copier.dart';
 import '../../../core/services/report_service.dart';
 import '../../../core/utils/iterable_extensions.dart';
 import '../../../core/widgets/app_components.dart';
+import 'guardian_report_sheet.dart';
 
 class StudentDetailsPage extends ConsumerWidget {
   const StudentDetailsPage({required this.studentUuid, super.key});
@@ -56,6 +58,7 @@ class _StudentProfile extends ConsumerStatefulWidget {
 }
 
 class _StudentProfileState extends ConsumerState<_StudentProfile> {
+  final GuardianPhoneCopier _phoneCopier = GuardianPhoneCopier();
 
   AppSnapshot get snapshot => widget.snapshot;
   Student get student => widget.student;
@@ -82,6 +85,14 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
       average: average,
       onExportExcel: () => _exportExcel(context),
       onExportPdf: () => _exportPdf(context),
+      onSendGuardianReport: () => showGuardianReportSheet(
+        context: context,
+        snapshot: snapshot,
+        student: student,
+        reportService: ref.read(guardianReportServiceProvider),
+        fileStore: ref.read(guardianReportFileStoreProvider),
+        phoneCopier: _phoneCopier,
+      ),
     );
 
     return DefaultTabController(
@@ -537,7 +548,18 @@ class _StudentProfileState extends ConsumerState<_StudentProfile> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.student, required this.schoolClass, required this.section, required this.summary, required this.attendanceCount, required this.absentCount, required this.average, required this.onExportExcel, required this.onExportPdf});
+  const _ProfileHeader({
+    required this.student,
+    required this.schoolClass,
+    required this.section,
+    required this.summary,
+    required this.attendanceCount,
+    required this.absentCount,
+    required this.average,
+    required this.onExportExcel,
+    required this.onExportPdf,
+    required this.onSendGuardianReport,
+  });
 
   final Student student;
   final String? schoolClass;
@@ -548,6 +570,7 @@ class _ProfileHeader extends StatelessWidget {
   final double? average;
   final VoidCallback onExportExcel;
   final VoidCallback onExportPdf;
+  final VoidCallback onSendGuardianReport;
 
   @override
   Widget build(BuildContext context) {
@@ -559,7 +582,10 @@ class _ProfileHeader extends StatelessWidget {
       backgroundColor: WidgetStatePropertyAll(scheme.primaryContainer),
       foregroundColor: WidgetStatePropertyAll(scheme.onPrimaryContainer),
       elevation: const WidgetStatePropertyAll(0),
-      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      ),
+      visualDensity: VisualDensity.compact,
     );
 
     return Column(
@@ -579,25 +605,66 @@ class _ProfileHeader extends StatelessWidget {
                   builder: (context, constraints) {
                     final compact = constraints.maxWidth < 420;
                     final status = AppStatusPill(label: _statusLabelForProfile(student.status), icon: _statusIconForProfile(student.status), tone: statusTone);
-                    final compactActions = Row(
+                    final exportActions = Row(
                       children: [
-                        Expanded(child: FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel'))),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: onExportExcel,
+                            style: buttonStyle,
+                            icon: const Icon(Icons.table_view_outlined),
+                            label: const Text('Excel'),
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        Expanded(child: FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF'))),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: onExportPdf,
+                            style: buttonStyle,
+                            icon: const Icon(Icons.picture_as_pdf_outlined),
+                            label: const Text('PDF'),
+                          ),
+                        ),
                       ],
                     );
-                    final wideActions = Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FilledButton.icon(onPressed: onExportExcel, style: buttonStyle, icon: const Icon(Icons.table_view_outlined), label: const Text('Excel')),
-                        const SizedBox(width: 8),
-                        FilledButton.icon(onPressed: onExportPdf, style: buttonStyle, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PDF')),
-                      ],
+                    final sendAction = FilledButton.icon(
+                      onPressed: onSendGuardianReport,
+                      style: buttonStyle,
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text(guardianReportStartLabel),
                     );
                     if (compact) {
-                      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Row(children: [status]), const SizedBox(height: 8), compactActions]);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(children: [status]),
+                          const SizedBox(height: 8),
+                          exportActions,
+                          const SizedBox(height: 8),
+                          sendAction,
+                        ],
+                      );
                     }
-                    return Row(children: [status, const SizedBox(width: 12), wideActions]);
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        status,
+                        FilledButton.icon(
+                          onPressed: onExportExcel,
+                          style: buttonStyle,
+                          icon: const Icon(Icons.table_view_outlined),
+                          label: const Text('Excel'),
+                        ),
+                        FilledButton.icon(
+                          onPressed: onExportPdf,
+                          style: buttonStyle,
+                          icon: const Icon(Icons.picture_as_pdf_outlined),
+                          label: const Text('PDF'),
+                        ),
+                        sendAction,
+                      ],
+                    );
                   },
                 ),
               ],

@@ -257,12 +257,20 @@ class AppMetricTile extends StatelessWidget {
 
 
 class AppFormSheet extends StatelessWidget {
-  const AppFormSheet({required this.title, required this.child, required this.actions, this.subtitle, super.key});
+  const AppFormSheet({
+    required this.title,
+    required this.child,
+    required this.actions,
+    this.subtitle,
+    this.closeEnabled = true,
+    super.key,
+  });
 
   final String title;
   final String? subtitle;
   final Widget child;
   final List<Widget> actions;
+  final bool closeEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -290,7 +298,11 @@ class AppFormSheet extends StatelessWidget {
                         ],
                       ),
                     ),
-                    IconButton(tooltip: 'إغلاق', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    IconButton(
+                      tooltip: 'إغلاق',
+                      onPressed: closeEnabled ? () => Navigator.pop(context) : null,
+                      icon: const Icon(Icons.close),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
