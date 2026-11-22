@@ -31,7 +31,7 @@ Future<void> showGuardianReportSheet({
     showDragHandle: true,
     isDismissible: false,
     enableDrag: false,
-    builder: (_) => _GuardianReportSheet(
+    builder: (_) => GuardianReportSheet(
       snapshot: snapshot,
       student: student,
       reportService: reportService,
@@ -41,13 +41,14 @@ Future<void> showGuardianReportSheet({
   );
 }
 
-class _GuardianReportSheet extends StatefulWidget {
-  const _GuardianReportSheet({
+class GuardianReportSheet extends StatefulWidget {
+  const GuardianReportSheet({
     required this.snapshot,
     required this.student,
     required this.reportService,
     required this.fileStore,
     required this.phoneCopier,
+    super.key,
   });
 
   final AppSnapshot snapshot;
@@ -57,10 +58,10 @@ class _GuardianReportSheet extends StatefulWidget {
   final GuardianPhoneCopier phoneCopier;
 
   @override
-  State<_GuardianReportSheet> createState() => _GuardianReportSheetState();
+  State<GuardianReportSheet> createState() => _GuardianReportSheetState();
 }
 
-class _GuardianReportSheetState extends State<_GuardianReportSheet> {
+class _GuardianReportSheetState extends State<GuardianReportSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _phone;
   late final GuardianSendSession _session;
